@@ -9,27 +9,12 @@ services:
     envVars:
       - key: PYTHON_VERSION
         value: "3.11"
-      - key: GEMINI_API_KEY
-        sync: false
       - key: GROQ_API_KEY
+        sync: false
+      - key: GEMINI_API_KEY
         sync: false
       - key: AI_PROVIDER
         value: groq
-      - key: ADMIN_EMAIL
-        value: brandhousesilver@gmail.com
-      - key: ADMIN_PHONE
-        value: +5511960157100
-      - key: COMPANY_NAME
-        value: Silver Brand House
-      - key: FRONTEND_URL
-        sync: false
-    envVars:
-      - key: GEMINI_API_KEY
-        sync: false
-      - key: GROQ_API_KEY
-        sync: false
-      - key: AI_PROVIDER
-        value: gemini
       - key: ADMIN_EMAIL
         value: brandhousesilver@gmail.com
       - key: ADMIN_PHONE
