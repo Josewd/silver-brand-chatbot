@@ -12,8 +12,7 @@ groq==0.4.2
 
 # PDF Generation
 reportlab==4.0.7
-pillow==10.1.0
 
-# Utilities
+# HTTP
 httpx==0.25.1
 requests==2.31.0
