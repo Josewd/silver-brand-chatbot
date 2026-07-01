@@ -21,7 +21,7 @@ def _init_ai_client():
     if settings.ai_provider == "gemini" and settings.gemini_api_key:
         import google.generativeai as genai
         genai.configure(api_key=settings.gemini_api_key)
-        _ai_client = genai.GenerativeModel("gemini-2.0-flash-exp")
+        _ai_client = genai.GenerativeModel("gemini-2.0-flash")
         _ai_provider = "gemini"
         logger.info("Cliente Gemini inicializado")
         return _ai_client, _ai_provider
