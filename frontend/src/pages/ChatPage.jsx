@@ -1,0 +1,408 @@
+import React, { useState, useEffect, useRef } from 'react'
+import { useParams } from 'react-router-dom'
+import './ChatPage.css'
+
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
+
+// Definir as seções do briefing (IDs devem corresponder ao backend)
+const BRIEFING_SECTIONS = [
+  { id: 'intro', name: 'Início' },
+  { id: 'contato', name: 'Detalhes de Contato' },
+  { id: 'basicas', name: 'Informações Básicas' },
+  { id: 'entrega', name: 'Lista de Entrega' },
+  { id: 'perfil', name: 'Perfil da Empresa' },
+  { id: 'posicionamento', name: 'Posicionamento & Personalidade' },
+  { id: 'concorrentes', name: 'Concorrentes e Referências' },
+  { id: 'visuais', name: 'Preferências Visuais' },
+  { id: 'final', name: 'Informações Finais' }
+]
+
+function ChatPage() {
+  const { sessionId } = useParams()
+  const [messages, setMessages] = useState([])
+  const [inputValue, setInputValue] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [sessionData, setSessionData] = useState(null)
+  const [error, setError] = useState(null)
+  const [currentOptions, setCurrentOptions] = useState(null)
+  const [selectedOptions, setSelectedOptions] = useState([])
+  const messagesEndRef = useRef(null)
+  const inputRef = useRef(null)
+
+  useEffect(() => {
+    loadSession()
+    loadHistory()
+  }, [sessionId])
+
+  useEffect(() => {
+    scrollToBottom()
+  }, [messages])
+
+  // Auto-focus no input após carregar ou enviar mensagem
+  useEffect(() => {
+    if (!loading && !currentOptions && inputRef.current) {
+      inputRef.current.focus()
+    }
+  }, [loading, currentOptions])
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }
+
+  const loadSession = async () => {
+    try {
+      const response = await fetch(`${API_URL}/api/session/${sessionId}`)
+      if (!response.ok) {
+        throw new Error('Sessão não encontrada')
+      }
+      const data = await response.json()
+      setSessionData(data)
+    } catch (err) {
+      setError('Erro ao carregar sessão: ' + err.message)
+    }
+  }
+
+  const loadHistory = async () => {
+    try {
+      const response = await fetch(`${API_URL}/api/chat/${sessionId}/history`)
+      if (response.ok) {
+        const data = await response.json()
+        setMessages(data.messages || [])
+      }
+    } catch (err) {
+      console.error('Erro ao carregar histórico:', err)
+    }
+  }
+
+  const sendMessage = async (e) => {
+    e.preventDefault()
+    if (!inputValue.trim() || loading) return
+
+    const userMessage = inputValue.trim()
+    setInputValue('')
+    setLoading(true)
+
+    // Adicionar mensagem do usuário imediatamente
+    const newUserMessage = {
+      role: 'user',
+      content: userMessage,
+      timestamp: new Date().toISOString()
+    }
+    setMessages(prev => [...prev, newUserMessage])
+
+    try {
+      const response = await fetch(`${API_URL}/api/chat/${sessionId}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ message: userMessage })
+      })
+
+      if (!response.ok) {
+        throw new Error('Erro ao enviar mensagem')
+      }
+
+      const data = await response.json()
+      
+      // Adicionar resposta do bot
+      const botMessage = {
+        role: 'assistant',
+        content: data.reply,
+        timestamp: new Date().toISOString(),
+        options: data.options
+      }
+      setMessages(prev => [...prev, botMessage])
+
+      // Se houver opções, armazenar para mostrar
+      if (data.options && data.options.length > 0) {
+        setCurrentOptions(data.options)
+        setSelectedOptions([])
+      } else {
+        setCurrentOptions(null)
+      }
+
+      // Atualizar progresso
+      if (sessionData) {
+        setSessionData({
+          ...sessionData,
+          progress: data.progress,
+          current_section: data.current_section,
+          is_completed: data.is_completed
+        })
+      }
+
+    } catch (err) {
+      setError('Erro ao enviar mensagem: ' + err.message)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleCheckboxToggle = (value) => {
+    if (value === 'none') {
+      // Se selecionar "nenhum", desmarcar todos outros
+      setSelectedOptions(['none'])
+    } else {
+      setSelectedOptions(prev => {
+        const newSelected = prev.filter(v => v !== 'none')
+        if (newSelected.includes(value)) {
+          return newSelected.filter(v => v !== value)
+        } else {
+          return [...newSelected, value]
+        }
+      })
+    }
+  }
+
+  const submitOptions = async () => {
+    if (selectedOptions.length === 0) return
+    
+    setLoading(true)
+    
+    // Montar mensagem com as opções selecionadas
+    const labels = currentOptions
+      .filter(opt => selectedOptions.includes(opt.value))
+      .map(opt => opt.label)
+    
+    const message = labels.length > 0 ? labels.join(', ') : 'Nenhum item extra'
+    
+    // Adicionar mensagem do usuário imediatamente
+    const newUserMessage = {
+      role: 'user',
+      content: message,
+      timestamp: new Date().toISOString()
+    }
+    setMessages(prev => [...prev, newUserMessage])
+    
+    // Limpar opções
+    setCurrentOptions(null)
+    setSelectedOptions([])
+    
+    try {
+      const response = await fetch(`${API_URL}/api/chat/${sessionId}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ message })
+      })
+
+      if (!response.ok) {
+        throw new Error('Erro ao enviar mensagem')
+      }
+
+      const data = await response.json()
+      
+      // Adicionar resposta do bot
+      const botMessage = {
+        role: 'assistant',
+        content: data.reply,
+        timestamp: new Date().toISOString(),
+        options: data.options
+      }
+      setMessages(prev => [...prev, botMessage])
+
+      // Se houver novas opções, armazenar
+      if (data.options && data.options.length > 0) {
+        setCurrentOptions(data.options)
+        setSelectedOptions([])
+      }
+
+      // Atualizar progresso
+      if (sessionData) {
+        setSessionData({
+          ...sessionData,
+          progress: data.progress,
+          current_section: data.current_section,
+          is_completed: data.is_completed
+        })
+      }
+
+    } catch (err) {
+      setError('Erro ao enviar mensagem: ' + err.message)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const downloadPDF = async () => {
+    try {
+      window.open(`${API_URL}/api/briefing/${sessionId}/download`, '_blank')
+    } catch (err) {
+      alert('Erro ao baixar PDF: ' + err.message)
+    }
+  }
+
+  const generatePDF = async () => {
+    try {
+      const response = await fetch(`${API_URL}/api/briefing/${sessionId}/generate-pdf`, {
+        method: 'POST'
+      })
+      if (response.ok) {
+        alert('PDF gerado com sucesso! Clique em "Baixar PDF" para fazer o download.')
+      }
+    } catch (err) {
+      alert('Erro ao gerar PDF: ' + err.message)
+    }
+  }
+
+  if (error) {
+    return (
+      <div className="chat-page error">
+        <div className="error-message">{error}</div>
+      </div>
+    )
+  }
+
+  if (!sessionData) {
+    return (
+      <div className="chat-page loading">
+        <div className="loading-spinner">Carregando...</div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="chat-page">
+      <header className="chat-header">
+        <div className="header-content">
+          <h1>Silver Brand House</h1>
+          <p className="client-name">{sessionData.client_name}</p>
+        </div>
+        <div className="progress-container">
+          <span className="progress-text">
+            {sessionData.progress}% concluído
+          </span>
+          <div className="progress-bar">
+            <div 
+              className="progress-fill" 
+              style={{ width: `${sessionData.progress}%` }}
+            />
+            {/* Checkpoints na barra */}
+            {BRIEFING_SECTIONS.filter(section => section.id !== 'intro').map((section, index) => {
+              const position = ((index + 1) / (BRIEFING_SECTIONS.length - 1)) * 100
+              const sectionIndex = BRIEFING_SECTIONS.findIndex(s => s.id === sessionData.current_section)
+              const checkpointIndex = BRIEFING_SECTIONS.findIndex(s => s.id === section.id)
+              const isCompleted = checkpointIndex < sectionIndex
+              const isCurrent = section.id === sessionData.current_section
+              
+              return (
+                <div
+                  key={section.id}
+                  className={`checkpoint ${isCompleted ? 'completed' : ''} ${isCurrent ? 'current' : ''}`}
+                  style={{ left: `${position}%` }}
+                  data-tooltip={section.name}
+                >
+                  <div className="checkpoint-dot"></div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      </header>
+
+      <div className="messages-container">
+        {messages.length === 0 && (
+          <div className="welcome-message">
+            <h2>Bem-vindo ao briefing interativo! 👋</h2>
+            <p>Vou te ajudar a estruturar a identidade visual da sua marca.</p>
+            <p>Vamos começar?</p>
+          </div>
+        )}
+        
+        {messages.map((msg, index) => (
+          <div 
+            key={index} 
+            className={`message ${msg.role === 'user' ? 'user-message' : 'bot-message'}`}
+          >
+            <div className="message-content">
+              {msg.content}
+            </div>
+            <span className="message-time">
+              {new Date(msg.timestamp).toLocaleTimeString('pt-BR', { 
+                hour: '2-digit', 
+                minute: '2-digit' 
+              })}
+            </span>
+          </div>
+        ))}
+        
+        {loading && (
+          <div className="message bot-message">
+            <div className="message-content typing">
+              <span></span>
+              <span></span>
+              <span></span>
+            </div>
+          </div>
+        )}
+        
+        <div ref={messagesEndRef} />
+      </div>
+
+      {sessionData.is_completed ? (
+        <div className="completion-panel">
+          <h3>🎉 Briefing Completo!</h3>
+          <p>Obrigado por compartilhar essas informações. Agora você pode baixar o PDF com tudo que conversamos.</p>
+          <div className="completion-actions">
+            <button onClick={generatePDF} className="btn-secondary">
+              Gerar PDF
+            </button>
+            <button onClick={downloadPDF} className="btn-primary">
+              Baixar PDF
+            </button>
+          </div>
+        </div>
+      ) : (
+        <>
+          {currentOptions && currentOptions.length > 0 && (
+            <div className="options-panel">
+              <p className="options-title">Selecione os itens que você precisa:</p>
+              <div className="options-grid">
+                {currentOptions.map((option, index) => (
+                  <label key={index} className="option-checkbox">
+                    <input
+                      type="checkbox"
+                      checked={selectedOptions.includes(option.value)}
+                      onChange={() => handleCheckboxToggle(option.value)}
+                    />
+                    <span>{option.label}</span>
+                  </label>
+                ))}
+              </div>
+              <button 
+                onClick={submitOptions}
+                className="btn-submit-options"
+                disabled={selectedOptions.length === 0}
+              >
+                Enviar Seleção
+              </button>
+            </div>
+          )}
+          
+          <form onSubmit={sendMessage} className="input-container">
+            <input
+              ref={inputRef}
+              type="text"
+              value={inputValue}
+              onChange={(e) => setInputValue(e.target.value)}
+              placeholder="Digite sua mensagem..."
+              className="message-input"
+              disabled={loading || currentOptions}
+            />
+            <button 
+              type="submit" 
+              className="send-button"
+              disabled={loading || !inputValue.trim() || currentOptions}
+            >
+              Enviar
+            </button>
+          </form>
+        </>
+      )}
+    </div>
+  )
+}
+
+export default ChatPage
