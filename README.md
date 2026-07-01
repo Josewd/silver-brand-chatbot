@@ -1,141 +1,185 @@
-# 🎨 Silver Brand Design — Chatbot Inteligente para Briefing
+# Silver Brand House - Chatbot de Briefing Interativo
 
-Chatbot com IA para capturar informações de clientes e preencher automaticamente o formulário de briefing de identidade visual da Silver Brand House.
+Sistema completo de briefing interativo para coleta de informações de identidade visual, com chat inteligente, painel administrativo e geração automática de PDF.
 
-## O que faz
+## 🎯 Funcionalidades
 
-- Designer virtual recebe clientes via link único com contexto pré-carregado
-- Conduz conversa natural para coletar informações do briefing
-- Auxilia na criação de descrições, missão/visão/valores, slogans
-- Preenche automaticamente o formulário PDF de briefing
-- Gera PDF preenchido ao final da conversa
+- **Chat Inteligente**: IA conversacional (Groq ou Gemini) que conduz o briefing de forma natural
+- **Barra de Progresso Visual**: Checkpoints interativos com tooltips mostrando cada etapa
+- **Painel Administrativo**: Gerenciamento de sessões, visualização de briefings e downloads
+- **Geração de PDF**: Briefing completo formatado profissionalmente
+- **Interface Moderna**: React + Vite com design responsivo
 
-## Stack
+## 🚀 Stack Tecnológica
 
-- **Python + FastAPI** — Backend async
-- **Google Gemini 2.0 Flash** ou **Groq (LLaMA 3.3)** — IA conversacional
-- **SQLite** — Banco de dados para sessões
-- **React + Vite** — Frontend moderno
-- **ReportLab/PyPDF** — Geração de PDFs
+### Backend
+- **FastAPI**: Framework web moderno e rápido
+- **SQLite**: Banco de dados leve para persistência
+- **Groq/Gemini**: APIs de IA para conversação natural
+- **ReportLab**: Geração de PDFs profissionais
 
-## Estrutura do Fluxo
+### Frontend
+- **React 18**: Biblioteca UI moderna
+- **Vite**: Build tool ultra-rápido
+- **React Router**: Navegação entre páginas
 
-### 1. Designer cria sessão
-```
-POST /api/session/create
-{
-  "client_name": "Pradella Coffee",
-  "client_email": "contato@pradellacoffee.com",
-  "initial_context": "Cliente quer identidade visual para cafeteria artesanal"
-}
+## 📋 Pré-requisitos
 
-Retorna: { "session_id": "abc123", "chat_url": "https://chat.silverbrand.com/abc123" }
-```
+- Python 3.11+
+- Node.js 18+
+- Chave de API do Groq ou Gemini
 
-### 2. Cliente acessa o link
-- Chat carrega com contexto inicial
-- Bot se apresenta como consultor de design da Silver Brand
-- Conversa flui naturalmente
+## 🔧 Instalação Local
 
-### 3. Bot coleta informações
-O bot segue o formulário de briefing em 8 seções:
-1. **Detalhes de Contato** — Nome, email, telefone, cidade
-2. **Informações Básicas** — Projeto novo/redesenho, prazo
-3. **Lista de Entrega** — Itens necessários (logo, manual, cartões, etc.)
-4. **Perfil da Empresa** — Sobre, produtos/serviços, diferencial
-5. **Posicionamento** — Como quer ser percebida, 3 palavras-chave
-6. **Personalidade** — Escala sofisticada/descontraída, técnica/emocional, etc.
-7. **Concorrentes e Referências** — Marcas admiradas, concorrentes
-8. **Preferências Visuais** — Cores, tipos de logo, fontes
-
-### 4. IA auxilia criativamente
-- **Descrições**: "Precisa de ajuda para descrever sua empresa? Me conte mais sobre o negócio..."
-- **Slogans**: "Vamos criar um slogan? Qual o sentimento que você quer transmitir?"
-- **Valores**: "Me fale 3 coisas que são inegociáveis no seu negócio..."
-
-### 5. Geração do PDF
-- Ao completar todas as informações, gera PDF preenchido
-- Designer recebe notificação
-- Cliente pode baixar cópia
-
-## Diretrizes do Bot
-
-O bot age como um **designer consultor** da Silver Brand:
-
-- Tom amigável mas profissional
-- Faz perguntas abertas para entender o cliente
-- Oferece exemplos e referências
-- Não avança sem ter informação clara
-- Sempre pede contexto antes de sugerir descrições/slogans
-- Valida informações importantes ("Entendi que... está correto?")
-- Mostra progresso ("Já coletamos X de 8 seções")
-
-## Setup Rápido
-
-### 1. Instalar
+### 1. Clone o repositório
 ```bash
+git clone https://github.com/seu-usuario/silver-brand-chatbot.git
 cd silver-brand-chatbot
-python -m venv venv
-source venv/bin/activate
-pip install -r requirements.txt
 ```
 
-### 2. Configurar
+### 2. Configure o Backend
+
 ```bash
+# Crie e ative o ambiente virtual
+python -m venv venv
+source venv/bin/activate  # No Windows: venv\Scripts\activate
+
+# Instale as dependências
+pip install -r requirements.txt
+
+# Configure as variáveis de ambiente
 cp .env.example .env
+# Edite o .env e adicione suas chaves de API
 ```
 
-Edite o `.env`:
-```
-GEMINI_API_KEY=sua-chave-aqui
-# ou
-GROQ_API_KEY=sua-chave-aqui
+### 3. Configure o Frontend
 
-DATABASE_URL=sqlite:///./database/sessions.db
-ADMIN_EMAIL=brandhousesilver@gmail.com
+```bash
+cd frontend
+npm install
+npm run build
+cd ..
 ```
 
-### 3. Rodar backend
+### 4. Execute o servidor
+
 ```bash
 uvicorn app.main:app --reload --port 8000
 ```
 
-### 4. Rodar frontend
-```bash
-cd frontend
-npm install
-npm run dev
+Acesse: `http://localhost:8000`
+
+## 🌐 Deploy no Render
+
+### Automático via GitHub
+
+1. Faça push do código para o GitHub
+2. Conecte o repositório no Render
+3. Configure as variáveis de ambiente:
+   - `GROQ_API_KEY` ou `GEMINI_API_KEY`
+   - `AI_PROVIDER` (groq ou gemini)
+   - `ADMIN_EMAIL`
+   - `ADMIN_PHONE`
+   - `COMPANY_NAME`
+4. O Render usará automaticamente o `render.yaml`
+
+### Variáveis de Ambiente
+
+```env
+# IA Provider (groq ou gemini)
+AI_PROVIDER=groq
+GROQ_API_KEY=sua_chave_groq
+GEMINI_API_KEY=sua_chave_gemini
+
+# Configurações da Empresa
+COMPANY_NAME=Silver Brand House
+ADMIN_EMAIL=brandhousesilver@gmail.com
+ADMIN_PHONE=+5511960157100
+
+# Frontend (será configurado após deploy)
+FRONTEND_URL=https://seu-app.onrender.com
 ```
 
-## API Endpoints
+## 📖 Como Obter Chaves de API
 
-### Sessões
-- `POST /api/session/create` — Criar nova sessão de cliente
-- `GET /api/session/{session_id}` — Obter dados da sessão
-- `GET /api/session/{session_id}/status` — Verificar progresso
+### Groq (Recomendado - Rápido e Gratuito)
+1. Acesse [console.groq.com](https://console.groq.com)
+2. Crie uma conta
+3. Vá em "API Keys"
+4. Gere uma nova chave
 
-### Chat
-- `POST /api/chat/{session_id}` — Enviar mensagem
-- `GET /api/chat/{session_id}/history` — Histórico da conversa
+### Gemini (Alternativa Google)
+1. Acesse [aistudio.google.com/apikey](https://aistudio.google.com/apikey)
+2. Faça login com Google
+3. Crie uma chave de API
 
-### Briefing
-- `GET /api/briefing/{session_id}` — Ver dados coletados
-- `POST /api/briefing/{session_id}/generate-pdf` — Gerar PDF
-- `GET /api/briefing/{session_id}/download` — Download do PDF
+## 📁 Estrutura do Projeto
 
-## Deploy
-
-### Render.com
-1. Conecte repositório
-2. Configure variáveis de ambiente
-3. Deploy automático
-
-### Vercel (Frontend)
-```bash
-cd frontend
-vercel --prod
 ```
+silver-brand-chatbot/
+├── app/
+│   ├── __init__.py
+│   ├── main.py           # API FastAPI
+│   ├── ai.py             # Lógica de IA
+│   ├── models.py         # Modelos SQLAlchemy
+│   ├── config.py         # Configurações
+│   └── pdf_generator.py  # Geração de PDFs
+├── frontend/
+│   ├── src/
+│   │   ├── App.jsx
+│   │   ├── pages/
+│   │   │   ├── ChatPage.jsx      # Chat do cliente
+│   │   │   └── AdminPage.jsx     # Painel admin
+│   │   └── ...
+│   └── ...
+├── database/             # SQLite (ignorado no git)
+├── generated_pdfs/       # PDFs gerados (ignorado no git)
+├── requirements.txt      # Dependências Python
+├── render.yaml          # Configuração Render
+├── build.sh            # Script de build
+└── README.md
+```
+
+## 🎨 Estrutura do Briefing
+
+O sistema coleta informações em 8 seções:
+
+1. **Detalhes de Contato** - Nome, email, telefone, localização
+2. **Informações Básicas** - Tipo de projeto, prazo
+3. **Lista de Entrega** - Itens incluídos e extras desejados
+4. **Perfil da Empresa** - Descrição, produtos, missão, valores
+5. **Posicionamento & Personalidade** - Como quer ser percebida, escalas de personalidade
+6. **Concorrentes e Referências** - Análise competitiva, inspirações
+7. **Preferências Visuais** - Cores, estilos de logo, tipografia
+8. **Informações Finais** - Observações adicionais
+
+## 🔒 Segurança
+
+- Variáveis de ambiente para dados sensíveis
+- `.env` no `.gitignore`
+- CORS configurado
+- Validação de entrada com Pydantic
+
+## 📝 Licença
+
+Este projeto é proprietário da Silver Brand House.
+
+## 🤝 Contribuindo
+
+Para contribuir com melhorias:
+
+1. Fork o projeto
+2. Crie uma branch (`git checkout -b feature/nova-funcionalidade`)
+3. Commit suas mudanças (`git commit -m 'Adiciona nova funcionalidade'`)
+4. Push para a branch (`git push origin feature/nova-funcionalidade`)
+5. Abra um Pull Request
+
+## 📧 Contato
+
+**Silver Brand House**
+- Email: brandhousesilver@gmail.com
+- Telefone: +55 11 96015-7100
 
 ---
 
-**Silver Brand House** — brandhousesilver@gmail.com — +55 11 96015 7100
+Feito com ❤️ pela Silver Brand House
