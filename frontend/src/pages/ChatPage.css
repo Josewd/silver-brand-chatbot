@@ -9,10 +9,16 @@
 }
 
 .chat-header {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: #000000;
   color: white;
   padding: 20px;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+}
+
+.header-logo {
+  height: 40px;
+  margin-bottom: 10px;
+  filter: brightness(0) invert(1);
 }
 
 .header-content h1 {
@@ -184,7 +190,7 @@
 }
 
 .user-message .message-content {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: #000000;
   color: white;
   border-bottom-right-radius: 4px;
 }
@@ -253,12 +259,12 @@
 }
 
 .message-input:focus {
-  border-color: #667eea;
+  border-color: #000000;
 }
 
 .send-button {
   padding: 12px 24px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: #000000;
   color: white;
   border: none;
   border-radius: 24px;
@@ -278,7 +284,7 @@
 
 .completion-panel {
   padding: 30px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: #000000;
   color: white;
   text-align: center;
 }
@@ -310,7 +316,8 @@
 
 .btn-primary {
   background: white;
-  color: #667eea;
+  color: #000000;
+  border: 2px solid #000000;
 }
 
 .btn-secondary {
@@ -391,7 +398,7 @@
 .btn-submit-options {
   width: 100%;
   padding: 14px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: #000000;
   color: white;
   border: none;
   border-radius: 8px;

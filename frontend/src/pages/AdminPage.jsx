@@ -81,7 +81,7 @@ function AdminPage() {
   return (
     <div className="admin-page">
       <header className="admin-header">
-        <h1>🎨 Silver Brand House</h1>
+        <img src="/logo-vertical.png" alt="Silver Brand Design" className="admin-logo" />
         <p>Painel de Controle — Sessões de Briefing</p>
       </header>
 

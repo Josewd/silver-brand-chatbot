@@ -267,7 +267,7 @@ function ChatPage() {
     <div className="chat-page">
       <header className="chat-header">
         <div className="header-content">
-          <h1>Silver Brand House</h1>
+          <img src="/logo-horizontal.png" alt="Silver Brand Design" className="header-logo" />
           <p className="client-name">{sessionData.client_name}</p>
         </div>
         <div className="progress-container">

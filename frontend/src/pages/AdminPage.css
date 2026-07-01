@@ -1,13 +1,18 @@
 .admin-page {
   min-height: 100vh;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: #f5f5f5;
   padding: 20px;
 }
 
 .admin-header {
   text-align: center;
-  color: white;
+  color: #000000;
   padding: 40px 20px;
+}
+
+.admin-logo {
+  height: 60px;
+  margin-bottom: 20px;
 }
 
 .admin-header h1 {
@@ -31,8 +36,8 @@
 
 .btn-create {
   padding: 14px 28px;
-  background: white;
-  color: #667eea;
+  background: #000000;
+  color: white;
   border: none;
   border-radius: 8px;
   font-size: 16px;
@@ -85,13 +90,13 @@
 .form-group input:focus,
 .form-group textarea:focus {
   outline: none;
-  border-color: #667eea;
+  border-color: #000000;
 }
 
 .btn-submit {
   width: 100%;
   padding: 14px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: #000000;
   color: white;
   border: none;
   border-radius: 8px;
@@ -148,7 +153,7 @@
 
 .link-container button {
   padding: 10px 20px;
-  background: #667eea;
+  background: #000000;
   color: white;
   border: none;
   border-radius: 6px;
@@ -157,7 +162,7 @@
 }
 
 .link-container button:hover {
-  background: #5568d3;
+  background: #333333;
 }
 
 .info-text {
@@ -271,13 +276,13 @@
 }
 
 .btn-view {
-  background: #e0e7ff;
-  color: #4338ca;
+  background: #000000;
+  color: white;
 }
 
 .btn-download {
-  background: #dbeafe;
-  color: #1e40af;
+  background: #333333;
+  color: white;
 }
 
 .btn-view:hover,
