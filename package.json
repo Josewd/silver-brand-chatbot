@@ -1,0 +1,17 @@
+{
+  "name": "silver-brand-chatbot",
+  "version": "1.0.0",
+  "description": "Sistema de briefing interativo com IA para identidade visual",
+  "scripts": {
+    "start": "./start.sh",
+    "dev": "uvicorn app.main:app --reload --host 0.0.0.0 --port 8000",
+    "build:frontend": "cd frontend && npm install && npm run build",
+    "deploy": "git push origin main"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Josewd/silver-brand-chatbot.git"
+  },
+  "author": "Silver Brand House",
+  "license": "PROPRIETARY"
+}
