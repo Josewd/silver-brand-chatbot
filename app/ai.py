@@ -27,15 +27,7 @@ def _init_ai_client():
         return _ai_client, _ai_provider
     
     elif settings.ai_provider == "groq" and settings.groq_api_key:
-        import os
         from groq import Groq
-        
-        # Remover variáveis de proxy ANTES de criar o cliente (igual ao pão de queijo)
-        for var in ['HTTP_PROXY', 'HTTPS_PROXY', 'http_proxy', 'https_proxy', 'ALL_PROXY', 'all_proxy']:
-            if var in os.environ:
-                logger.info(f"Removendo {var} para evitar problemas de proxy")
-                del os.environ[var]
-        
         # Criar cliente simples, igual ao pão de queijo
         _ai_client = Groq(api_key=settings.groq_api_key)
         _ai_provider = "groq"
@@ -247,35 +239,14 @@ async def _generate_gemini(model, messages: list[dict]) -> str:
 
 
 async def _generate_groq(client, messages: list[dict]) -> str:
-    """Gera resposta usando Groq via requests direto (contornar problemas de proxy e DNS)."""
-    import requests
-    import json
-    
-    try:
-        # Usar IP direto para contornar problemas de DNS (104.18.38.236 = api.groq.com)
-        response = requests.post(
-            "https://104.18.38.236/openai/v1/chat/completions",
-            headers={
-                "Authorization": f"Bearer {settings.groq_api_key}",
-                "Content-Type": "application/json",
-                "Host": "api.groq.com"  # Header Host necessário para SSL
-            },
-            json={
-                "model": "llama-3.3-70b-versatile",
-                "messages": messages,
-                "temperature": 0.7,
-                "max_tokens": 1024
-            },
-            timeout=30,
-            proxies={'http': None, 'https': None},  # Desabilitar proxy explicitamente
-            verify=True  # Manter verificação SSL
-        )
-        response.raise_for_status()
-        data = response.json()
-        return data["choices"][0]["message"]["content"]
-    except Exception as e:
-        logger.error(f"Erro ao chamar Groq: {type(e).__name__}: {str(e)}")
-        raise
+    """Gera resposta usando Groq."""
+    response = client.chat.completions.create(
+        model="llama-3.3-70b-versatile",
+        messages=messages,
+        temperature=0.7,
+        max_tokens=1024,
+    )
+    return response.choices[0].message.content
 
 
 def _extract_structured_data(response: str, section: str) -> Optional[dict]:
