@@ -563,3 +563,138 @@
   opacity: 0.5;
   cursor: not-allowed;
 }
+
+/* Scales Container (Radio buttons for personality scales) */
+.scales-container {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  margin-bottom: 20px;
+}
+
+.scale-item {
+  background: #f9f9f9;
+  padding: 20px;
+  border-radius: 12px;
+  border: 1px solid #e0e0e0;
+}
+
+.scale-labels {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  gap: 10px;
+}
+
+.scale-label-left,
+.scale-label-right {
+  font-size: 13px;
+  color: #666;
+  font-weight: 500;
+  flex: 0 0 auto;
+  padding: 6px 12px;
+  background: white;
+  border-radius: 6px;
+  border: 1px solid #ddd;
+}
+
+.scale-label-center {
+  font-size: 14px;
+  font-weight: 600;
+  color: #333;
+  text-align: center;
+  flex: 1;
+}
+
+.scale-control {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 0 10px;
+}
+
+.scale-radio {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  flex: 1;
+}
+
+.scale-radio input[type="radio"] {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 32px;
+  height: 32px;
+  border: 2px solid #ccc;
+  border-radius: 50%;
+  cursor: pointer;
+  transition: all 0.2s;
+  background: white;
+  position: relative;
+}
+
+.scale-radio input[type="radio"]:hover {
+  border-color: #000;
+  transform: scale(1.1);
+}
+
+.scale-radio input[type="radio"]:checked {
+  border-color: #000;
+  background: #000;
+  box-shadow: 0 0 0 4px rgba(0, 0, 0, 0.1);
+}
+
+.scale-radio input[type="radio"]:checked::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: white;
+}
+
+.scale-number {
+  font-size: 12px;
+  font-weight: 600;
+  color: #666;
+  transition: color 0.2s;
+}
+
+.scale-radio input[type="radio"]:checked + .scale-number {
+  color: #000;
+  font-size: 13px;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .scale-labels {
+    flex-direction: column;
+    text-align: center;
+  }
+  
+  .scale-label-left,
+  .scale-label-right {
+    order: 2;
+  }
+  
+  .scale-label-center {
+    order: 1;
+    margin-bottom: 8px;
+  }
+  
+  .scale-control {
+    padding: 0 5px;
+    gap: 4px;
+  }
+  
+  .scale-radio input[type="radio"] {
+    width: 28px;
+    height: 28px;
+  }
+}

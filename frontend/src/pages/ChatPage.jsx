@@ -180,17 +180,38 @@ function ChatPage() {
     }
   }
 
+  const handleScaleChange = (value, rating) => {
+    setSelectedOptions(prev => {
+      const filtered = prev.filter(v => !v.startsWith(value))
+      return [...filtered, `${value}:${rating}`]
+    })
+  }
+
   const submitOptions = async () => {
     if (selectedOptions.length === 0) return
     
     setLoading(true)
     
-    // Montar mensagem com as opções selecionadas
-    const labels = currentOptions
-      .filter(opt => selectedOptions.includes(opt.value))
-      .map(opt => opt.label)
+    // Determinar tipo de opções (checkbox ou scale)
+    const optionType = currentOptions[0]?.type
     
-    const message = labels.length > 0 ? labels.join(', ') : 'Nenhum item extra'
+    let message = ''
+    
+    if (optionType === 'scale') {
+      // Para escalas, montar mensagem com valores
+      const scaleValues = {}
+      selectedOptions.forEach(opt => {
+        const [key, value] = opt.split(':')
+        scaleValues[key] = value
+      })
+      message = JSON.stringify(scaleValues)
+    } else {
+      // Para checkboxes, usar labels
+      const labels = currentOptions
+        .filter(opt => selectedOptions.includes(opt.value))
+        .map(opt => opt.label)
+      message = labels.length > 0 ? labels.join(', ') : 'Nenhum item extra'
+    }
     
     // Adicionar mensagem do usuário imediatamente
     const newUserMessage = {
@@ -403,19 +424,58 @@ function ChatPage() {
           <>
             {currentOptions && currentOptions.length > 0 && (
               <div className="options-panel">
-                <p className="options-title">Selecione os itens que você precisa:</p>
-                <div className="options-grid">
-                  {currentOptions.map((option, index) => (
-                    <label key={index} className="option-checkbox">
-                      <input
-                        type="checkbox"
-                        checked={selectedOptions.includes(option.value)}
-                        onChange={() => handleCheckboxToggle(option.value)}
-                      />
-                      <span>{option.label}</span>
-                    </label>
-                  ))}
-                </div>
+                {currentOptions[0]?.type === 'checkbox' && (
+                  <>
+                    <p className="options-title">Selecione os itens que você precisa:</p>
+                    <div className="options-grid">
+                      {currentOptions.map((option, index) => (
+                        <label key={index} className="option-checkbox">
+                          <input
+                            type="checkbox"
+                            checked={selectedOptions.includes(option.value)}
+                            onChange={() => handleCheckboxToggle(option.value)}
+                          />
+                          <span>{option.label}</span>
+                        </label>
+                      ))}
+                    </div>
+                  </>
+                )}
+                
+                {currentOptions[0]?.type === 'scale' && (
+                  <>
+                    <p className="options-title">Marque de 1 a 5 para cada característica:</p>
+                    <div className="scales-container">
+                      {currentOptions.map((option, index) => {
+                        const currentValue = selectedOptions.find(v => v.startsWith(option.value))?.split(':')[1] || '3'
+                        return (
+                          <div key={index} className="scale-item">
+                            <div className="scale-labels">
+                              <span className="scale-label-left">{option.min_label}</span>
+                              <span className="scale-label-center">{option.label}</span>
+                              <span className="scale-label-right">{option.max_label}</span>
+                            </div>
+                            <div className="scale-control">
+                              {[1, 2, 3, 4, 5].map(rating => (
+                                <label key={rating} className="scale-radio">
+                                  <input
+                                    type="radio"
+                                    name={option.value}
+                                    value={rating}
+                                    checked={currentValue === String(rating)}
+                                    onChange={() => handleScaleChange(option.value, rating)}
+                                  />
+                                  <span className="scale-number">{rating}</span>
+                                </label>
+                              ))}
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </>
+                )}
+                
                 <button 
                   onClick={submitOptions}
                   className="btn-submit-options"

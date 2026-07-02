@@ -6,6 +6,7 @@
 2. **Checkboxes não renderizados**: Os checkboxes não apareciam quando a IA listava os itens inclusos
 3. **Itens não inclusos listados como inclusos**: A IA inventava itens que não estavam na lista padrão
 4. **Briefing não atualizado**: Os dados não eram extraídos corretamente da resposta da IA
+5. **Perguntas do perfil agrupadas**: As perguntas da seção Perfil da Empresa não eram feitas uma de cada vez
 
 ## Correções Realizadas
 
@@ -115,7 +116,56 @@ if briefing_data.get("deliverables_confirmed") or briefing_data.get("extra_items
 
 **Resultado**: O progresso avançará corretamente quando o cliente responder sobre itens de entrega.
 
-### 6. Frontend - Correção de Nome de Campo (ChatPage.jsx)
+### 6. Seção Perfil da Empresa - Perguntas Individuais (ai.py)
+
+**Arquivo**: `app/ai.py`
+
+**Mudança**: Perguntas feitas uma de cada vez na ordem correta
+
+```python
+### Seção 4 (Perfil da Empresa):
+- **IMPORTANTE**: Faça UMA pergunta por vez, na seguinte ordem:
+  1. "Me fale sobre sua empresa. Do que ela se trata? Há quanto tempo existe?"
+  2. "Quais são os produtos/serviços oferecidos?"
+  3. "Qual é o principal diferencial do seu negócio?"
+  4. "Qual sua missão, visão e valores?"
+  5. "Quais são seus principais objetivos hoje?"
+```
+
+**Campos atualizados**:
+- `about_company` - Sobre a empresa e tempo de existência
+- `products_services` - Produtos/serviços oferecidos
+- `diferencial` - Principal diferencial
+- `mission_vision_values` - Missão, visão e valores
+- `main_objectives` - Objetivos principais
+
+**Resultado**: As perguntas são feitas uma de cada vez, e no preview aparecem as labels completas das perguntas.
+
+### 7. Labels Visíveis no Preview (BriefingPreview.jsx)
+
+**Arquivo**: `frontend/src/components/BriefingPreview.jsx`
+
+**Mudança**: Labels completas das perguntas aparecem no preview
+
+```jsx
+{renderEditableField("Me fale sobre sua empresa. Do que ela se trata? Há quanto tempo existe?", "about_company", ...)}
+{renderEditableField("Quais são os produtos/serviços oferecidos?", "products_services", ...)}
+{renderEditableField("Qual é o principal diferencial do seu negócio?", "diferencial", ...)}
+{renderEditableField("Qual sua missão, visão e valores?", "mission_vision_values", ...)}
+{renderEditableField("Quais são seus principais objetivos hoje?", "main_objectives", ...)}
+```
+
+**Resultado**: O preview do briefing mostra as perguntas completas como labels, facilitando a compreensão.
+
+### 8. Compatibilidade com Dados Antigos
+
+**Arquivos**: `app/ai.py` e `frontend/src/components/BriefingPreview.jsx`
+
+**Mudança**: Mantida compatibilidade com campos antigos (`company_description`, `objectives`)
+
+**Resultado**: Briefings já existentes continuam funcionando normalmente.
+
+### 9. Frontend - Correção de Nome de Campo (ChatPage.jsx)
 
 **Arquivo**: `frontend/src/pages/ChatPage.jsx`
 

@@ -103,6 +103,56 @@ function BriefingPreview({ sessionData, briefingData, fallbackMode, onSave, onUp
     )
   }
 
+  const renderPersonalityScales = () => {
+    const scales = editedData.personality_scales
+    if (!scales) return null
+
+    let scalesData
+    try {
+      scalesData = typeof scales === 'string' ? JSON.parse(scales) : scales
+    } catch {
+      return null
+    }
+
+    const scaleNames = {
+      scale_sophisticated: { label: 'Sofisticada vs Descontraída', min: 'Descontraída', max: 'Sofisticada' },
+      scale_technical: { label: 'Técnica vs Emocional', min: 'Emocional', max: 'Técnica' },
+      scale_formal: { label: 'Formal vs Informal', min: 'Informal', max: 'Formal' },
+      scale_traditional: { label: 'Tradicional vs Moderna', min: 'Moderna', max: 'Tradicional' },
+      scale_exclusive: { label: 'Exclusiva vs Popular', min: 'Popular', max: 'Exclusiva' }
+    }
+
+    return (
+      <div className="personality-scales-preview">
+        <div className="field-label">Personalidade da Marca (1 a 5):</div>
+        {Object.entries(scalesData).map(([key, value]) => {
+          const scale = scaleNames[key]
+          if (!scale) return null
+          
+          return (
+            <div key={key} className="scale-preview-item">
+              <div className="scale-preview-labels">
+                <span className="scale-preview-min">{scale.min}</span>
+                <span className="scale-preview-center">{scale.label}</span>
+                <span className="scale-preview-max">{scale.max}</span>
+              </div>
+              <div className="scale-preview-dots">
+                {[1, 2, 3, 4, 5].map(num => (
+                  <div 
+                    key={num} 
+                    className={`scale-preview-dot ${parseInt(value) === num ? 'active' : ''}`}
+                  >
+                    {num}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )
+        })}
+      </div>
+    )
+  }
+
   const renderSection = (title, content, hasData) => {
     // No modo fallback, sempre mostrar seções (mesmo vazias)
     if (!fallbackMode && !hasData) return null
@@ -126,9 +176,10 @@ function BriefingPreview({ sessionData, briefingData, fallbackMode, onSave, onUp
 
   const hasDeliverables = editedData.deliverables && editedData.deliverables.length > 0
 
-  const hasCompanyProfile = editedData.company_description || editedData.products_services || 
+  const hasCompanyProfile = editedData.about_company || editedData.company_description || 
+                           editedData.products_services || 
                            editedData.mission_vision_values || editedData.diferencial || 
-                           editedData.objectives
+                           editedData.main_objectives || editedData.objectives
 
   const hasPositioning = editedData.positioning || editedData.differentiation || 
                         editedData.why_choose || editedData.keywords
@@ -147,7 +198,7 @@ function BriefingPreview({ sessionData, briefingData, fallbackMode, onSave, onUp
   const requiredFieldsFilled = 
     editedData.client_name &&
     editedData.client_email &&
-    editedData.company_description &&
+    (editedData.about_company || editedData.company_description) &&
     editedData.preferred_colors
 
   return (
@@ -211,11 +262,11 @@ function BriefingPreview({ sessionData, briefingData, fallbackMode, onSave, onUp
         {renderSection(
           "4. PERFIL DA EMPRESA",
           <>
-            {renderEditableField("Sobre a empresa", "company_description", briefingData.company_description, true)}
-            {renderEditableField("Produtos/Serviços", "products_services", briefingData.products_services, true)}
-            {renderEditableField("Missão/Visão/Valores", "mission_vision_values", briefingData.mission_vision_values, true)}
-            {renderEditableField("Principal diferencial", "diferencial", briefingData.diferencial, true)}
-            {renderEditableField("Objetivos principais", "objectives", briefingData.objectives, true)}
+            {renderEditableField("Me fale sobre sua empresa. Do que ela se trata? Há quanto tempo existe?", "about_company", briefingData.about_company || briefingData.company_description, true)}
+            {renderEditableField("Quais são os produtos/serviços oferecidos?", "products_services", briefingData.products_services, true)}
+            {renderEditableField("Qual é o principal diferencial do seu negócio?", "diferencial", briefingData.diferencial, true)}
+            {renderEditableField("Qual sua missão, visão e valores?", "mission_vision_values", briefingData.mission_vision_values, true)}
+            {renderEditableField("Quais são seus principais objetivos hoje?", "main_objectives", briefingData.main_objectives || briefingData.objectives, true)}
           </>,
           hasCompanyProfile
         )}
@@ -228,6 +279,7 @@ function BriefingPreview({ sessionData, briefingData, fallbackMode, onSave, onUp
             {renderEditableField("O que diferencia da concorrência", "differentiation", briefingData.differentiation, true)}
             {renderEditableField("Por que escolher você", "why_choose", briefingData.why_choose, true)}
             {renderEditableField("3 palavras que definem a marca", "keywords", briefingData.keywords)}
+            {renderPersonalityScales()}
           </>,
           hasPositioning
         )}

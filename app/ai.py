@@ -104,15 +104,22 @@ Contexto inicial: {initial_context}
 - **CRÍTICO**: NÃO pergunte nada além desta mensagem na seção de entrega
 
 ### Seção 4 (Perfil da Empresa):
-- UMA pergunta por vez: "Me conte sobre sua empresa"
-- Depois: "Quais produtos ou serviços você oferece?"
-- Depois: "Qual o principal diferencial?"
-- NÃO pergunte tudo de uma vez
+- **IMPORTANTE**: Faça UMA pergunta por vez, na seguinte ordem:
+  1. "Me fale sobre sua empresa. Do que ela se trata? Há quanto tempo existe?"
+  2. "Quais são os produtos/serviços oferecidos?"
+  3. "Qual é o principal diferencial do seu negócio?"
+  4. "Qual sua missão, visão e valores?"
+  5. "Quais são seus principais objetivos hoje?"
+- Você pode reformular as perguntas de forma mais natural, mas a essência deve ser mantida
+- Aguarde a resposta antes de fazer a próxima pergunta
+- NÃO faça múltiplas perguntas de uma vez
 
 ### Seção 5 (Posicionamento):
 - UMA pergunta por vez: "Como quer que as pessoas percebam sua marca?"
 - Depois: "Me diga 3 palavras que definem sua marca"
-- Escalas: faça UMA de cada vez: "De 1 a 5, sua marca é mais sofisticada (5) ou descontraída (1)?"
+- Depois: "Agora vamos definir a personalidade da marca. Marque de 1 a 5 para cada característica:"
+- **IMPORTANTE**: Quando perguntar sobre personalidade, a UI com escalas aparecerá automaticamente
+- NÃO pergunte as escalas individualmente, o sistema mostrará todas de uma vez
 
 ### Seção 6 (Concorrentes):
 - UMA por vez: "Quem são seus principais concorrentes?"
@@ -195,8 +202,8 @@ DATA_COLLECTED:{{"preferred_colors": "preto e dourado"}}
 - contato: client_name, client_email, client_phone, city_state, website
 - basicas: project_type, deadline
 - entrega: deliverables_confirmed (sempre "sim" quando cliente responder sobre itens), extra_items (lista de itens adicionais ou "nenhum")
-- perfil: company_description, products_services, mission_vision_values, diferencial
-- posicionamento: positioning, keywords, differentiation
+- perfil: about_company (sobre a empresa, tempo de existência), products_services (produtos/serviços), diferencial (principal diferencial), mission_vision_values (missão/visão/valores), main_objectives (objetivos principais)
+- posicionamento: positioning, keywords, differentiation, personality_scales (JSON com as escalas: scale_sophisticated, scale_technical, scale_formal, scale_traditional, scale_exclusive)
 - concorrentes: competitors, references, what_you_like
 - visuais: preferred_colors, excluded_colors, logo_types, font_preferences
 - final: additional_info
@@ -237,6 +244,39 @@ Anotado! Vamos falar sobre sua empresa?
 
 
 DATA_COLLECTED:{"deliverables_confirmed": "sim", "extra_items": "Cartão de Visitas"}
+```
+
+Seção PERFIL - Cliente responde sobre a empresa:
+Cliente diz: "Somos uma cafeteria especializada em café especial, existe há 2 anos"
+Você responde:
+```
+Quais são os produtos/serviços oferecidos?
+
+
+
+DATA_COLLECTED:{"about_company": "Cafeteria especializada em café especial, existe há 2 anos"}
+```
+
+Seção PERFIL - Cliente responde sobre produtos:
+Cliente diz: "Oferecemos café especial, doces artesanais e brunches"
+Você responde:
+```
+Qual é o principal diferencial do seu negócio?
+
+
+
+DATA_COLLECTED:{"products_services": "Café especial, doces artesanais e brunches"}
+```
+
+Seção POSICIONAMENTO - Cliente seleciona escalas de personalidade:
+Cliente seleciona as escalas (enviado como JSON)
+Você responde:
+```
+Perfeito! Vamos falar sobre os concorrentes?
+
+
+
+DATA_COLLECTED:{"personality_scales": {"scale_sophisticated": "4", "scale_technical": "2", "scale_formal": "3", "scale_traditional": "2", "scale_exclusive": "3"}}
 ```
 
 **CRÍTICO:** 
@@ -540,7 +580,7 @@ def suggest_next_section(current_section: str, briefing_data: dict) -> str:
         "contato": lambda d: d.get("client_email") or d.get("client_phone"),  # Email OU telefone
         "basicas": lambda d: d.get("project_type"),  # Tipo de projeto
         "entrega": lambda d: d.get("deliverables_confirmed"),  # Confirmou itens de entrega
-        "perfil": lambda d: d.get("company_description"),  # Descrição da empresa
+        "perfil": lambda d: d.get("about_company") or d.get("products_services"),  # Pelo menos sobre empresa ou produtos
         "posicionamento": lambda d: d.get("positioning") or d.get("keywords"),  # Posicionamento OU palavras-chave
         "concorrentes": lambda d: d.get("competitors") or d.get("references"),  # Concorrentes OU referências
         "visuais": lambda d: d.get("preferred_colors"),  # Cores preferidas
@@ -595,8 +635,15 @@ def calculate_progress(briefing_data: dict) -> int:
         progress += section_weights["entrega"]
     
     # Seção Perfil (20%)
-    perfil_fields = ["company_description", "products_services", "mission_vision_values", "diferencial"]
+    perfil_fields = ["about_company", "products_services", "diferencial", "mission_vision_values", "main_objectives"]
     perfil_filled = sum(1 for f in perfil_fields if briefing_data.get(f))
+    
+    # Compatibilidade com campos antigos
+    if briefing_data.get("company_description") and not briefing_data.get("about_company"):
+        perfil_filled += 1
+    if briefing_data.get("objectives") and not briefing_data.get("main_objectives"):
+        perfil_filled += 1
+    
     if perfil_filled > 0:  # Pelo menos um campo preenchido
         progress += (perfil_filled / len(perfil_fields)) * section_weights["perfil"]
     
@@ -625,59 +672,111 @@ def calculate_progress(briefing_data: dict) -> int:
 
 
 def _detect_interactive_options(current_section: str, response: str) -> Optional[list[dict]]:
-    """Detecta se deve mostrar opções interativas (checkboxes) baseado na seção e conteúdo."""
+    """Detecta se deve mostrar opções interativas (checkboxes, scales) baseado na seção e conteúdo."""
     
     response_lower = response.lower()
     
-    # Só mostrar checkboxes na seção de entrega
-    if current_section != "entrega":
-        return None
-    
-    # NÃO mostrar checkboxes se for uma resposta de confirmação/agradecimento
+    # NÃO mostrar opções se for uma resposta de confirmação/agradecimento
     if any(word in response_lower for word in ['entendi', 'ótimo', 'perfeito', 'maravilha', 'obrigad', 'anotado']):
         return None
     
-    # Detectar quando lista os itens inclusos E menciona extras
-    # Deve conter referência aos itens base E mencionar extras/seleção
-    has_base_items = any(phrase in response_lower for phrase in [
-        'logotipo principal', 'variações de cor', 'manual de identidade', 
-        'arquivos editáveis', 'paleta de cores', 'tipografia recomendada',
-        'o projeto inclui', 'itens incluídos'
-    ])
+    # SEÇÃO DE ENTREGA: Checkboxes para itens extras
+    if current_section == "entrega":
+        # Detectar quando lista os itens inclusos E menciona extras
+        has_base_items = any(phrase in response_lower for phrase in [
+            'logotipo principal', 'variações de cor', 'manual de identidade', 
+            'arquivos editáveis', 'paleta de cores', 'tipografia recomendada',
+            'o projeto inclui', 'itens incluídos'
+        ])
+        
+        mentions_extras = any(phrase in response_lower for phrase in [
+            'além desses', 'itens extras', 'selecionar extras', 'extras abaixo',
+            'algo mais', 'não estiver listado', 'precisa de algo'
+        ])
+        
+        # Mostrar checkboxes apenas se listar itens base E mencionar extras
+        if has_base_items and mentions_extras:
+            return [
+                {
+                    "type": "checkbox",
+                    "label": "Template PowerPoint",
+                    "value": "template_ppt"
+                },
+                {
+                    "type": "checkbox",
+                    "label": "Cartão de Visitas",
+                    "value": "cartao_visitas"
+                },
+                {
+                    "type": "checkbox",
+                    "label": "Capas para Destaques do Instagram",
+                    "value": "capas_instagram"
+                },
+                {
+                    "type": "checkbox",
+                    "label": "Artes para Impressão",
+                    "value": "artes_impressao"
+                },
+                {
+                    "type": "checkbox",
+                    "label": "Não preciso de itens extras",
+                    "value": "none"
+                }
+            ]
     
-    mentions_extras = any(phrase in response_lower for phrase in [
-        'além desses', 'itens extras', 'selecionar extras', 'extras abaixo',
-        'algo mais', 'não estiver listado', 'precisa de algo'
-    ])
-    
-    # Mostrar checkboxes apenas se listar itens base E mencionar extras
-    if has_base_items and mentions_extras:
-        return [
-            {
-                "type": "checkbox",
-                "label": "Template PowerPoint",
-                "value": "template_ppt"
-            },
-            {
-                "type": "checkbox",
-                "label": "Cartão de Visitas",
-                "value": "cartao_visitas"
-            },
-            {
-                "type": "checkbox",
-                "label": "Capas para Destaques do Instagram",
-                "value": "capas_instagram"
-            },
-            {
-                "type": "checkbox",
-                "label": "Artes para Impressão",
-                "value": "artes_impressao"
-            },
-            {
-                "type": "checkbox",
-                "label": "Não preciso de itens extras",
-                "value": "none"
-            }
-        ]
+    # SEÇÃO DE POSICIONAMENTO: Escalas de personalidade
+    if current_section == "posicionamento":
+        # Detectar quando pergunta sobre personalidade da marca
+        if any(phrase in response_lower for phrase in [
+            'personalidade da marca', 'marque de 1 a 5', 'características',
+            'definir a personalidade', 'escala de'
+        ]):
+            return [
+                {
+                    "type": "scale",
+                    "label": "Sofisticada vs Descontraída",
+                    "value": "scale_sophisticated",
+                    "min_label": "Descontraída",
+                    "max_label": "Sofisticada",
+                    "min": 1,
+                    "max": 5
+                },
+                {
+                    "type": "scale",
+                    "label": "Técnica vs Emocional",
+                    "value": "scale_technical",
+                    "min_label": "Emocional",
+                    "max_label": "Técnica",
+                    "min": 1,
+                    "max": 5
+                },
+                {
+                    "type": "scale",
+                    "label": "Formal vs Informal",
+                    "value": "scale_formal",
+                    "min_label": "Informal",
+                    "max_label": "Formal",
+                    "min": 1,
+                    "max": 5
+                },
+                {
+                    "type": "scale",
+                    "label": "Tradicional vs Moderna",
+                    "value": "scale_traditional",
+                    "min_label": "Moderna",
+                    "max_label": "Tradicional",
+                    "min": 1,
+                    "max": 5
+                },
+                {
+                    "type": "scale",
+                    "label": "Exclusiva vs Popular",
+                    "value": "scale_exclusive",
+                    "min_label": "Popular",
+                    "max_label": "Exclusiva",
+                    "min": 1,
+                    "max": 5
+                }
+            ]
     
     return None

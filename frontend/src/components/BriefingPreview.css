@@ -292,3 +292,83 @@ textarea.field-input {
   color: #999;
   font-style: italic;
 }
+
+/* Personality Scales Preview */
+.personality-scales-preview {
+  margin-top: 20px;
+  padding: 20px;
+  background: #f9f9f9;
+  border-radius: 8px;
+  border: 1px solid #e0e0e0;
+}
+
+.scale-preview-item {
+  margin-bottom: 20px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.scale-preview-item:last-child {
+  margin-bottom: 0;
+  padding-bottom: 0;
+  border-bottom: none;
+}
+
+.scale-preview-labels {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+  gap: 10px;
+}
+
+.scale-preview-min,
+.scale-preview-max {
+  font-size: 11px;
+  color: #666;
+  font-weight: 500;
+  padding: 4px 10px;
+  background: white;
+  border-radius: 4px;
+  border: 1px solid #ddd;
+}
+
+.scale-preview-center {
+  font-size: 12px;
+  font-weight: 600;
+  color: #333;
+  text-align: center;
+  flex: 1;
+}
+
+.scale-preview-dots {
+  display: flex;
+  justify-content: space-between;
+  gap: 6px;
+  padding: 0 10px;
+}
+
+.scale-preview-dot {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px;
+  background: white;
+  border: 2px solid #ddd;
+  border-radius: 50%;
+  font-size: 11px;
+  font-weight: 600;
+  color: #999;
+  width: 32px;
+  height: 32px;
+  transition: all 0.2s;
+}
+
+.scale-preview-dot.active {
+  background: #000;
+  color: white;
+  border-color: #000;
+  transform: scale(1.15);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
