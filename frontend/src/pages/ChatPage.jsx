@@ -292,27 +292,6 @@ function ChatPage() {
         PREVIEW
       </button>
 
-      {/* Overlay escuro */}
-      <div 
-        className={`preview-overlay ${isPreviewOpen ? 'visible' : ''}`}
-        onClick={() => setIsPreviewOpen(false)}
-      />
-
-      {/* Drawer do Preview do Briefing */}
-      <div className={`briefing-preview-panel ${isPreviewOpen ? 'open' : ''}`}>
-        <button 
-          className="preview-close-button"
-          onClick={() => setIsPreviewOpen(false)}
-          title="Fechar preview"
-        >
-          ×
-        </button>
-        <BriefingPreview 
-          sessionData={sessionData} 
-          briefingData={sessionData.briefing_data || {}} 
-        />
-      </div>
-
       {/* Chat */}
       <div className="chat-page">
         <header className="chat-header">
@@ -451,6 +430,21 @@ function ChatPage() {
             </form>
           </>
         )}
+      </div>
+
+      {/* Preview do Briefing - lado direito */}
+      <div className={`briefing-preview-panel ${isPreviewOpen ? 'open' : ''}`}>
+        <button 
+          className="preview-close-button"
+          onClick={() => setIsPreviewOpen(false)}
+          title="Fechar preview"
+        >
+          ×
+        </button>
+        <BriefingPreview 
+          sessionData={sessionData} 
+          briefingData={sessionData.briefing_data || {}} 
+        />
       </div>
     </div>
   )
