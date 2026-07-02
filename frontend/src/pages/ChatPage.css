@@ -1,38 +1,132 @@
-/* Container principal com duas colunas */
+/* Container principal - chat ocupa tela toda */
 .chat-page-container {
   display: flex;
   height: 100vh;
   max-width: 100%;
   margin: 0 auto;
   background: #f5f5f5;
+  position: relative;
 }
 
-/* Preview do briefing - lado esquerdo */
+/* Preview do briefing como drawer (oculto por padrão) */
 .briefing-preview-panel {
-  flex: 0 0 45%;
-  max-width: 600px;
+  position: fixed;
+  right: 0;
+  top: 0;
+  height: 100vh;
+  width: 70%;
+  max-width: 800px;
   background: white;
-  border-right: 1px solid #ddd;
+  box-shadow: -4px 0 20px rgba(0, 0, 0, 0.15);
+  transform: translateX(100%);
+  transition: transform 0.3s ease-in-out;
+  z-index: 1000;
   overflow: hidden;
 }
 
-/* Chat - lado direito */
+.briefing-preview-panel.open {
+  transform: translateX(0);
+}
+
+/* Botão flutuante vertical para abrir preview */
+.preview-toggle-button {
+  position: fixed;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  padding: 20px 12px;
+  cursor: pointer;
+  z-index: 999;
+  border-radius: 8px 0 0 8px;
+  box-shadow: -2px 2px 12px rgba(0, 0, 0, 0.2);
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+  font-weight: 600;
+  font-size: 14px;
+  letter-spacing: 2px;
+  transition: all 0.3s ease;
+}
+
+.preview-toggle-button:hover {
+  padding-right: 16px;
+  box-shadow: -4px 4px 16px rgba(0, 0, 0, 0.3);
+}
+
+.preview-toggle-button.hidden {
+  transform: translateY(-50%) translateX(100%);
+}
+
+/* Botão de fechar dentro do drawer */
+.preview-close-button {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  background: #e74c3c;
+  color: white;
+  border: none;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  cursor: pointer;
+  font-size: 20px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+  transition: all 0.3s;
+}
+
+.preview-close-button:hover {
+  background: #c0392b;
+  transform: rotate(90deg);
+}
+
+/* Overlay escuro quando drawer está aberto */
+.preview-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 998;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+}
+
+.preview-overlay.visible {
+  opacity: 1;
+  pointer-events: all;
+}
+
+/* Chat - ocupa largura total */
 .chat-page {
   flex: 1;
   display: flex;
   flex-direction: column;
   background: white;
   box-shadow: 0 0 30px rgba(0, 0, 0, 0.1);
+  max-width: 100%;
 }
 
-/* Mobile: esconder preview e mostrar apenas chat em tela cheia */
+/* Mobile: esconder botão de preview */
 @media (max-width: 1024px) {
   .chat-page-container {
     background: white;
   }
   
-  .briefing-preview-panel {
+  .preview-toggle-button {
     display: none;
+  }
+  
+  .briefing-preview-panel {
+    width: 90%;
+    max-width: none;
   }
   
   .chat-page {

@@ -27,6 +27,7 @@ function ChatPage() {
   const [error, setError] = useState(null)
   const [currentOptions, setCurrentOptions] = useState(null)
   const [selectedOptions, setSelectedOptions] = useState([])
+  const [isPreviewOpen, setIsPreviewOpen] = useState(false)
   const messagesEndRef = useRef(null)
   const inputRef = useRef(null)
 
@@ -283,8 +284,29 @@ function ChatPage() {
 
   return (
     <div className="chat-page-container">
-      {/* Preview do Briefing (apenas desktop) */}
-      <div className="briefing-preview-panel">
+      {/* Botão flutuante para abrir preview */}
+      <button 
+        className={`preview-toggle-button ${isPreviewOpen ? 'hidden' : ''}`}
+        onClick={() => setIsPreviewOpen(true)}
+      >
+        PREVIEW
+      </button>
+
+      {/* Overlay escuro */}
+      <div 
+        className={`preview-overlay ${isPreviewOpen ? 'visible' : ''}`}
+        onClick={() => setIsPreviewOpen(false)}
+      />
+
+      {/* Drawer do Preview do Briefing */}
+      <div className={`briefing-preview-panel ${isPreviewOpen ? 'open' : ''}`}>
+        <button 
+          className="preview-close-button"
+          onClick={() => setIsPreviewOpen(false)}
+          title="Fechar preview"
+        >
+          ×
+        </button>
         <BriefingPreview 
           sessionData={sessionData} 
           briefingData={sessionData.briefing_data || {}} 
