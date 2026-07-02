@@ -233,7 +233,7 @@ Entendi. Vamos falar sobre sua empresa?
 
 
 
-DATA_COLLECTED:{"deliverables_confirmed": "sim", "extra_items": "nenhum"}
+DATA_COLLECTED:{{"deliverables_confirmed": "sim", "extra_items": "nenhum"}}
 ```
 
 Seção ENTREGA - Cliente seleciona "Cartão de Visitas":
@@ -243,7 +243,7 @@ Anotado! Vamos falar sobre sua empresa?
 
 
 
-DATA_COLLECTED:{"deliverables_confirmed": "sim", "extra_items": "Cartão de Visitas"}
+DATA_COLLECTED:{{"deliverables_confirmed": "sim", "extra_items": "Cartão de Visitas"}}
 ```
 
 Seção PERFIL - Cliente responde sobre a empresa:
@@ -254,7 +254,7 @@ Quais são os produtos/serviços oferecidos?
 
 
 
-DATA_COLLECTED:{"about_company": "Cafeteria especializada em café especial, existe há 2 anos"}
+DATA_COLLECTED:{{"about_company": "Cafeteria especializada em café especial, existe há 2 anos"}}
 ```
 
 Seção PERFIL - Cliente responde sobre produtos:
@@ -265,7 +265,7 @@ Qual é o principal diferencial do seu negócio?
 
 
 
-DATA_COLLECTED:{"products_services": "Café especial, doces artesanais e brunches"}
+DATA_COLLECTED:{{"products_services": "Café especial, doces artesanais e brunches"}}
 ```
 
 Seção POSICIONAMENTO - Cliente seleciona escalas de personalidade:
@@ -276,7 +276,7 @@ Perfeito! Vamos falar sobre os concorrentes?
 
 
 
-DATA_COLLECTED:{"personality_scales": {"scale_sophisticated": "4", "scale_technical": "2", "scale_formal": "3", "scale_traditional": "2", "scale_exclusive": "3"}}
+DATA_COLLECTED:{{"personality_scales": {{"scale_sophisticated": "4", "scale_technical": "2", "scale_formal": "3", "scale_traditional": "2", "scale_exclusive": "3"}}}}
 ```
 
 **CRÍTICO:** 

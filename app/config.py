@@ -20,6 +20,9 @@ class Settings(BaseSettings):
     # Frontend
     frontend_url: str = "http://localhost:5173"
     
+    # Provider
+    ai_provider: str = "groq"  # Provedor padrão
+    
     # Security
     session_secret: str = "change-this-to-random-string"
     admin_password: str = "silveradmin2024"  # Senha padrão do admin

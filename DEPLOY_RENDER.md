@@ -54,7 +54,9 @@ ADMIN_EMAIL=brandhousesilver@gmail.com
 ADMIN_PHONE=+5511960157100
 COMPANY_NAME=Silver Brand House
 
-# Frontend (Vercel URL após deploy do frontend)
+# Frontend (⚠️ CRÍTICO: Atualizar com URL do Vercel após deploy!)
+# Esta URL é usada para gerar os links de chat
+# Exemplo: https://silver-brand-chatbot.vercel.app
 FRONTEND_URL=https://seu-frontend.vercel.app
 
 # Segurança
