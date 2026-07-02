@@ -11,7 +11,8 @@ from typing import Optional
 
 from app.config import get_settings
 from app.models import init_db, get_db, Session as DBSession, Message
-from app.ai import generate_response, suggest_next_section, calculate_progress
+from app.ai import generate_response
+from app.interfaces import SectionId, calculate_overall_progress, suggest_next_section
 from app.pdf_generator import generate_briefing_pdf
 
 logging.basicConfig(level=logging.INFO)
@@ -228,11 +229,19 @@ async def send_message(
     }
     
     # Gerar resposta da IA
-    response_text, extracted_data, interactive_options = await generate_response(
+    ai_response = await generate_response(
         session_data=session_data,
         conversation_history=conversation_history,
         user_message=request.message
     )
+    
+    # Extrair informações da resposta estruturada
+    response_text = ai_response.message
+    extracted_data = ai_response.context.extracted_data
+    interactive_options = ai_response.context.interactive_options
+    updated_progress = ai_response.context.overall_progress
+    should_advance_section = ai_response.context.should_advance_section
+    next_section = ai_response.context.section_info.current_section
     
     # Salvar mensagens
     user_msg = Message(
@@ -259,8 +268,13 @@ async def send_message(
         session.briefing_data = current_data
         
         # Sugerir próxima seção
-        next_section = suggest_next_section(session.current_section, current_data)
-        session.current_section = next_section
+        try:
+            current_section_id = SectionId(session.current_section)
+        except ValueError:
+            current_section_id = SectionId.CONTATO
+            
+        next_section_id = suggest_next_section(current_section_id, current_data)
+        session.current_section = next_section_id.value
     else:
         logger.warning(f"⚠️ Nenhum dado extraído da resposta da IA")
     
@@ -268,7 +282,7 @@ async def send_message(
     logger.info(f"📋 Briefing data atual: {session.briefing_data}")
     
     # Calcular progresso
-    progress = calculate_progress(session.briefing_data or {})
+    progress = calculate_overall_progress(session.briefing_data or {})
     session.progress_percentage = str(progress)
     logger.info(f"📈 Progresso calculado: {progress}%")
     
@@ -447,7 +461,7 @@ async def update_briefing(
         session.briefing_data = current_data
         
         # Recalcular progresso
-        progress = calculate_progress(current_data)
+        progress = calculate_overall_progress(current_data)
         session.progress_percentage = str(progress)
         
         # Verificar se completou

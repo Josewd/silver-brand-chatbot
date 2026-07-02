@@ -1,9 +1,21 @@
 import React, { useState, useEffect } from 'react'
+import SectionProgressIndicator from './SectionProgressIndicator'
 import './BriefingPreview.css'
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
 
-function BriefingPreview({ sessionData, briefingData, fallbackMode, onSave, onUpdate }) {
+function BriefingPreview({ 
+  sessionData, 
+  briefingData, 
+  progress, 
+  isCompleted, 
+  fallbackMode, 
+  hasRequiredFields, 
+  getSectionProgress,
+  onFieldUpdate, 
+  onSave, 
+  onFinalize 
+}) {
   const [editedData, setEditedData] = useState({})
   const [isSending, setIsSending] = useState(false)
   const [sendSuccess, setSendSuccess] = useState(false)
@@ -28,9 +40,9 @@ function BriefingPreview({ sessionData, briefingData, fallbackMode, onSave, onUp
       [fieldName]: value
     }))
     
-    // Atualizar no backend em tempo real (só se não estiver em fallbackMode ou manualMode)
-    if (onUpdate && !fallbackMode && !manualMode) {
-      onUpdate(fieldName, value)
+    // Atualizar no backend em tempo real usando o hook
+    if (onFieldUpdate && !fallbackMode && !manualMode) {
+      onFieldUpdate(fieldName, value)
     }
   }
 
@@ -53,23 +65,14 @@ function BriefingPreview({ sessionData, briefingData, fallbackMode, onSave, onUp
     setIsSending(true)
     
     try {
-      const response = await fetch(`${API_URL}/api/briefing/${sessionData.session_id}/finalize`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          briefing_data: editedData,
-          client_email: editedData.client_email || sessionData.client_email
-        })
-      })
-
-      if (!response.ok) {
-        throw new Error('Erro ao enviar briefing')
+      const success = await onFinalize(editedData)
+      
+      if (success) {
+        setSendSuccess(true)
+        alert('✅ Briefing enviado com sucesso! Você receberá um email de confirmação em breve.')
+      } else {
+        alert('❌ Erro ao enviar briefing. Por favor, tente novamente.')
       }
-
-      setSendSuccess(true)
-      alert('✅ Briefing enviado com sucesso! Você receberá um email de confirmação em breve.')
       
     } catch (error) {
       console.error('Erro:', error)
@@ -237,10 +240,10 @@ function BriefingPreview({ sessionData, briefingData, fallbackMode, onSave, onUp
 
   const hasFinalInfo = editedData.additional_info
 
-  const isComplete = sessionData.is_completed || sessionData.progress >= 95
+  const isComplete = isCompleted || progress >= 95
   
-  // Verificar campos obrigatórios para modo fallback
-  const requiredFieldsFilled = 
+  // Usar hasRequiredFields do hook ou calcular localmente como fallback
+  const requiredFieldsFilled = hasRequiredFields ? hasRequiredFields : 
     editedData.client_name &&
     editedData.client_email &&
     (editedData.about_company || editedData.company_description) &&
@@ -282,6 +285,16 @@ function BriefingPreview({ sessionData, briefingData, fallbackMode, onSave, onUp
             </div>
           )}
         </div>
+        
+        {/* Progresso detalhado das seções */}
+        {getSectionProgress && (
+          <SectionProgressIndicator
+            currentSection={sessionData?.current_section || 'contato'}
+            overallProgress={progress || 0}
+            getSectionProgress={getSectionProgress}
+            showDetailed={true}
+          />
+        )}
       </div>
 
       <div className="preview-content">

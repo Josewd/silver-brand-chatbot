@@ -2,8 +2,15 @@ from typing import Optional
 import logging
 from datetime import datetime
 import httpx
+import json
 
 from app.config import get_settings
+from app.interfaces import (
+    AIResponse, AIContext, SectionInfo, SectionId,
+    calculate_overall_progress, calculate_section_progress,
+    suggest_next_section, detect_interactive_trigger, 
+    build_section_info, SECTION_CONFIG
+)
 
 logger = logging.getLogger(__name__)
 settings = get_settings()
@@ -319,17 +326,26 @@ async def generate_response(
     session_data: dict,
     conversation_history: list[dict],
     user_message: str
-) -> tuple[str, Optional[dict], Optional[list[dict]]]:
+) -> AIResponse:
     """
     Gera resposta da IA como designer consultor.
     Sistema híbrido com fallback automático: Groq -> Hugging Face
     
     Returns:
-        (resposta_texto, dados_extraidos_ou_None, opcoes_interativas_ou_None)
+        AIResponse: Resposta estruturada com contexto para o frontend
     """
     try:
-        current_section = session_data.get("current_section", "intro")
-        system_prompt = _build_system_prompt(session_data, current_section)
+        current_section_str = session_data.get("current_section", "intro")
+        
+        # Converter string para SectionId
+        try:
+            current_section = SectionId(current_section_str)
+        except ValueError:
+            current_section = SectionId.CONTATO  # fallback
+            
+        briefing_data = session_data.get("briefing_data", {})
+        
+        system_prompt = _build_system_prompt(session_data, current_section_str)
         
         # Construir mensagens
         messages = [{"role": "system", "content": system_prompt}]
@@ -371,21 +387,39 @@ async def generate_response(
         # 2. Se todos modelos Groq falharem, retornar erro específico
         if raw_response is None:
             logger.error(f"❌ Todos os modelos Groq atingiram rate limit")
-            return (
-                "Desculpe, nosso sistema está com alto volume de uso no momento. 😅 "
-                "Por favor, tente novamente em alguns minutos ou envie email para brandhousesilver@gmail.com",
-                None,
-                None
+            
+            # Retornar resposta estruturada com erro
+            error_context = AIContext(
+                section_info=build_section_info(current_section, briefing_data),
+                overall_progress=calculate_overall_progress(briefing_data),
+                status_message="Sistema com alto volume de uso",
+                should_show_preview=True
+            )
+            
+            return AIResponse(
+                message="Desculpe, nosso sistema está com alto volume de uso no momento. 😅 "
+                       "Por favor, tente novamente em alguns minutos ou preencha manualmente no painel lateral.",
+                context=error_context,
+                timestamp=datetime.now().isoformat(),
+                provider_used="none"
             )
         
         # Se todos falharam, retornar erro
         if raw_response is None:
             logger.error(f"❌ Todos os providers falharam. Último erro: {last_error}")
-            return (
-                "Desculpe, estou com dificuldades técnicas no momento. 😅 "
-                "Por favor, tente novamente em alguns segundos ou envie email para brandhousesilver@gmail.com",
-                None,
-                None
+            
+            error_context = AIContext(
+                section_info=build_section_info(current_section, briefing_data),
+                overall_progress=calculate_overall_progress(briefing_data),
+                status_message="Dificuldades técnicas temporárias"
+            )
+            
+            return AIResponse(
+                message="Desculpe, estou com dificuldades técnicas no momento. 😅 "
+                       "Por favor, tente novamente em alguns segundos.",
+                context=error_context,
+                timestamp=datetime.now().isoformat(),
+                provider_used="none"
             )
         
         # LOG: Ver resposta bruta da IA para debug
@@ -393,37 +427,87 @@ async def generate_response(
         logger.info(f"🔍 Contém DATA_COLLECTED? {'DATA_COLLECTED:' in raw_response if raw_response else False}")
         
         # Extrair dados estruturados da resposta (se houver)
-        extracted_data = _extract_structured_data(raw_response, current_section)
+        extracted_data = _extract_structured_data(raw_response, current_section_str)
         
         if extracted_data:
             logger.info(f"✅ Dados extraídos: {extracted_data}")
+            # Atualizar briefing_data com os novos dados
+            briefing_data.update(extracted_data)
         else:
             logger.warning(f"⚠️ NENHUM dado extraído! Verifique se IA está gerando DATA_COLLECTED")
         
         # Remover DATA_COLLECTED da resposta visível ao usuário
+        message_content = raw_response
         if "DATA_COLLECTED:" in raw_response:
-            response = raw_response.split("DATA_COLLECTED:")[0].strip()
-        else:
-            response = raw_response
+            message_content = raw_response.split("DATA_COLLECTED:")[0].strip()
         
-        # Detectar se deve mostrar opções interativas
-        interactive_options = _detect_interactive_options(current_section, response)
+        # Detectar opções interativas baseado na seção e conteúdo
+        interactive_options = detect_interactive_trigger(current_section, message_content)
         
         # LOG: Ver se detectou opções interativas
         if interactive_options:
             logger.info(f"✅ Opções interativas detectadas: {len(interactive_options)} opções")
         else:
-            logger.info(f"ℹ️ Nenhuma opção interativa detectada para seção '{current_section}'")
+            logger.info(f"ℹ️ Nenhuma opção interativa detectada para seção '{current_section.value}'")
         
-        return response, extracted_data, interactive_options
+        # Calcular progresso atualizado
+        updated_progress = calculate_overall_progress(briefing_data)
+        
+        # Sugerir próxima seção baseado nos dados atualizados
+        next_section = suggest_next_section(current_section, briefing_data)
+        should_advance = next_section != current_section
+        
+        # Construir informações da seção atual
+        section_info = build_section_info(current_section, briefing_data)
+        
+        # Determinar se deve mostrar preview
+        should_show_preview = (
+            interactive_options is not None or  # Tem opções interativas
+            updated_progress > 30 or           # Progresso significativo
+            current_section in [SectionId.FINAL, SectionId.COMPLETED]  # Seções finais
+        )
+        
+        # Construir contexto estruturado
+        context = AIContext(
+            section_info=section_info,
+            overall_progress=updated_progress,
+            extracted_data=extracted_data,
+            interactive_options=[opt.model_dump() for opt in interactive_options] if interactive_options else None,
+            should_show_preview=should_show_preview,
+            should_advance_section=should_advance,
+            internal_notes=f"Next section suggestion: {next_section.value}"
+        )
+        
+        return AIResponse(
+            message=message_content,
+            context=context,
+            timestamp=datetime.now().isoformat(),
+            provider_used=provider_used
+        )
         
     except Exception as e:
         logger.error(f"Erro crítico ao gerar resposta IA: {e}")
-        return (
-            "Desculpe, tive um problema técnico. 😅 "
-            "Pode repetir sua mensagem ou enviar email para brandhousesilver@gmail.com",
-            None,
-            None
+        
+        # Contexto de erro
+        try:
+            current_section = SectionId(session_data.get("current_section", "contato"))
+            briefing_data = session_data.get("briefing_data", {})
+        except:
+            current_section = SectionId.CONTATO
+            briefing_data = {}
+            
+        error_context = AIContext(
+            section_info=build_section_info(current_section, briefing_data),
+            overall_progress=calculate_overall_progress(briefing_data),
+            status_message="Erro crítico no sistema"
+        )
+        
+        return AIResponse(
+            message="Desculpe, tive um problema técnico. 😅 "
+                   "Pode repetir sua mensagem ou preencher manualmente no painel lateral.",
+            context=error_context,
+            timestamp=datetime.now().isoformat(),
+            provider_used="error"
         )
 
 
@@ -560,258 +644,3 @@ def _extract_structured_data(response: str, section: str) -> Optional[dict]:
         return None
 
 
-def suggest_next_section(current_section: str, briefing_data: dict) -> str:
-    """Sugere próxima seção baseado no progresso e dados coletados."""
-    sections_order = [
-        "intro",
-        "contato",
-        "basicas",
-        "entrega",
-        "perfil",
-        "posicionamento",
-        "concorrentes",
-        "visuais",
-        "final"
-    ]
-    
-    # Regras para avançar de seção
-    section_requirements = {
-        "intro": lambda d: d.get("client_name"),  # Precisa do nome
-        "contato": lambda d: d.get("client_email") or d.get("client_phone"),  # Email OU telefone
-        "basicas": lambda d: d.get("project_type"),  # Tipo de projeto
-        "entrega": lambda d: d.get("deliverables_confirmed"),  # Confirmou itens de entrega
-        "perfil": lambda d: d.get("about_company") or d.get("products_services"),  # Pelo menos sobre empresa ou produtos
-        "posicionamento": lambda d: d.get("positioning") or d.get("keywords"),  # Posicionamento OU palavras-chave
-        "concorrentes": lambda d: d.get("competitors") or d.get("references"),  # Concorrentes OU referências
-        "visuais": lambda d: d.get("preferred_colors"),  # Cores preferidas
-        "final": lambda d: True,  # Sempre pode avançar da final
-    }
-    
-    try:
-        current_idx = sections_order.index(current_section)
-        
-        # Verificar se pode avançar para próxima seção
-        if current_section in section_requirements:
-            requirement_met = section_requirements[current_section](briefing_data)
-            if requirement_met and current_idx < len(sections_order) - 1:
-                return sections_order[current_idx + 1]
-        elif current_idx < len(sections_order) - 1:
-            return sections_order[current_idx + 1]
-            
-    except ValueError:
-        pass
-    
-    return current_section
-
-
-def calculate_progress(briefing_data: dict) -> int:
-    """Calcula percentual de conclusão do briefing baseado nas seções (0-100)."""
-    
-    # Peso por seção (total = 100%)
-    section_weights = {
-        "contato": 15,      # 15% - Nome, email, telefone, cidade
-        "basicas": 10,      # 10% - Tipo de projeto, prazo
-        "entrega": 10,      # 10% - Lista de entrega
-        "perfil": 20,       # 20% - Descrição, produtos, missão, diferencial
-        "posicionamento": 20,  # 20% - Posicionamento, palavras-chave, escalas
-        "concorrentes": 10,    # 10% - Concorrentes, referências
-        "visuais": 15,         # 15% - Cores, logo, fontes
-    }
-    
-    progress = 0
-    
-    # Seção Contato (15%)
-    contato_fields = ["client_name", "client_email", "client_phone", "city_state"]
-    contato_filled = sum(1 for f in contato_fields if briefing_data.get(f))
-    progress += (contato_filled / len(contato_fields)) * section_weights["contato"]
-    
-    # Seção Básicas (10%)
-    basicas_fields = ["project_type", "deadline"]
-    basicas_filled = sum(1 for f in basicas_fields if briefing_data.get(f))
-    progress += (basicas_filled / len(basicas_fields)) * section_weights["basicas"]
-    
-    # Seção Entrega (10%) - Considera apenas que a seção foi visitada
-    if briefing_data.get("deliverables_confirmed") or briefing_data.get("extra_items") is not None:
-        progress += section_weights["entrega"]
-    
-    # Seção Perfil (20%)
-    perfil_fields = ["about_company", "products_services", "diferencial", "mission_vision_values", "main_objectives"]
-    perfil_filled = sum(1 for f in perfil_fields if briefing_data.get(f))
-    
-    # Compatibilidade com campos antigos
-    if briefing_data.get("company_description") and not briefing_data.get("about_company"):
-        perfil_filled += 1
-    if briefing_data.get("objectives") and not briefing_data.get("main_objectives"):
-        perfil_filled += 1
-    
-    if perfil_filled > 0:  # Pelo menos um campo preenchido
-        progress += (perfil_filled / len(perfil_fields)) * section_weights["perfil"]
-    
-    # Seção Posicionamento (20%)
-    posicionamento_fields = ["positioning", "differentiation", "keywords"]
-    posicionamento_filled = sum(1 for f in posicionamento_fields if briefing_data.get(f))
-    if briefing_data.get("personality_scales"):
-        posicionamento_filled += 1
-        posicionamento_fields.append("personality_scales")
-    if posicionamento_filled > 0:
-        progress += (posicionamento_filled / len(posicionamento_fields)) * section_weights["posicionamento"]
-    
-    # Seção Concorrentes (10%)
-    concorrentes_fields = ["competitors", "references"]
-    concorrentes_filled = sum(1 for f in concorrentes_fields if briefing_data.get(f))
-    if concorrentes_filled > 0:
-        progress += (concorrentes_filled / len(concorrentes_fields)) * section_weights["concorrentes"]
-    
-    # Seção Visuais (15%)
-    visuais_fields = ["preferred_colors", "excluded_colors", "logo_types"]
-    visuais_filled = sum(1 for f in visuais_fields if briefing_data.get(f))
-    if visuais_filled > 0:
-        progress += (visuais_filled / len(visuais_fields)) * section_weights["visuais"]
-    
-    return int(min(progress, 100))
-
-
-def _detect_interactive_options(current_section: str, response: str) -> Optional[list[dict]]:
-    """Detecta se deve mostrar opções interativas (checkboxes, scales) baseado na seção e conteúdo."""
-    
-    response_lower = response.lower()
-    
-    # NÃO mostrar opções se for uma resposta de confirmação/agradecimento
-    if any(word in response_lower for word in ['entendi', 'ótimo', 'perfeito', 'maravilha', 'obrigad', 'anotado']):
-        return None
-    
-    # SEÇÃO DE ENTREGA: Checkboxes para itens extras
-    if current_section == "entrega":
-        # Detectar quando lista os itens inclusos E menciona extras
-        has_base_items = any(phrase in response_lower for phrase in [
-            'logotipo principal', 'variações de cor', 'manual de identidade', 
-            'arquivos editáveis', 'paleta de cores', 'tipografia recomendada',
-            'o projeto inclui', 'itens incluídos'
-        ])
-        
-        mentions_extras = any(phrase in response_lower for phrase in [
-            'além desses', 'itens extras', 'selecionar extras', 'extras abaixo',
-            'algo mais', 'não estiver listado', 'precisa de algo'
-        ])
-        
-        # Mostrar checkboxes apenas se listar itens base E mencionar extras
-        if has_base_items and mentions_extras:
-            return [
-                {
-                    "type": "checkbox",
-                    "label": "Template PowerPoint",
-                    "value": "template_ppt"
-                },
-                {
-                    "type": "checkbox",
-                    "label": "Cartão de Visitas",
-                    "value": "cartao_visitas"
-                },
-                {
-                    "type": "checkbox",
-                    "label": "Capas para Destaques do Instagram",
-                    "value": "capas_instagram"
-                },
-                {
-                    "type": "checkbox",
-                    "label": "Artes para Impressão",
-                    "value": "artes_impressao"
-                },
-                {
-                    "type": "checkbox",
-                    "label": "Não preciso de itens extras",
-                    "value": "none"
-                }
-            ]
-    
-    # SEÇÃO DE POSICIONAMENTO: Escalas de personalidade
-    if current_section == "posicionamento":
-        # Detectar quando pergunta sobre personalidade da marca
-        if any(phrase in response_lower for phrase in [
-            'personalidade da marca', 'marque de 1 a 5', 'características',
-            'definir a personalidade', 'escala de'
-        ]):
-            return [
-                {
-                    "type": "scale",
-                    "label": "Sofisticada vs Descontraída",
-                    "value": "scale_sophisticated",
-                    "min_label": "Descontraída",
-                    "max_label": "Sofisticada",
-                    "min": 1,
-                    "max": 5
-                },
-                {
-                    "type": "scale",
-                    "label": "Técnica vs Emocional",
-                    "value": "scale_technical",
-                    "min_label": "Emocional",
-                    "max_label": "Técnica",
-                    "min": 1,
-                    "max": 5
-                },
-                {
-                    "type": "scale",
-                    "label": "Formal vs Informal",
-                    "value": "scale_formal",
-                    "min_label": "Informal",
-                    "max_label": "Formal",
-                    "min": 1,
-                    "max": 5
-                },
-                {
-                    "type": "scale",
-                    "label": "Tradicional vs Moderna",
-                    "value": "scale_traditional",
-                    "min_label": "Moderna",
-                    "max_label": "Tradicional",
-                    "min": 1,
-                    "max": 5
-                },
-                {
-                    "type": "scale",
-                    "label": "Exclusiva vs Popular",
-                    "value": "scale_exclusive",
-                    "min_label": "Popular",
-                    "max_label": "Exclusiva",
-                    "min": 1,
-                    "max": 5
-                }
-            ]
-    
-    # SEÇÃO VISUAIS: Checkboxes para tipos de logo
-    if current_section == "visuais":
-        # Detectar quando pergunta sobre tipos de logo
-        if any(phrase in response_lower for phrase in [
-            'tipos de logo', 'tipo de logo', 'estilo de logo', 'logo prefere',
-            'que logo você gosta', 'preferência de logo'
-        ]):
-            return [
-                {
-                    "type": "checkbox",
-                    "label": "Com símbolo",
-                    "value": "logo_symbol"
-                },
-                {
-                    "type": "checkbox",
-                    "label": "Só a tipografia",
-                    "value": "logo_typography"
-                },
-                {
-                    "type": "checkbox",
-                    "label": "Minimalista",
-                    "value": "logo_minimalist"
-                },
-                {
-                    "type": "checkbox",
-                    "label": "Clássico",
-                    "value": "logo_classic"
-                },
-                {
-                    "type": "checkbox",
-                    "label": "Moderno",
-                    "value": "logo_modern"
-                }
-            ]
-    
-    return None

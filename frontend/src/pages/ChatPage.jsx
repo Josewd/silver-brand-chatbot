@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { useParams } from 'react-router-dom'
 import BriefingPreview from '../components/BriefingPreview'
+import SectionProgressIndicator from '../components/SectionProgressIndicator'
+import { useBriefingSync } from '../hooks/useBriefingSync'
 import './ChatPage.css'
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
@@ -32,6 +34,19 @@ function ChatPage() {
   const [fallbackMode, setFallbackMode] = useState(false) // Modo formulário manual
   const messagesEndRef = useRef(null)
   const inputRef = useRef(null)
+
+  // Hook de sincronização do briefing
+  const {
+    briefingData,
+    progress: syncedProgress,
+    isCompleted: syncedIsCompleted,
+    loadBriefingData,
+    updateField,
+    saveBriefingData,
+    finalizeBriefing,
+    hasRequiredFields,
+    getSectionProgress
+  } = useBriefingSync(sessionId)
 
   useEffect(() => {
     loadSession()
@@ -160,15 +175,26 @@ function ChatPage() {
 
       // Atualizar progresso e recarregar dados do briefing
       if (sessionData) {
+        // Usar progresso da resposta da IA ou do hook sincronizado
+        const finalProgress = data.progress !== undefined ? data.progress : syncedProgress
+        
         setSessionData({
           ...sessionData,
-          progress: data.progress,
+          progress: finalProgress,
           current_section: data.current_section,
           is_completed: data.is_completed
         })
         
         // Recarregar sessão completa para pegar briefing_data atualizado
-        await loadSession()
+        await Promise.all([
+          loadSession(),
+          loadBriefingData()
+        ])
+      }
+
+      // Se a IA sugerir mostrar o preview, abrir automaticamente
+      if (data.should_show_preview) {
+        setIsPreviewOpen(true)
       }
 
     } catch (err) {
@@ -279,15 +305,20 @@ function ChatPage() {
 
       // Atualizar progresso e recarregar dados do briefing
       if (sessionData) {
+        const finalProgress = data.progress !== undefined ? data.progress : syncedProgress
+        
         setSessionData({
           ...sessionData,
-          progress: data.progress,
+          progress: finalProgress,
           current_section: data.current_section,
           is_completed: data.is_completed
         })
         
-        // Recarregar sessão completa para pegar briefing_data atualizado
-        await loadSession()
+        // Recarregar dados do briefing
+        await Promise.all([
+          loadSession(),
+          loadBriefingData()
+        ])
       }
 
     } catch (err) {
@@ -359,34 +390,12 @@ function ChatPage() {
             <p className="client-name">{sessionData.client_name}</p>
           </div>
           <div className="progress-container">
-            <span className="progress-text">
-              {sessionData.progress}% concluído
-            </span>
-            <div className="progress-bar">
-              <div 
-                className="progress-fill" 
-                style={{ width: `${sessionData.progress}%` }}
-              />
-              {/* Checkpoints na barra */}
-              {BRIEFING_SECTIONS.filter(section => section.id !== 'intro').map((section, index) => {
-                const position = ((index + 1) / (BRIEFING_SECTIONS.length - 1)) * 100
-                const sectionIndex = BRIEFING_SECTIONS.findIndex(s => s.id === sessionData.current_section)
-                const checkpointIndex = BRIEFING_SECTIONS.findIndex(s => s.id === section.id)
-                const isCompleted = checkpointIndex < sectionIndex
-                const isCurrent = section.id === sessionData.current_section
-                
-                return (
-                  <div
-                    key={section.id}
-                    className={`checkpoint ${isCompleted ? 'completed' : ''} ${isCurrent ? 'current' : ''}`}
-                    style={{ left: `${position}%` }}
-                    data-tooltip={section.name}
-                  >
-                    <div className="checkpoint-dot"></div>
-                  </div>
-                )
-              })}
-            </div>
+            <SectionProgressIndicator
+              currentSection={sessionData.current_section}
+              overallProgress={sessionData.progress}
+              getSectionProgress={getSectionProgress}
+              showDetailed={false}
+            />
           </div>
         </header>
 
@@ -546,25 +555,15 @@ function ChatPage() {
         </button>
         <BriefingPreview 
           sessionData={sessionData} 
-          briefingData={sessionData?.briefing_data || {}}
+          briefingData={briefingData}
+          progress={syncedProgress}
+          isCompleted={syncedIsCompleted}
           fallbackMode={fallbackMode}
-          onSave={async (data) => {
-            // Salvar dados no backend
-            try {
-              const response = await fetch(`${API_URL}/api/briefing/${sessionId}/update`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ briefing_data: data })
-              })
-              if (response.ok) {
-                await loadSession()
-                alert('✅ Dados salvos com sucesso!')
-                setChatError(false) // Reset erro
-              }
-            } catch (err) {
-              alert('❌ Erro ao salvar: ' + err.message)
-            }
-          }}
+          hasRequiredFields={hasRequiredFields()}
+          getSectionProgress={getSectionProgress}
+          onFieldUpdate={updateField}
+          onSave={saveBriefingData}
+          onFinalize={finalizeBriefing}
         />
       </div>
     </div>
