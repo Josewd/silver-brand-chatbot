@@ -13,6 +13,13 @@ from app.config import get_settings
 from app.models import init_db, get_db, Session as DBSession, Message
 from app.ai import generate_response, suggest_next_section, calculate_progress
 from app.pdf_generator import generate_briefing_pdf
+from app.briefing_form import (
+    create_empty_form,
+    flatten_form,
+    update_form_from_flat,
+    infer_data_from_message,
+    get_form_summary
+)
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -234,6 +241,14 @@ async def send_message(
         user_message=request.message
     )
     
+    # LOG DETALHADO
+    logger.info(f"=" * 50)
+    logger.info(f"📨 Resposta da IA: {response_text[:200]}...")
+    logger.info(f"📊 Dados extraídos: {extracted_data}")
+    logger.info(f"🎛️ Opções interativas: {'Sim' if interactive_options else 'Não'}")
+    logger.info(f"📍 Seção atual: {session.current_section}")
+    logger.info(f"=" * 50)
+    
     # Salvar mensagens
     user_msg = Message(
         id=str(uuid.uuid4()),
@@ -263,6 +278,34 @@ async def send_message(
         session.current_section = next_section
     else:
         logger.warning(f"⚠️ Nenhum dado extraído da resposta da IA")
+        
+        # 🆕 FALLBACK: Tentar inferir dados da mensagem do usuário
+        # Inicializar formulário se não existir
+        if not session.briefing_data or "contato" not in session.briefing_data:
+            current_form = create_empty_form()
+            # Migrar dados antigos se existirem
+            if session.briefing_data:
+                current_form = update_form_from_flat(current_form, session.briefing_data)
+        else:
+            current_form = session.briefing_data if isinstance(session.briefing_data, dict) and "contato" in session.briefing_data else create_empty_form()
+        
+        # Tentar inferir dados
+        inferred_data = infer_data_from_message(
+            request.message,
+            session.current_section,
+            current_form
+        )
+        
+        if inferred_data:
+            logger.info(f"✨ Dados inferidos (fallback): {inferred_data}")
+            # Converter form para flat e atualizar
+            flat_form = flatten_form(current_form)
+            flat_form.update(inferred_data)
+            session.briefing_data = flat_form
+            
+            # Sugerir próxima seção
+            next_section = suggest_next_section(session.current_section, flat_form)
+            session.current_section = next_section
     
     # Log do briefing_data atual
     logger.info(f"📋 Briefing data atual: {session.briefing_data}")

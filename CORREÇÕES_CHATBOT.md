@@ -225,3 +225,57 @@ Se os problemas persistirem, verificar:
 1. Logs da IA para ver se está gerando `DATA_COLLECTED` corretamente
 2. Logs do backend para ver se os dados estão sendo extraídos
 3. Console do frontend para ver se `data.options` está chegando corretamente
+
+---
+
+## 🆕 Correção 10: Sistema de Tracking Robusto (2 Jul 2026)
+
+### Problema Identificado
+O sistema dependia 100% da IA gerar corretamente o marcador `DATA_COLLECTED`. Se a IA esquecesse ou errasse, os dados eram perdidos e o progresso não avançava.
+
+### Solução Implementada
+Sistema robusto com **fallback automático**:
+
+#### 1. Novo Módulo: `app/briefing_form.py`
+- Gerencia formulário estruturado com 8 seções
+- Funções: `create_empty_form()`, `flatten_form()`, `update_form_from_flat()`, `infer_data_from_message()`, `get_form_summary()`
+
+#### 2. Mecanismo de Fallback
+Se `DATA_COLLECTED` estiver ausente:
+- Identifica seção atual
+- Encontra campos vazios
+- Infere dados da mensagem do usuário
+- Atualiza briefing automaticamente
+
+#### 3. Resumo no Prompt da IA
+Incluído em `_build_system_prompt()`:
+```
+## Estado do Formulário (campos preenchidos):
+CONTATO: 4/5 campos
+  - client_name: Jose Silva
+  - client_email: jose@example.com
+```
+
+#### 4. Logs Detalhados
+```python
+logger.info(f"📊 Dados extraídos da IA: {extracted_data}")
+logger.warning(f"⚠️ Nenhum dado extraído da resposta da IA")
+logger.info(f"✨ Dados inferidos (fallback): {inferred_data}")
+```
+
+### Arquivos Modificados
+- `app/briefing_form.py` (NOVO)
+- `app/main.py` - Integrado fallback no endpoint `/api/chat`
+- `app/ai.py` - Incluído resumo do formulário no prompt
+- `test_tracking.py` (NOVO) - Teste manual
+- `TRACKING_ROBUSTO.md` (NOVO) - Documentação completa
+
+### Benefícios
+- ✅ Progresso SEMPRE atualiza, mesmo sem `DATA_COLLECTED`
+- ✅ Nenhum dado perdido
+- ✅ Frontend independente
+- ✅ Backward compatible (sessões antigas funcionam)
+- ✅ Logs para debug facilitado
+
+### Teste
+Execute `python3 test_tracking.py` para verificar funcionamento.

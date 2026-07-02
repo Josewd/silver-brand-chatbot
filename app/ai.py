@@ -4,6 +4,7 @@ from datetime import datetime
 import httpx
 
 from app.config import get_settings
+from app.briefing_form import get_form_summary
 
 logger = logging.getLogger(__name__)
 settings = get_settings()
@@ -54,6 +55,9 @@ Contexto inicial: {initial_context}
 
 ## Seção atual: {current_section}
 
+## Estado do Formulário (campos preenchidos):
+{get_form_summary(briefing_data) if isinstance(briefing_data, dict) and "contato" in briefing_data else _format_collected_data(briefing_data)}
+
 ## Dados já coletados:
 {_format_collected_data(briefing_data)}
 
@@ -88,20 +92,25 @@ Contexto inicial: {initial_context}
 - Depois: "Quando precisa pronto?"
 
 ### Seção 3 (Lista de Entrega):
-- **FORMATO OBRIGATÓRIO DA MENSAGEM** (copie exatamente):
-  "O projeto inclui:
-  ✓ Logotipo principal (versões horizontal e vertical)
-  ✓ Variações de cor (colorida, P&B, monocromática)
-  ✓ Manual de identidade visual (PDF)
-  ✓ Arquivos editáveis (.AI, .EPS, .SVG)
-  ✓ Arquivos para web (.PNG transparente)
-  ✓ Paleta de cores (códigos RGB, CMYK, HEX)
-  ✓ Tipografia recomendada
-  
-  Além desses itens inclusos, você pode selecionar extras abaixo ou me dizer o que deseja se não estiver listado."
-- **CRÍTICO**: Use EXATAMENTE este formato - não mude as palavras
-- **CRÍTICO**: NÃO invente ou mencione itens extras como se estivessem inclusos
-- **CRÍTICO**: NÃO pergunte nada além desta mensagem na seção de entrega
+- **CRÍTICO**: Quando chegar nesta seção, você DEVE copiar EXATAMENTE o texto abaixo:
+
+"O projeto inclui:
+✓ Logotipo principal (versões horizontal e vertical)
+✓ Variações de cor (colorida, P&B, monocromática)
+✓ Manual de identidade visual (PDF)
+✓ Arquivos editáveis (.AI, .EPS, .SVG)
+✓ Arquivos para web (.PNG transparente)
+✓ Paleta de cores (códigos RGB, CMYK, HEX)
+✓ Tipografia recomendada
+
+Além desses itens inclusos, você pode selecionar extras abaixo ou me dizer o que deseja se não estiver listado."
+
+- **IMPORTANTE**: Copie PALAVRA POR PALAVRA, incluindo os símbolos ✓
+- **NÃO MUDE** nenhuma palavra desta mensagem
+- **NÃO RESUMA** a lista
+- **NÃO PERGUNTE** "Vamos listar os itens?"
+- **NÃO ADICIONE** outras perguntas
+- Os checkboxes aparecerão AUTOMATICAMENTE após você enviar esta mensagem exata
 
 ### Seção 4 (Perfil da Empresa):
 - **IMPORTANTE**: Faça UMA pergunta por vez, na seguinte ordem:
@@ -117,9 +126,15 @@ Contexto inicial: {initial_context}
 ### Seção 5 (Posicionamento):
 - UMA pergunta por vez: "Como quer que as pessoas percebam sua marca?"
 - Depois: "Me diga 3 palavras que definem sua marca"
-- Depois: "Agora vamos definir a personalidade da marca. Marque de 1 a 5 para cada característica:"
-- **IMPORTANTE**: Quando perguntar sobre personalidade, a UI com escalas aparecerá automaticamente
-- NÃO pergunte as escalas individualmente, o sistema mostrará todas de uma vez
+- Depois: **COPIE EXATAMENTE** esta frase (não mude nada):
+
+"Agora vamos definir a personalidade da marca. Marque de 1 a 5 para cada característica:"
+
+- **CRÍTICO**: Use EXATAMENTE esta frase - palavra por palavra
+- **NÃO liste** as perguntas (Sofisticada ou Descontraída, etc)
+- **NÃO pergunte** "Você quer ser vista como..."
+- Os radio buttons aparecerão AUTOMATICAMENTE quando você usar esta frase exata
+- **IMPORTANTE**: A UI com escalas aparecerá sozinha, você só precisa enviar a frase acima
 
 ### Seção 6 (Concorrentes):
 - UMA por vez: "Quem são seus principais concorrentes?"
@@ -158,6 +173,8 @@ Contexto inicial: {initial_context}
 ## IMPORTANTE - Formato de extração de dados:
 **REGRA OBRIGATÓRIA:** Quando o cliente fornecer QUALQUER informação (nome, descrição, cor, etc), você DEVE SEMPRE incluir o marcador DATA_COLLECTED.
 
+**⚠️ SEM DATA_COLLECTED = SEM PROGRESSO!** Se você não incluir DATA_COLLECTED, o briefing não será atualizado.
+
 FORMATO EXATO (copie este modelo):
 
 Sua mensagem normal aqui
@@ -165,6 +182,12 @@ Sua mensagem normal aqui
 
 
 DATA_COLLECTED:{{"campo": "valor"}}
+
+**REGRAS CRÍTICAS:**
+1. SEMPRE use 3 quebras de linha ANTES de DATA_COLLECTED
+2. SEMPRE use chaves duplas {{}} para JSON
+3. SEMPRE extraia ALGO quando cliente responder
+4. NUNCA esqueça de adicionar DATA_COLLECTED após perguntas respondidas
 
 **EXEMPLOS PRÁTICOS:**
 
@@ -198,6 +221,20 @@ Tem alguma cor que NÃO quer?
 DATA_COLLECTED:{{"preferred_colors": "preto e dourado"}}
 ```
 
+Cliente diz: "queremos ser referencia de cafe na nossa regiao"
+Você responde:
+```
+Entendi! Sua visão é ser uma referência de café na sua região, ou seja, ser conhecida e respeitada como a melhor opção de café na área.
+
+Isso é um objetivo muito ambicioso e inspirador! A visão que estamos construindo é:
+
+"Ser uma referência de café na nossa região, conhecida e respeitada como a melhor opção de café na área."
+
+
+
+DATA_COLLECTED:{{"main_objectives": "ser referencia de cafe na nossa regiao"}}
+```
+
 **CAMPOS POR SEÇÃO:**
 - contato: client_name, client_email, client_phone, city_state, website
 - basicas: project_type, deadline
@@ -211,7 +248,7 @@ DATA_COLLECTED:{{"preferred_colors": "preto e dourado"}}
 **EXEMPLOS ESPECÍFICOS POR SEÇÃO:**
 
 Seção ENTREGA - Quando listar itens inclusos:
-Você responde EXATAMENTE:
+Você DEVE responder EXATAMENTE assim (copie palavra por palavra):
 ```
 O projeto inclui:
 ✓ Logotipo principal (versões horizontal e vertical)
@@ -224,7 +261,33 @@ O projeto inclui:
 
 Além desses itens inclusos, você pode selecionar extras abaixo ou me dizer o que deseja se não estiver listado.
 ```
-(Neste momento, os checkboxes aparecerão automaticamente - NÃO extraia dados ainda)
+**IMPORTANTE**: 
+- NÃO pergunte "Vamos listar?" - apenas liste diretamente
+- NÃO resuma a lista - mostre TODOS os 7 itens
+- NÃO adicione "Quer incluir algo mais?" - use a frase exata acima
+- Os checkboxes aparecerão automaticamente quando você usar esta mensagem
+- NÃO extraia dados ainda (cliente não respondeu)
+
+Seção POSICIONAMENTO - Escalas de Personalidade:
+❌ ERRADO (não faça isso):
+```
+Qual é a personalidade da sua marca? Você quer ser vista como:
+* Sofisticada ou Descontraída?
+* Técnica ou Emocional?
+* Formal ou Informal?
+...
+```
+
+✅ CORRETO (faça isso):
+```
+Agora vamos definir a personalidade da marca. Marque de 1 a 5 para cada característica:
+```
+
+**IMPORTANTE**:
+- Use EXATAMENTE a frase acima
+- NÃO liste as perguntas manualmente
+- Os radio buttons aparecerão automaticamente
+- Cliente verá todas as 5 escalas na tela
 
 Seção ENTREGA - Cliente seleciona "Não preciso de itens extras":
 Você responde:
@@ -686,16 +749,19 @@ def _detect_interactive_options(current_section: str, response: str) -> Optional
         has_base_items = any(phrase in response_lower for phrase in [
             'logotipo principal', 'variações de cor', 'manual de identidade', 
             'arquivos editáveis', 'paleta de cores', 'tipografia recomendada',
-            'o projeto inclui', 'itens incluídos'
+            'o projeto inclui', 'itens incluídos', 'projeto inclui:'
         ])
         
         mentions_extras = any(phrase in response_lower for phrase in [
             'além desses', 'itens extras', 'selecionar extras', 'extras abaixo',
-            'algo mais', 'não estiver listado', 'precisa de algo'
+            'algo mais', 'não estiver listado', 'precisa de algo', 'pode selecionar'
         ])
         
-        # Mostrar checkboxes apenas se listar itens base E mencionar extras
-        if has_base_items and mentions_extras:
+        # TAMBÉM detectar se lista múltiplos itens com checkmarks
+        has_multiple_checkmarks = response.count('✓') >= 5
+        
+        # Mostrar checkboxes se: (listar base items E mencionar extras) OU (múltiplos checkmarks)
+        if (has_base_items and mentions_extras) or has_multiple_checkmarks:
             return [
                 {
                     "type": "checkbox",
@@ -727,10 +793,18 @@ def _detect_interactive_options(current_section: str, response: str) -> Optional
     # SEÇÃO DE POSICIONAMENTO: Escalas de personalidade
     if current_section == "posicionamento":
         # Detectar quando pergunta sobre personalidade da marca
-        if any(phrase in response_lower for phrase in [
-            'personalidade da marca', 'marque de 1 a 5', 'características',
-            'definir a personalidade', 'escala de'
-        ]):
+        mentions_personality = any(phrase in response_lower for phrase in [
+            'personalidade da marca', 'marque de 1 a 5', 'definir a personalidade',
+            'escala de', 'personalidade', 'marca'
+        ])
+        
+        asks_about_traits = any(phrase in response_lower for phrase in [
+            'sofisticada', 'descontraída', 'técnica', 'emocional',
+            'formal', 'informal', 'tradicional', 'moderna', 'exclusiva', 'popular'
+        ])
+        
+        # Mostrar escalas se mencionar personalidade E perguntar sobre características
+        if mentions_personality and asks_about_traits:
             return [
                 {
                     "type": "scale",
