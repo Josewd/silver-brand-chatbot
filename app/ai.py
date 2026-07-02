@@ -129,7 +129,7 @@ Contexto inicial: {initial_context}
 ### Seção 7 (Preferências Visuais):
 - UMA por vez: "Que cores você gosta para sua marca?"
 - Depois: "Tem alguma cor que NÃO quer?"
-- Depois: "Que estilo de logo prefere?"
+- Depois: "Que tipos de logo você prefere?" (os checkboxes aparecerão automaticamente)
 - NÃO bombardeie com todas perguntas juntas
 
 ### Seção 8 (Final):
@@ -776,6 +776,41 @@ def _detect_interactive_options(current_section: str, response: str) -> Optional
                     "max_label": "Exclusiva",
                     "min": 1,
                     "max": 5
+                }
+            ]
+    
+    # SEÇÃO VISUAIS: Checkboxes para tipos de logo
+    if current_section == "visuais":
+        # Detectar quando pergunta sobre tipos de logo
+        if any(phrase in response_lower for phrase in [
+            'tipos de logo', 'tipo de logo', 'estilo de logo', 'logo prefere',
+            'que logo você gosta', 'preferência de logo'
+        ]):
+            return [
+                {
+                    "type": "checkbox",
+                    "label": "Com símbolo",
+                    "value": "logo_symbol"
+                },
+                {
+                    "type": "checkbox",
+                    "label": "Só a tipografia",
+                    "value": "logo_typography"
+                },
+                {
+                    "type": "checkbox",
+                    "label": "Minimalista",
+                    "value": "logo_minimalist"
+                },
+                {
+                    "type": "checkbox",
+                    "label": "Clássico",
+                    "value": "logo_classic"
+                },
+                {
+                    "type": "checkbox",
+                    "label": "Moderno",
+                    "value": "logo_modern"
                 }
             ]
     

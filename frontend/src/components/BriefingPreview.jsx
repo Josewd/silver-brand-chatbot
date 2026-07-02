@@ -115,11 +115,11 @@ function BriefingPreview({ sessionData, briefingData, fallbackMode, onSave, onUp
     }
 
     const scaleNames = {
-      scale_sophisticated: { label: 'Sofisticada vs Descontraída', min: 'Descontraída', max: 'Sofisticada' },
-      scale_technical: { label: 'Técnica vs Emocional', min: 'Emocional', max: 'Técnica' },
-      scale_formal: { label: 'Formal vs Informal', min: 'Informal', max: 'Formal' },
-      scale_traditional: { label: 'Tradicional vs Moderna', min: 'Moderna', max: 'Tradicional' },
-      scale_exclusive: { label: 'Exclusiva vs Popular', min: 'Popular', max: 'Exclusiva' }
+      scale_sophisticated: { min: 'Descontraída', max: 'Sofisticada' },
+      scale_technical: { min: 'Emocional', max: 'Técnica' },
+      scale_formal: { min: 'Informal', max: 'Formal' },
+      scale_traditional: { min: 'Moderna', max: 'Tradicional' },
+      scale_exclusive: { min: 'Popular', max: 'Exclusiva' }
     }
 
     return (
@@ -133,18 +133,17 @@ function BriefingPreview({ sessionData, briefingData, fallbackMode, onSave, onUp
             <div key={key} className="scale-preview-item">
               <div className="scale-preview-labels">
                 <span className="scale-preview-min">{scale.min}</span>
-                <span className="scale-preview-center">{scale.label}</span>
+                <div className="scale-preview-dots">
+                  {[1, 2, 3, 4, 5].map(num => (
+                    <div 
+                      key={num} 
+                      className={`scale-preview-dot ${parseInt(value) === num ? 'active' : ''}`}
+                    >
+                      {num}
+                    </div>
+                  ))}
+                </div>
                 <span className="scale-preview-max">{scale.max}</span>
-              </div>
-              <div className="scale-preview-dots">
-                {[1, 2, 3, 4, 5].map(num => (
-                  <div 
-                    key={num} 
-                    className={`scale-preview-dot ${parseInt(value) === num ? 'active' : ''}`}
-                  >
-                    {num}
-                  </div>
-                ))}
               </div>
             </div>
           )
