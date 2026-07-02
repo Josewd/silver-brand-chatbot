@@ -365,3 +365,44 @@ textarea.field-input {
   color: white;
   border-color: #000;
 }
+
+/* Logo Types Preview */
+.logo-types-preview {
+  margin-top: 15px;
+  padding: 15px;
+  background: #fafafa;
+  border-radius: 6px;
+  border: 1px solid #e0e0e0;
+}
+
+.logo-types-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.logo-type-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: white;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 12px;
+  color: #666;
+  transition: all 0.2s;
+}
+
+.logo-type-item.selected {
+  background: #f0f0f0;
+  border-color: #000;
+  color: #000;
+  font-weight: 500;
+}
+
+.checkbox-icon {
+  font-size: 16px;
+  line-height: 1;
+}

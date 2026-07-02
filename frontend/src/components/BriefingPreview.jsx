@@ -152,6 +152,44 @@ function BriefingPreview({ sessionData, briefingData, fallbackMode, onSave, onUp
     )
   }
 
+  const renderLogoTypes = () => {
+    const logoTypes = editedData.logo_types
+    if (!logoTypes) return null
+
+    // Converter string para array de valores selecionados
+    let selectedTypes = []
+    if (typeof logoTypes === 'string') {
+      selectedTypes = logoTypes.split(',').map(t => t.trim().toLowerCase())
+    }
+
+    const logoOptions = [
+      { label: 'Com símbolo', value: 'com símbolo' },
+      { label: 'Só a tipografia', value: 'só a tipografia' },
+      { label: 'Minimalista', value: 'minimalista' },
+      { label: 'Clássico', value: 'clássico' },
+      { label: 'Moderno', value: 'moderno' }
+    ]
+
+    return (
+      <div className="logo-types-preview">
+        <div className="field-label">Tipos de logo que prefere:</div>
+        <div className="logo-types-grid">
+          {logoOptions.map((option, index) => {
+            const isSelected = selectedTypes.some(t => 
+              option.value.includes(t) || t.includes(option.value.toLowerCase())
+            )
+            return (
+              <div key={index} className={`logo-type-item ${isSelected ? 'selected' : ''}`}>
+                <span className="checkbox-icon">{isSelected ? '☑' : '☐'}</span>
+                <span>{option.label}</span>
+              </div>
+            )
+          })}
+        </div>
+      </div>
+    )
+  }
+
   const renderSection = (title, content, hasData) => {
     // No modo fallback, sempre mostrar seções (mesmo vazias)
     if (!fallbackMode && !hasData) return null
@@ -300,7 +338,7 @@ function BriefingPreview({ sessionData, briefingData, fallbackMode, onSave, onUp
           <>
             {renderEditableField("Cores que GOSTA", "preferred_colors", briefingData.preferred_colors)}
             {renderEditableField("Cores que NÃO quer", "excluded_colors", briefingData.excluded_colors)}
-            {renderEditableField("Tipos de logo preferidos", "logo_types", briefingData.logo_types)}
+            {renderLogoTypes()}
             {renderEditableField("Tipos de fontes", "font_preferences", briefingData.font_preferences)}
             {renderEditableField("Referências visuais (links)", "visual_references", briefingData.visual_references, true)}
           </>,
