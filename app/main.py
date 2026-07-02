@@ -235,13 +235,20 @@ async def send_message(
         user_message=request.message
     )
     
+    # LOG: Debug da resposta da IA
+    logger.info(f"🔍 DEBUG - Resposta completa da IA:")
+    logger.info(f"   📝 Mensagem: {ai_response.message[:200]}...")
+    logger.info(f"   📊 Progresso: {ai_response.context.overall_progress}")
+    logger.info(f"   💾 Dados extraídos: {ai_response.context.extracted_data}")
+    logger.info(f"   🎛️ Opções interativas: {ai_response.context.interactive_options}")
+    logger.info(f"   🔧 Provider: {ai_response.provider_used}")
+    
     # Extrair informações da resposta estruturada
     response_text = ai_response.message
     extracted_data = ai_response.context.extracted_data
     interactive_options = ai_response.context.interactive_options
     updated_progress = ai_response.context.overall_progress
     should_advance_section = ai_response.context.should_advance_section
-    next_section = ai_response.context.section_info.current_section
     
     # Salvar mensagens
     user_msg = Message(
@@ -267,22 +274,36 @@ async def send_message(
         current_data.update(extracted_data)
         session.briefing_data = current_data
         
-        # Sugerir próxima seção
+        # Sugerir próxima seção baseado nos dados atualizados
         try:
             current_section_id = SectionId(session.current_section)
         except ValueError:
             current_section_id = SectionId.CONTATO
             
         next_section_id = suggest_next_section(current_section_id, current_data)
-        session.current_section = next_section_id.value
+        if should_advance_section and next_section_id != current_section_id:
+            session.current_section = next_section_id.value
+            logger.info(f"🔄 Avançando para seção: {next_section_id.value}")
     else:
         logger.warning(f"⚠️ Nenhum dado extraído da resposta da IA")
+        
+        # FALLBACK: Tentar extrair dados básicos da mensagem do usuário
+        fallback_data = _extract_fallback_data(request.message, session.current_section)
+        if fallback_data:
+            logger.info(f"🔄 FALLBACK - Dados extraídos da mensagem do usuário: {fallback_data}")
+            current_data = session.briefing_data or {}
+            current_data.update(fallback_data)
+            session.briefing_data = current_data
     
     # Log do briefing_data atual
     logger.info(f"📋 Briefing data atual: {session.briefing_data}")
     
-    # Calcular progresso
-    progress = calculate_overall_progress(session.briefing_data or {})
+    # Usar progresso da IA ou calcular localmente
+    if updated_progress is not None:
+        progress = updated_progress
+    else:
+        progress = calculate_overall_progress(session.briefing_data or {})
+        
     session.progress_percentage = str(progress)
     logger.info(f"📈 Progresso calculado: {progress}%")
     
@@ -564,6 +585,58 @@ Link: {settings.frontend_url}/admin
         "message": "Briefing finalizado com sucesso",
         "session_id": session_id
     }
+
+
+def _extract_fallback_data(user_message: str, current_section: str) -> dict:
+    """
+    Extração de fallback quando a IA não retorna dados estruturados.
+    Tenta identificar informações básicas na mensagem do usuário.
+    """
+    import re
+    
+    data = {}
+    message_lower = user_message.lower()
+    
+    # Detectar email
+    email_pattern = r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b'
+    email_match = re.search(email_pattern, user_message)
+    if email_match:
+        data["client_email"] = email_match.group()
+    
+    # Detectar telefone (formatos brasileiros e internacionais)
+    phone_patterns = [
+        r'\+55\s?\d{2}\s?\d{4,5}[-\s]?\d{4}',  # +55 11 99999-9999
+        r'\(\d{2}\)\s?\d{4,5}[-\s]?\d{4}',     # (11) 99999-9999
+        r'\d{2}\s?\d{4,5}[-\s]?\d{4}',         # 11 99999-9999
+        r'\+\d{1,4}\s?\d{2,3}\s?\d{3,4}[-\s]?\d{3,4}'  # Internacional
+    ]
+    for pattern in phone_patterns:
+        phone_match = re.search(pattern, user_message)
+        if phone_match:
+            data["client_phone"] = phone_match.group()
+            break
+    
+    # Detectar cores (seção visual)
+    if current_section == "visuais":
+        color_keywords = [
+            "azul", "vermelho", "verde", "amarelo", "roxo", "rosa", "laranja", 
+            "preto", "branco", "cinza", "dourado", "prata", "marrom"
+        ]
+        mentioned_colors = [color for color in color_keywords if color in message_lower]
+        if mentioned_colors:
+            data["preferred_colors"] = ", ".join(mentioned_colors)
+    
+    # Detectar informações básicas da empresa (seção perfil)
+    if current_section == "perfil":
+        if any(word in message_lower for word in ["somos", "empresa", "trabalho", "faço", "oferecemos"]):
+            # Capturar a frase que descreve a empresa
+            sentences = user_message.split(".")
+            for sentence in sentences:
+                if any(word in sentence.lower() for word in ["somos", "empresa", "trabalho", "oferecemos"]):
+                    data["about_company"] = sentence.strip()
+                    break
+    
+    return data
 
 
 if __name__ == "__main__":

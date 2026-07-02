@@ -4,7 +4,6 @@ Este arquivo define o "source of truth" para padronizar as respostas.
 """
 
 from typing import Optional, List, Dict, Any, Literal
-from pydantic import BaseModel
 from enum import Enum
 
 
@@ -29,61 +28,77 @@ class InteractiveOptionType(str, Enum):
     RADIO = "radio"
 
 
-class InteractiveOption(BaseModel):
+class InteractiveOption:
     """Opção interativa (checkbox, scale, etc)."""
-    type: InteractiveOptionType
-    label: str
-    value: str
-    # Para checkboxes: nenhum campo extra
-    # Para scales: campos min/max
-    min_label: Optional[str] = None
-    max_label: Optional[str] = None
-    min: Optional[int] = None
-    max: Optional[int] = None
+    def __init__(self, type: str, label: str, value: str, 
+                 min_label: Optional[str] = None, max_label: Optional[str] = None,
+                 min: Optional[int] = None, max: Optional[int] = None):
+        self.type = type
+        self.label = label
+        self.value = value
+        self.min_label = min_label
+        self.max_label = max_label
+        self.min = min
+        self.max = max
+    
+    def model_dump(self) -> Dict[str, Any]:
+        """Compatibilidade com pydantic."""
+        result = {
+            "type": self.type,
+            "label": self.label, 
+            "value": self.value
+        }
+        if self.min_label is not None:
+            result["min_label"] = self.min_label
+        if self.max_label is not None:
+            result["max_label"] = self.max_label
+        if self.min is not None:
+            result["min"] = self.min
+        if self.max is not None:
+            result["max"] = self.max
+        return result
 
 
-class SectionInfo(BaseModel):
+class SectionInfo:
     """Informações sobre a seção atual do briefing."""
-    current_section: SectionId
-    section_name: str
-    completion_percentage: int  # 0-100 para esta seção específica
-    required_fields: List[str]  # Campos obrigatórios para esta seção
-    completed_fields: List[str]  # Campos já preenchidos
-    next_action: Optional[str] = None  # Próxima ação esperada
+    def __init__(self, current_section: SectionId, section_name: str, 
+                 completion_percentage: int, required_fields: List[str],
+                 completed_fields: List[str], next_action: Optional[str] = None):
+        self.current_section = current_section
+        self.section_name = section_name
+        self.completion_percentage = completion_percentage
+        self.required_fields = required_fields
+        self.completed_fields = completed_fields
+        self.next_action = next_action
 
 
-class AIContext(BaseModel):
+class AIContext:
     """Contexto estruturado que a IA deve incluir nas respostas."""
-    # Informações sobre progressão
-    section_info: SectionInfo
-    overall_progress: int  # 0-100 progresso geral do briefing
-    
-    # Dados extraídos (para atualizar briefing_data)
-    extracted_data: Optional[Dict[str, Any]] = None
-    
-    # UI interativa a ser mostrada
-    interactive_options: Optional[List[InteractiveOption]] = None
-    
-    # Sugestões para o frontend
-    should_show_preview: bool = False
-    should_advance_section: bool = False
-    
-    # Mensagens de status
-    status_message: Optional[str] = None  # Para mostrar ao usuário
-    internal_notes: Optional[str] = None  # Para logs/debug
+    def __init__(self, section_info: SectionInfo, overall_progress: int,
+                 extracted_data: Optional[Dict[str, Any]] = None,
+                 interactive_options: Optional[List[Dict[str, Any]]] = None,
+                 should_show_preview: bool = False,
+                 should_advance_section: bool = False,
+                 status_message: Optional[str] = None,
+                 internal_notes: Optional[str] = None):
+        self.section_info = section_info
+        self.overall_progress = overall_progress
+        self.extracted_data = extracted_data
+        self.interactive_options = interactive_options
+        self.should_show_preview = should_show_preview
+        self.should_advance_section = should_advance_section
+        self.status_message = status_message
+        self.internal_notes = internal_notes
 
 
-class AIResponse(BaseModel):
+class AIResponse:
     """Resposta estruturada da IA - 'source of truth' da comunicação."""
-    # Resposta visível ao usuário
-    message: str
-    
-    # Contexto estruturado para o frontend
-    context: AIContext
-    
-    # Metadados
-    timestamp: str
-    provider_used: Optional[str] = None  # groq, huggingface, etc
+    def __init__(self, message: str, context: AIContext, timestamp: str,
+                 provider_used: Optional[str] = None):
+        self.message = message
+        self.context = context
+        self.timestamp = timestamp
+        self.provider_used = provider_used
     
 
 # Mapeamento de seções para informações estruturadas
@@ -147,27 +162,27 @@ SECTION_CONFIG = {
 # Opções interativas pré-definidas
 DELIVERY_OPTIONS = [
     InteractiveOption(
-        type=InteractiveOptionType.CHECKBOX,
+        type="checkbox",
         label="Template PowerPoint",
         value="template_ppt"
     ),
     InteractiveOption(
-        type=InteractiveOptionType.CHECKBOX,
+        type="checkbox",
         label="Cartão de Visitas", 
         value="cartao_visitas"
     ),
     InteractiveOption(
-        type=InteractiveOptionType.CHECKBOX,
+        type="checkbox",
         label="Capas para Destaques do Instagram",
         value="capas_instagram"
     ),
     InteractiveOption(
-        type=InteractiveOptionType.CHECKBOX,
+        type="checkbox",
         label="Artes para Impressão",
         value="artes_impressao"
     ),
     InteractiveOption(
-        type=InteractiveOptionType.CHECKBOX,
+        type="checkbox",
         label="Não preciso de itens extras",
         value="none"
     )
@@ -175,7 +190,7 @@ DELIVERY_OPTIONS = [
 
 PERSONALITY_SCALES = [
     InteractiveOption(
-        type=InteractiveOptionType.SCALE,
+        type="scale",
         label="Sofisticada vs Descontraída",
         value="scale_sophisticated",
         min_label="Descontraída",
@@ -184,7 +199,7 @@ PERSONALITY_SCALES = [
         max=5
     ),
     InteractiveOption(
-        type=InteractiveOptionType.SCALE,
+        type="scale",
         label="Técnica vs Emocional",
         value="scale_technical",
         min_label="Emocional", 
@@ -193,7 +208,7 @@ PERSONALITY_SCALES = [
         max=5
     ),
     InteractiveOption(
-        type=InteractiveOptionType.SCALE,
+        type="scale",
         label="Formal vs Informal",
         value="scale_formal",
         min_label="Informal",
@@ -202,7 +217,7 @@ PERSONALITY_SCALES = [
         max=5
     ),
     InteractiveOption(
-        type=InteractiveOptionType.SCALE,
+        type="scale",
         label="Tradicional vs Moderna",
         value="scale_traditional",
         min_label="Moderna",
@@ -211,7 +226,7 @@ PERSONALITY_SCALES = [
         max=5
     ),
     InteractiveOption(
-        type=InteractiveOptionType.SCALE,
+        type="scale",
         label="Exclusiva vs Popular",
         value="scale_exclusive",
         min_label="Popular",
@@ -223,27 +238,27 @@ PERSONALITY_SCALES = [
 
 LOGO_TYPE_OPTIONS = [
     InteractiveOption(
-        type=InteractiveOptionType.CHECKBOX,
+        type="checkbox",
         label="Com símbolo",
         value="logo_symbol"
     ),
     InteractiveOption(
-        type=InteractiveOptionType.CHECKBOX,
+        type="checkbox",
         label="Só a tipografia",
         value="logo_typography"
     ),
     InteractiveOption(
-        type=InteractiveOptionType.CHECKBOX,
+        type="checkbox",
         label="Minimalista",
         value="logo_minimalist"
     ),
     InteractiveOption(
-        type=InteractiveOptionType.CHECKBOX,
+        type="checkbox",
         label="Clássico", 
         value="logo_classic"
     ),
     InteractiveOption(
-        type=InteractiveOptionType.CHECKBOX,
+        type="checkbox",
         label="Moderno",
         value="logo_modern"
     )

@@ -435,6 +435,7 @@ async def generate_response(
             briefing_data.update(extracted_data)
         else:
             logger.warning(f"⚠️ NENHUM dado extraído! Verifique se IA está gerando DATA_COLLECTED")
+            logger.warning(f"📝 Resposta completa da IA: {raw_response}")
         
         # Remover DATA_COLLECTED da resposta visível ao usuário
         message_content = raw_response
