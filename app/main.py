@@ -122,6 +122,24 @@ async def create_session(
     """
     session_id = str(uuid.uuid4())
     
+    # Popular briefing_data com informações iniciais fornecidas
+    initial_briefing_data = {}
+    
+    if request.client_name:
+        initial_briefing_data["client_name"] = request.client_name
+    
+    if request.client_email:
+        initial_briefing_data["client_email"] = request.client_email
+    
+    if request.client_phone:
+        initial_briefing_data["client_phone"] = request.client_phone
+    
+    # Extrair cidade/estado do initial_context se mencionado
+    if request.initial_context:
+        context_lower = request.initial_context.lower()
+        if any(word in context_lower for word in ["mora em", "vive em", "localizado em", "em "]):
+            initial_briefing_data["city_state"] = request.initial_context
+    
     new_session = DBSession(
         id=session_id,
         client_name=request.client_name,
@@ -130,7 +148,7 @@ async def create_session(
         initial_context=request.initial_context or "",
         current_section="intro",
         progress_percentage="0",
-        briefing_data={}
+        briefing_data=initial_briefing_data
     )
     
     db.add(new_session)
