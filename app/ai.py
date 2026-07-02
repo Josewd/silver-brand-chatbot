@@ -144,19 +144,25 @@ Contexto inicial: {initial_context}
 - Se não souber algo sobre design, não invente — foque em coletar informações do cliente
 
 ## IMPORTANTE - Formato de extração de dados:
-Quando o cliente fornecer informações importantes (nome, email, telefone, descrições, preferências, etc), você DEVE incluir no FINAL da sua resposta (após a mensagem ao cliente) um marcador especial para registrar os dados:
+Quando o cliente fornecer informações importantes (nome, email, telefone, descrições, preferências, etc), você DEVE incluir um marcador INVISÍVEL (que não aparece para o usuário) para registrar os dados.
+
+FORMATO: Coloque em uma linha separada no FINAL, precedido por três quebras de linha:
+
+
 
 DATA_COLLECTED:{{"campo": "valor", "outro_campo": "outro_valor"}}
 
 Exemplo de campos por seção:
 - Seção contato: client_name, client_email, client_phone, city_state, website
 - Seção basicas: project_type, deadline
-- Seção entrega: deliverables (array), extra_items
+- Seção entrega: deliverables (array com strings), extra_items
 - Seção perfil: company_description, products_services, mission_vision_values, diferencial, objectives
-- Seção posicionamento: positioning, differentiation, why_choose, keywords, personality_scales (objeto com escalas 1-5)
+- Seção posicionamento: positioning, differentiation, why_choose, keywords, personality_scales (objeto)
 - Seção concorrentes: competitors, references, what_you_like
 - Seção visuais: preferred_colors, excluded_colors, logo_types, font_preferences, visual_references
 - Seção final: additional_info
+
+CRÍTICO: O marcador DATA_COLLECTED deve estar APÓS sua mensagem amigável ao cliente, em linhas separadas, para não aparecer na interface!
 
 **SEMPRE inclua o DATA_COLLECTED quando coletar qualquer informação nova do cliente!**
 
@@ -203,12 +209,18 @@ async def generate_response(
         
         # Gerar resposta
         if provider == "gemini":
-            response = await _generate_gemini(client, messages)
+            raw_response = await _generate_gemini(client, messages)
         else:  # groq
-            response = await _generate_groq(client, messages)
+            raw_response = await _generate_groq(client, messages)
         
         # Extrair dados estruturados da resposta (se houver)
-        extracted_data = _extract_structured_data(response, current_section)
+        extracted_data = _extract_structured_data(raw_response, current_section)
+        
+        # Remover DATA_COLLECTED da resposta visível ao usuário
+        if "DATA_COLLECTED:" in raw_response:
+            response = raw_response.split("DATA_COLLECTED:")[0].strip()
+        else:
+            response = raw_response
         
         # Detectar se deve mostrar opções interativas
         interactive_options = _detect_interactive_options(current_section, response)
@@ -299,7 +311,7 @@ def _extract_structured_data(response: str, section: str) -> Optional[dict]:
 
 
 def suggest_next_section(current_section: str, briefing_data: dict) -> str:
-    """Sugere próxima seção baseado no progresso."""
+    """Sugere próxima seção baseado no progresso e dados coletados."""
     sections_order = [
         "intro",
         "contato",
@@ -312,10 +324,29 @@ def suggest_next_section(current_section: str, briefing_data: dict) -> str:
         "final"
     ]
     
+    # Regras para avançar de seção
+    section_requirements = {
+        "intro": lambda d: d.get("client_name"),  # Precisa do nome
+        "contato": lambda d: d.get("client_email") or d.get("client_phone"),  # Email OU telefone
+        "basicas": lambda d: d.get("project_type"),  # Tipo de projeto
+        "entrega": lambda d: True,  # Sempre pode avançar (lista padrão existe)
+        "perfil": lambda d: d.get("company_description"),  # Descrição da empresa
+        "posicionamento": lambda d: d.get("positioning"),  # Como quer ser percebida
+        "concorrentes": lambda d: d.get("competitors") or d.get("references"),  # Concorrentes OU referências
+        "visuais": lambda d: d.get("preferred_colors"),  # Cores preferidas
+    }
+    
     try:
         current_idx = sections_order.index(current_section)
-        if current_idx < len(sections_order) - 1:
+        
+        # Verificar se pode avançar para próxima seção
+        if current_section in section_requirements:
+            requirement_met = section_requirements[current_section](briefing_data)
+            if requirement_met and current_idx < len(sections_order) - 1:
+                return sections_order[current_idx + 1]
+        elif current_idx < len(sections_order) - 1:
             return sections_order[current_idx + 1]
+            
     except ValueError:
         pass
     
@@ -323,19 +354,59 @@ def suggest_next_section(current_section: str, briefing_data: dict) -> str:
 
 
 def calculate_progress(briefing_data: dict) -> int:
-    """Calcula percentual de conclusão do briefing (0-100)."""
-    required_fields = [
-        "client_name", "client_email", "client_phone",
-        "project_type", "deadline",
-        "company_description", "products_services", "diferencial",
-        "positioning", "keywords",
-        "personality_scales",
-        "competitors", "references",
-        "preferred_colors", "logo_types"
-    ]
+    """Calcula percentual de conclusão do briefing baseado nas seções (0-100)."""
     
-    filled = sum(1 for field in required_fields if briefing_data.get(field))
-    return int((filled / len(required_fields)) * 100)
+    # Peso por seção (total = 100%)
+    section_weights = {
+        "contato": 15,      # 15% - Nome, email, telefone, cidade
+        "basicas": 10,      # 10% - Tipo de projeto, prazo
+        "entrega": 10,      # 10% - Lista de entrega
+        "perfil": 20,       # 20% - Descrição, produtos, missão, diferencial
+        "posicionamento": 20,  # 20% - Posicionamento, palavras-chave, escalas
+        "concorrentes": 10,    # 10% - Concorrentes, referências
+        "visuais": 15,         # 15% - Cores, logo, fontes
+    }
+    
+    progress = 0
+    
+    # Seção Contato (15%)
+    contato_fields = ["client_name", "client_email", "client_phone", "city_state"]
+    contato_filled = sum(1 for f in contato_fields if briefing_data.get(f))
+    progress += (contato_filled / len(contato_fields)) * section_weights["contato"]
+    
+    # Seção Básicas (10%)
+    basicas_fields = ["project_type", "deadline"]
+    basicas_filled = sum(1 for f in basicas_fields if briefing_data.get(f))
+    progress += (basicas_filled / len(basicas_fields)) * section_weights["basicas"]
+    
+    # Seção Entrega (10%)
+    if briefing_data.get("deliverables") or briefing_data.get("extra_items"):
+        progress += section_weights["entrega"]
+    
+    # Seção Perfil (20%)
+    perfil_fields = ["company_description", "products_services", "mission_vision_values", "diferencial"]
+    perfil_filled = sum(1 for f in perfil_fields if briefing_data.get(f))
+    progress += (perfil_filled / len(perfil_fields)) * section_weights["perfil"]
+    
+    # Seção Posicionamento (20%)
+    posicionamento_fields = ["positioning", "differentiation", "keywords"]
+    posicionamento_filled = sum(1 for f in posicionamento_fields if briefing_data.get(f))
+    if briefing_data.get("personality_scales"):
+        posicionamento_filled += 1
+        posicionamento_fields.append("personality_scales")
+    progress += (posicionamento_filled / len(posicionamento_fields)) * section_weights["posicionamento"]
+    
+    # Seção Concorrentes (10%)
+    concorrentes_fields = ["competitors", "references"]
+    concorrentes_filled = sum(1 for f in concorrentes_fields if briefing_data.get(f))
+    progress += (concorrentes_filled / len(concorrentes_fields)) * section_weights["concorrentes"]
+    
+    # Seção Visuais (15%)
+    visuais_fields = ["preferred_colors", "excluded_colors", "logo_types"]
+    visuais_filled = sum(1 for f in visuais_fields if briefing_data.get(f))
+    progress += (visuais_filled / len(visuais_fields)) * section_weights["visuais"]
+    
+    return int(min(progress, 100))
 
 
 def _detect_interactive_options(current_section: str, response: str) -> Optional[list[dict]]:
@@ -343,15 +414,16 @@ def _detect_interactive_options(current_section: str, response: str) -> Optional
     
     response_lower = response.lower()
     
-    # NÃO mostrar checkboxes se for uma resposta de confirmação/agradecimento
-    if any(word in response_lower for word in ['entendi', 'ótimo', 'perfeito', 'maravilha', 'obrigad', 'vamos', 'agora vamos']):
+    # Só mostrar checkboxes na seção de entrega
+    if current_section != "entrega":
         return None
     
-    # Detectar lista de entrega - quando menciona itens incluídos E pergunta sobre extras
-    # Deve ter TODOS esses elementos para ser a pergunta inicial:
-    if (("logo principal" in response_lower or "já inclui" in response_lower or "todo projeto" in response_lower) and 
-        ("além desses" in response_lower or "algo mais" in response_lower or "precisa de algo" in response_lower) and
-        ("powerpoint" in response_lower or "cartão" in response_lower or "template" in response_lower)):
+    # NÃO mostrar checkboxes se for uma resposta de confirmação/agradecimento
+    if any(word in response_lower for word in ['entendi', 'ótimo', 'perfeito', 'maravilha', 'obrigad']):
+        return None
+    
+    # Detectar lista de entrega - quando pergunta sobre itens extras
+    if any(phrase in response_lower for phrase in ['além desses', 'algo mais', 'precisa de algo', 'itens extras', 'algum item adicional']):
         return [
             {
                 "type": "checkbox",
