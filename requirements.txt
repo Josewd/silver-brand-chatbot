@@ -10,7 +10,6 @@ requests==2.32.3
 
 # IA Providers  
 groq==0.25.0
-huggingface-hub==0.26.2
 
 # PDF Generation
 reportlab==4.2.5

@@ -1,15 +1,15 @@
 from typing import Optional
 import logging
 from datetime import datetime
+import httpx
 
 from app.config import get_settings
 
 logger = logging.getLogger(__name__)
 settings = get_settings()
 
-# Clientes IA (inicializados sob demanda)
+# Cliente Groq (inicializado sob demanda)
 _groq_client = None
-_hf_client = None
 
 def _get_groq_client():
     """Retorna cliente Groq (lazy initialization)."""
@@ -19,18 +19,6 @@ def _get_groq_client():
         _groq_client = Groq(api_key=settings.groq_api_key)
         logger.info("✅ Cliente Groq inicializado")
     return _groq_client
-
-
-def _get_huggingface_client():
-    """Retorna cliente Hugging Face (lazy initialization)."""
-    global _hf_client
-    if _hf_client is None:
-        from huggingface_hub import InferenceClient
-        # Hugging Face funciona sem API key, mas com key tem rate limits maiores
-        token = settings.huggingface_api_key if settings.huggingface_api_key else None
-        _hf_client = InferenceClient(token=token)
-        logger.info("✅ Cliente Hugging Face inicializado")
-    return _hf_client
 
 
 def _build_system_prompt(session_data: dict, current_section: str) -> str:
@@ -228,12 +216,10 @@ async def generate_response(
         # 2. Se Groq falhar, tentar Hugging Face
         if raw_response is None:
             try:
-                hf_client = _get_huggingface_client()
-                if hf_client:
-                    logger.info("🚀 Tentando Hugging Face (fallback)...")
-                    raw_response = await _generate_huggingface(hf_client, messages)
-                    provider_used = "huggingface"
-                    logger.info("✅ Resposta gerada com Hugging Face")
+                logger.info("🚀 Tentando Hugging Face (fallback)...")
+                raw_response = await _generate_huggingface(messages)
+                provider_used = "huggingface"
+                logger.info("✅ Resposta gerada com Hugging Face")
             except Exception as e:
                 last_error = e
                 logger.warning(f"⚠️ Hugging Face falhou: {e}")
@@ -283,41 +269,58 @@ async def _generate_groq(client, messages: list[dict]) -> str:
     return response.choices[0].message.content
 
 
-async def _generate_huggingface(client, messages: list[dict]) -> str:
+async def _generate_huggingface(messages: list[dict]) -> str:
     """
-    Gera resposta usando Hugging Face Inference API.
-    Usa modelo Llama 3.1 8B (gratuito, boa qualidade).
+    Gera resposta usando Hugging Face Inference API via REST.
+    Usa modelo Llama 3.2 1B (gratuito, mais rápido que 3B).
     """
-    # Hugging Face Inference API usa formato de chat
-    # Converter system prompt para primeira mensagem do user
-    formatted_messages = []
-    system_content = ""
+    # Usar modelo menor e mais rápido
+    url = "https://api-inference.huggingface.co/models/meta-llama/Llama-3.2-1B-Instruct"
     
+    # Headers
+    headers = {
+        "Content-Type": "application/json"
+    }
+    if settings.huggingface_api_key:
+        headers["Authorization"] = f"Bearer {settings.huggingface_api_key}"
+    
+    # Converter mensagens para texto (API de inferência básica)
+    prompt = ""
     for msg in messages:
         if msg["role"] == "system":
-            system_content = msg["content"]
+            prompt += f"Instruções: {msg['content']}\n\n"
         elif msg["role"] == "user":
-            if system_content and len(formatted_messages) == 0:
-                # Primeira mensagem: incluir contexto do sistema
-                formatted_messages.append({
-                    "role": "user",
-                    "content": f"{system_content}\n\nMensagem do cliente: {msg['content']}"
-                })
-                system_content = ""  # Já incluído
-            else:
-                formatted_messages.append(msg)
+            prompt += f"Cliente: {msg['content']}\n\n"
         elif msg["role"] == "assistant":
-            formatted_messages.append(msg)
+            prompt += f"Consultor: {msg['content']}\n\n"
     
-    # Usar modelo Llama 3.1 8B (gratuito e bom para conversação)
-    response = client.chat_completion(
-        messages=formatted_messages,
-        model="meta-llama/Llama-3.1-8B-Instruct",
-        max_tokens=1024,
-        temperature=0.7,
-    )
+    prompt += "Consultor:"
     
-    return response.choices[0].message.content
+    # Payload simplificado
+    payload = {
+        "inputs": prompt,
+        "parameters": {
+            "max_new_tokens": 512,
+            "temperature": 0.7,
+            "top_p": 0.9,
+            "do_sample": True,
+            "return_full_text": False
+        }
+    }
+    
+    # Fazer requisição com timeout menor
+    async with httpx.AsyncClient(timeout=30.0) as http_client:
+        response = await http_client.post(url, json=payload, headers=headers)
+        response.raise_for_status()
+        data = response.json()
+        
+        # Resposta pode vir em formatos diferentes
+        if isinstance(data, list) and len(data) > 0:
+            return data[0].get("generated_text", "").strip()
+        elif isinstance(data, dict):
+            return data.get("generated_text", data.get("text", "")).strip()
+        else:
+            raise ValueError(f"Formato de resposta inesperado: {data}")
 
 
 def _extract_structured_data(response: str, section: str) -> Optional[dict]:

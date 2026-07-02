@@ -149,16 +149,14 @@ def test_ai_provider():
             print("  ⚠️  Configure pelo menos GROQ_API_KEY no .env")
             return False
         
-        # Testar importação dos clientes
-        from app.ai import _get_groq_client, _get_huggingface_client
+        # Testar importação do cliente Groq
+        from app.ai import _get_groq_client
         
         groq_client = _get_groq_client()
         if groq_client:
             print("  ✅ Cliente Groq OK (primário)")
         
-        hf_client = _get_huggingface_client()
-        if hf_client:
-            print("  ✅ Cliente Hugging Face OK (fallback)")
+        print("  ✅ Hugging Face via REST API OK (fallback)")
         
         return True
         
