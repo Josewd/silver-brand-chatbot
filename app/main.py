@@ -242,6 +242,8 @@ async def send_message(
     logger.info(f"   💾 Dados extraídos: {ai_response.context.extracted_data}")
     logger.info(f"   🎛️ Opções interativas: {ai_response.context.interactive_options}")
     logger.info(f"   🔧 Provider: {ai_response.provider_used}")
+    logger.info(f"   📍 Seção atual no banco: {session.current_section}")
+    logger.info(f"   📋 Briefing data atual no banco: {session.briefing_data}")
     
     # Extrair informações da resposta estruturada
     response_text = ai_response.message
@@ -288,15 +290,24 @@ async def send_message(
         logger.warning(f"⚠️ Nenhum dado extraído da resposta da IA")
         
         # FALLBACK: Tentar extrair dados básicos da mensagem do usuário
+        try:
+            current_section_for_fallback = SectionId(session.current_section)
+        except ValueError:
+            current_section_for_fallback = SectionId.CONTATO
+            
         fallback_data = _extract_fallback_data(request.message, session.current_section)
         if fallback_data:
             logger.info(f"🔄 FALLBACK - Dados extraídos da mensagem do usuário: {fallback_data}")
+            logger.info(f"🔄 FALLBACK - Seção atual: {session.current_section}")
             current_data = session.briefing_data or {}
             current_data.update(fallback_data)
             session.briefing_data = current_data
     
     # Log do briefing_data atual
     logger.info(f"📋 Briefing data atual: {session.briefing_data}")
+    
+    # VERIFICAÇÃO CRÍTICA: Forçar transição de seção se temos dados suficientes
+    _force_section_progression_if_needed(session, logger)
     
     # Usar progresso da IA ou calcular localmente
     if updated_progress is not None:
@@ -593,6 +604,10 @@ def _extract_fallback_data(user_message: str, current_section: str) -> dict:
     Tenta identificar informações básicas na mensagem do usuário.
     """
     import re
+    import logging
+    logger = logging.getLogger(__name__)
+    
+    logger.info(f"🔧 FALLBACK DEBUG: Seção='{current_section}', Mensagem='{user_message}'")
     
     data = {}
     message_lower = user_message.lower()
@@ -618,10 +633,13 @@ def _extract_fallback_data(user_message: str, current_section: str) -> dict:
     
     # Detectar tipo de projeto (seção básicas)
     if current_section == "basicas":
+        logger.info(f"🔧 FALLBACK: Detectando tipo de projeto em seção básicas")
         if any(word in message_lower for word in ["novo", "nova", "começar", "criar"]):
             data["project_type"] = "projeto novo"
+            logger.info(f"🔧 FALLBACK: Detectado projeto novo!")
         elif any(word in message_lower for word in ["redesign", "reformular", "mudar", "atualizar"]):
             data["project_type"] = "redesign"
+            logger.info(f"🔧 FALLBACK: Detectado redesign!")
         
         # Detectar prazo
         deadline_patterns = [
@@ -633,6 +651,7 @@ def _extract_fallback_data(user_message: str, current_section: str) -> dict:
             match = re.search(pattern, message_lower)
             if match:
                 data["deadline"] = match.group()
+                logger.info(f"🔧 FALLBACK: Detectado prazo: {match.group()}")
                 break
     
     # Detectar cores (seção visual)
@@ -664,8 +683,36 @@ def _extract_fallback_data(user_message: str, current_section: str) -> dict:
         # Evitar salvar saudações simples
         if not any(greeting in message_lower for greeting in ["oi", "olá", "boa", "tudo bem"]):
             data["user_response"] = user_message.strip()
+            logger.info(f"🔧 FALLBACK: Salvando resposta genérica: {user_message.strip()}")
     
+    logger.info(f"🔧 FALLBACK RESULTADO: {data}")
     return data
+
+
+def _force_section_progression_if_needed(session, logger):
+    """
+    Força avanço de seção se temos dados suficientes mas IA não avançou.
+    Corrige problema de ficar preso em seções completadas.
+    """
+    from app.interfaces import SectionId, suggest_next_section
+    
+    current_data = session.briefing_data or {}
+    
+    try:
+        current_section_id = SectionId(session.current_section)
+    except ValueError:
+        current_section_id = SectionId.CONTATO
+    
+    # Verificar se deveria estar em seção diferente
+    suggested_section = suggest_next_section(current_section_id, current_data)
+    
+    if suggested_section != current_section_id:
+        logger.info(f"🔄 FORÇANDO avanço de seção: {session.current_section} → {suggested_section.value}")
+        logger.info(f"🔄 Dados que justificam avanço: {current_data}")
+        session.current_section = suggested_section.value
+        return True
+    
+    return False
 
 
 if __name__ == "__main__":
