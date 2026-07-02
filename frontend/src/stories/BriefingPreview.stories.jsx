@@ -40,7 +40,7 @@ const sampleBriefingData = {
   what_you_like: 'Design minimalista e foco na qualidade',
   preferred_colors: 'Preto, marrom café, dourado',
   excluded_colors: 'Rosa, roxo',
-  logo_types: 'Minimalista com símbolo',
+  logo_types: 'Minimalista, Com símbolo',
   font_preferences: 'Moderna e elegante',
   additional_info: 'Preferimos algo atemporal que transmita sofisticação'
 }
@@ -144,8 +144,18 @@ export const FallbackProntoEnviar = {
     briefingData: {
       client_name: 'Carlos Oliveira',
       client_email: 'carlos@exemplo.com',
-      about_company: 'Loja de roupas sustentáveis',
+      about_company: 'Loja de roupas sustentáveis com foco em moda consciente',
+      products_services: 'Roupas eco-friendly, acessórios sustentáveis',
+      keywords: 'Sustentável, Ético, Consciente',
+      personality_scales: {
+        scale_sophisticated: '3',
+        scale_technical: '2',
+        scale_formal: '2',
+        scale_traditional: '1',
+        scale_exclusive: '3'
+      },
       preferred_colors: 'Verde, bege, branco',
+      logo_types: 'Minimalista, Moderno',
     },
     fallbackMode: true,
     onSave: async (data) => {
@@ -167,8 +177,10 @@ export const PreviewComEscalas = {
     briefingData: {
       client_name: 'Ana Costa',
       client_email: 'ana@exemplo.com',
-      about_company: 'Marca de cosméticos naturais',
+      about_company: 'Marca de cosméticos naturais focada em beleza sustentável',
+      products_services: 'Cosméticos orgânicos, cuidados com a pele',
       keywords: 'Natural, Sustentável, Beleza',
+      positioning: 'Marca moderna que valoriza a beleza natural',
       personality_scales: {
         scale_sophisticated: '4',
         scale_technical: '3',
@@ -177,6 +189,53 @@ export const PreviewComEscalas = {
         scale_exclusive: '3'
       },
       preferred_colors: 'Verde, branco, dourado',
+      logo_types: 'Minimalista, Moderno',
+    },
+    fallbackMode: false,
+  },
+}
+
+// História 8: Preview Completo com Todos os Campos
+export const PreviewCompletoComEscalasELogo = {
+  args: {
+    sessionData: {
+      session_id: '123',
+      client_name: 'Pedro Santos',
+      progress: 95,
+      is_completed: false,
+    },
+    briefingData: {
+      client_name: 'Pedro Santos',
+      client_email: 'pedro@exemplo.com',
+      client_phone: '+55 11 99999-8888',
+      city_state: 'Rio de Janeiro, RJ',
+      website: '@meurestaurante',
+      project_type: 'Redesign',
+      deadline: 'Em 45 dias',
+      extra_items: 'Template PowerPoint, Cartão de visitas',
+      about_company: 'Restaurante italiano tradicional com receitas familiares há 20 anos',
+      products_services: 'Massas artesanais, pizzas, vinhos importados',
+      diferencial: 'Receitas italianas autênticas da família',
+      mission_vision_values: 'Missão: Trazer o sabor da Itália. Visão: Ser referência em culinária italiana.',
+      main_objectives: 'Modernizar a marca mantendo a tradição',
+      positioning: 'Restaurante italiano familiar e acolhedor',
+      keywords: 'Tradição, Família, Autenticidade',
+      differentiation: 'Receitas originais e ingredientes importados',
+      personality_scales: {
+        scale_sophisticated: '4',
+        scale_technical: '2',
+        scale_formal: '4',
+        scale_traditional: '5',
+        scale_exclusive: '3'
+      },
+      competitors: 'Outros restaurantes italianos locais',
+      references: 'Eataly, restaurantes tradicionais da Itália',
+      what_you_like: 'Design clássico com toques modernos',
+      preferred_colors: 'Verde, vermelho, branco (cores da bandeira italiana)',
+      excluded_colors: 'Azul forte, roxo',
+      logo_types: 'Clássico, Com símbolo',
+      font_preferences: 'Elegante e tradicional',
+      additional_info: 'Queremos manter a essência italiana e familiar'
     },
     fallbackMode: false,
   },

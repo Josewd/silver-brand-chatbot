@@ -83,6 +83,35 @@ const deliveryOptions = [
   },
 ]
 
+// Opções de Tipos de Logo
+const logoTypeOptions = [
+  {
+    type: 'checkbox',
+    label: 'Com símbolo',
+    value: 'logo_symbol',
+  },
+  {
+    type: 'checkbox',
+    label: 'Só a tipografia',
+    value: 'logo_typography',
+  },
+  {
+    type: 'checkbox',
+    label: 'Minimalista',
+    value: 'logo_minimalist',
+  },
+  {
+    type: 'checkbox',
+    label: 'Clássico',
+    value: 'logo_classic',
+  },
+  {
+    type: 'checkbox',
+    label: 'Moderno',
+    value: 'logo_modern',
+  },
+]
+
 // História 1: Checkboxes de Entrega
 export const CheckboxesEntrega = () => (
   <div className="chat-container">
@@ -186,6 +215,53 @@ export const NenhumItemSelecionado = () => {
           ))}
         </div>
         <button className="btn-submit-options" disabled={false}>
+          Enviar Seleção
+        </button>
+      </div>
+    </div>
+  )
+}
+
+// História 5: Checkboxes de Tipos de Logo
+export const TiposDeLogoInterativo = () => (
+  <div className="chat-container">
+    <CheckboxOptions
+      options={logoTypeOptions}
+      onSubmit={(selected) => {
+        console.log('Tipos selecionados:', selected)
+        alert(`Você selecionou: ${selected.join(', ')}`)
+      }}
+    />
+  </div>
+)
+
+// História 6: Tipos de Logo - Minimalista Selecionado
+export const LogoMinimalista = () => {
+  const [selected, setSelected] = useState(['logo_minimalist', 'logo_modern'])
+
+  return (
+    <div className="chat-container">
+      <div className="options-panel">
+        <p className="options-title">Que tipos de logo você prefere?</p>
+        <div className="options-grid">
+          {logoTypeOptions.map((option, index) => (
+            <label key={index} className="option-checkbox">
+              <input
+                type="checkbox"
+                checked={selected.includes(option.value)}
+                onChange={() => {
+                  if (selected.includes(option.value)) {
+                    setSelected(selected.filter((v) => v !== option.value))
+                  } else {
+                    setSelected([...selected, option.value])
+                  }
+                }}
+              />
+              <span>{option.label}</span>
+            </label>
+          ))}
+        </div>
+        <button className="btn-submit-options" disabled={selected.length === 0}>
           Enviar Seleção
         </button>
       </div>

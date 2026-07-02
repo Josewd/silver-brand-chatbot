@@ -21,22 +21,21 @@ const PersonalityScales = ({ options, selectedOptions, onScaleChange }) => {
             <div key={index} className="scale-item">
               <div className="scale-labels">
                 <span className="scale-label-left">{option.min_label}</span>
-                <span className="scale-label-center">{option.label}</span>
+                <div className="scale-control">
+                  {[1, 2, 3, 4, 5].map(rating => (
+                    <label key={rating} className="scale-radio">
+                      <input
+                        type="radio"
+                        name={option.value}
+                        value={rating}
+                        checked={currentValue === String(rating)}
+                        onChange={() => onScaleChange(option.value, rating)}
+                      />
+                      <span className="scale-number">{rating}</span>
+                    </label>
+                  ))}
+                </div>
                 <span className="scale-label-right">{option.max_label}</span>
-              </div>
-              <div className="scale-control">
-                {[1, 2, 3, 4, 5].map(rating => (
-                  <label key={rating} className="scale-radio">
-                    <input
-                      type="radio"
-                      name={option.value}
-                      value={rating}
-                      checked={currentValue === String(rating)}
-                      onChange={() => onScaleChange(option.value, rating)}
-                    />
-                    <span className="scale-number">{rating}</span>
-                  </label>
-                ))}
               </div>
             </div>
           )

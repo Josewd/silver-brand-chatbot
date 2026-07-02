@@ -17,11 +17,12 @@ O Storybook abrirá em: http://localhost:6006
 Visualize o preview do briefing em diferentes estados:
 - ✅ Preview Vazio - Como aparece no início
 - ✅ Preview Parcial - Com alguns dados preenchidos
-- ✅ Preview Completo - Todos campos preenchidos
+- ✅ Preview Completo - Todos campos preenchidos (incluindo escalas e tipos de logo)
 - ✅ Preview Enviado - Após finalização
 - ✅ Modo Fallback - Formulário manual (chat offline)
-- ✅ Fallback Pronto para Enviar - Com campos obrigatórios
+- ✅ Fallback Pronto para Enviar - Com escalas e tipos de logo
 - ✅ Preview com Escalas - Mostra escalas de personalidade preenchidas
+- ✅ Preview Completo com Escalas e Logo - Exemplo completo com todos os novos campos
 
 ### 2. **Chat Messages** (Componentes/Chat/Mensagens)
 Visualize os diferentes tipos de mensagens:
@@ -36,14 +37,17 @@ Visualize os checkboxes de seleção:
 - ✅ Um Item Selecionado
 - ✅ Vários Itens Selecionados
 - ✅ Nenhum Item (selecionado "não preciso")
+- ✅ Tipos de Logo Interativo - Selecione tipos de logo
+- ✅ Logo Minimalista - Exemplo com Minimalista e Moderno selecionados
 
 ### 4. **Escalas de Personalidade** (Componentes/Chat/Escalas de Personalidade)
-Visualize as escalas interativas de 1 a 5:
+Visualize as escalas interativas de 1 a 5 com design simplificado:
 - ✅ Escalas Interativas - Valores padrão (3)
-- ✅ Marca Sofisticada - Perfil premium
-- ✅ Marca Descontraída - Perfil casual
-- ✅ Marca Equilibrada - Perfil neutro
-- ✅ Marca Moderna e Popular - Perfil jovem
+- ✅ Marca Sofisticada - Perfil premium (valores 4-5)
+- ✅ Marca Descontraída - Perfil casual (valores 1-2)
+- ✅ Marca Equilibrada - Perfil neutro (valores 3)
+- ✅ Marca Moderna e Popular - Perfil jovem (valores 1-2)
+- 📝 Nota: Design simplificado com radio buttons quadrados 18x18px
 
 ### 5. **Progress Bar** (Componentes/Chat/ProgressBar)
 Visualize a barra de progresso em diferentes estágios:
