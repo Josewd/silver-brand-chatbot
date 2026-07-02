@@ -7,39 +7,30 @@ from app.config import get_settings
 logger = logging.getLogger(__name__)
 settings = get_settings()
 
-# Inicializar cliente IA globalmente (como no projeto pão de queijo)
-_ai_client = None
-_ai_provider = None
+# Clientes IA (inicializados sob demanda)
+_groq_client = None
+_hf_client = None
 
-def _init_ai_client():
-    """Inicializa o cliente de IA uma única vez."""
-    global _ai_client, _ai_provider
-    
-    if _ai_client is not None:
-        return _ai_client, _ai_provider
-    
-    if settings.ai_provider == "gemini" and settings.gemini_api_key:
-        import google.generativeai as genai
-        genai.configure(api_key=settings.gemini_api_key)
-        _ai_client = genai.GenerativeModel("gemini-2.0-flash")
-        _ai_provider = "gemini"
-        logger.info("Cliente Gemini inicializado")
-        return _ai_client, _ai_provider
-    
-    elif settings.ai_provider == "groq" and settings.groq_api_key:
+def _get_groq_client():
+    """Retorna cliente Groq (lazy initialization)."""
+    global _groq_client
+    if _groq_client is None and settings.groq_api_key:
         from groq import Groq
-        # Criar cliente simples, igual ao pão de queijo
-        _ai_client = Groq(api_key=settings.groq_api_key)
-        _ai_provider = "groq"
-        logger.info("Cliente Groq inicializado")
-        return _ai_client, _ai_provider
-    
-    raise ValueError("Nenhum provedor de IA configurado. Configure GEMINI_API_KEY ou GROQ_API_KEY")
+        _groq_client = Groq(api_key=settings.groq_api_key)
+        logger.info("✅ Cliente Groq inicializado")
+    return _groq_client
 
 
-def _get_ai_client():
-    """Retorna o cliente de IA configurado."""
-    return _init_ai_client()
+def _get_huggingface_client():
+    """Retorna cliente Hugging Face (lazy initialization)."""
+    global _hf_client
+    if _hf_client is None:
+        from huggingface_hub import InferenceClient
+        # Hugging Face funciona sem API key, mas com key tem rate limits maiores
+        token = settings.huggingface_api_key if settings.huggingface_api_key else None
+        _hf_client = InferenceClient(token=token)
+        logger.info("✅ Cliente Hugging Face inicializado")
+    return _hf_client
 
 
 def _build_system_prompt(session_data: dict, current_section: str) -> str:
@@ -203,14 +194,13 @@ async def generate_response(
 ) -> tuple[str, Optional[dict], Optional[list[dict]]]:
     """
     Gera resposta da IA como designer consultor.
+    Sistema híbrido com fallback automático: Groq -> Hugging Face
     
     Returns:
         (resposta_texto, dados_extraidos_ou_None, opcoes_interativas_ou_None)
     """
     try:
-        client, provider = _get_ai_client()
         current_section = session_data.get("current_section", "intro")
-        
         system_prompt = _build_system_prompt(session_data, current_section)
         
         # Construir mensagens
@@ -218,11 +208,45 @@ async def generate_response(
         messages.extend(conversation_history)
         messages.append({"role": "user", "content": user_message})
         
-        # Gerar resposta
-        if provider == "gemini":
-            raw_response = await _generate_gemini(client, messages)
-        else:  # groq
-            raw_response = await _generate_groq(client, messages)
+        # Tentar providers em ordem (Groq primeiro, depois Hugging Face)
+        raw_response = None
+        provider_used = None
+        last_error = None
+        
+        # 1. Tentar Groq primeiro (mais rápido)
+        try:
+            groq_client = _get_groq_client()
+            if groq_client:
+                logger.info("🚀 Tentando Groq...")
+                raw_response = await _generate_groq(groq_client, messages)
+                provider_used = "groq"
+                logger.info("✅ Resposta gerada com Groq")
+        except Exception as e:
+            last_error = e
+            logger.warning(f"⚠️ Groq falhou: {e}")
+        
+        # 2. Se Groq falhar, tentar Hugging Face
+        if raw_response is None:
+            try:
+                hf_client = _get_huggingface_client()
+                if hf_client:
+                    logger.info("🚀 Tentando Hugging Face (fallback)...")
+                    raw_response = await _generate_huggingface(hf_client, messages)
+                    provider_used = "huggingface"
+                    logger.info("✅ Resposta gerada com Hugging Face")
+            except Exception as e:
+                last_error = e
+                logger.warning(f"⚠️ Hugging Face falhou: {e}")
+        
+        # Se todos falharam, retornar erro
+        if raw_response is None:
+            logger.error(f"❌ Todos os providers falharam. Último erro: {last_error}")
+            return (
+                "Desculpe, estou com dificuldades técnicas no momento. 😅 "
+                "Por favor, tente novamente em alguns segundos ou envie email para brandhousesilver@gmail.com",
+                None,
+                None
+            )
         
         # Extrair dados estruturados da resposta (se houver)
         extracted_data = _extract_structured_data(raw_response, current_section)
@@ -239,7 +263,7 @@ async def generate_response(
         return response, extracted_data, interactive_options
         
     except Exception as e:
-        logger.error(f"Erro ao gerar resposta IA: {e}")
+        logger.error(f"Erro crítico ao gerar resposta IA: {e}")
         return (
             "Desculpe, tive um problema técnico. 😅 "
             "Pode repetir sua mensagem ou enviar email para brandhousesilver@gmail.com",
@@ -248,44 +272,51 @@ async def generate_response(
         )
 
 
-async def _generate_gemini(model, messages: list[dict]) -> str:
-    """Gera resposta usando Gemini."""
-    # Gemini não usa role "system", então concatenamos no primeiro user message
-    system_msg = next((m["content"] for m in messages if m["role"] == "system"), "")
-    user_messages = [m for m in messages if m["role"] == "user"]
-    assistant_messages = [m for m in messages if m["role"] == "assistant"]
-    
-    # Reconstruir conversa no formato Gemini
-    chat_messages = []
-    for i, user_msg in enumerate(user_messages):
-        if i == 0 and system_msg:
-            # Primeira mensagem inclui contexto do sistema
-            chat_messages.append({
-                "role": "user",
-                "parts": [f"{system_msg}\n\nMensagem do cliente: {user_msg['content']}"]
-            })
-        else:
-            chat_messages.append({"role": "user", "parts": [user_msg["content"]]})
-        
-        if i < len(assistant_messages):
-            chat_messages.append({
-                "role": "model",
-                "parts": [assistant_messages[i]["content"]]
-            })
-    
-    chat = model.start_chat(history=chat_messages[:-1])
-    response = chat.send_message(chat_messages[-1]["parts"][0])
-    return response.text
-
-
 async def _generate_groq(client, messages: list[dict]) -> str:
-    """Gera resposta usando Groq."""
+    """Gera resposta usando Groq (Llama 3.3 70B)."""
     response = client.chat.completions.create(
         model="llama-3.3-70b-versatile",
         messages=messages,
         temperature=0.7,
         max_tokens=1024,
     )
+    return response.choices[0].message.content
+
+
+async def _generate_huggingface(client, messages: list[dict]) -> str:
+    """
+    Gera resposta usando Hugging Face Inference API.
+    Usa modelo Llama 3.1 8B (gratuito, boa qualidade).
+    """
+    # Hugging Face Inference API usa formato de chat
+    # Converter system prompt para primeira mensagem do user
+    formatted_messages = []
+    system_content = ""
+    
+    for msg in messages:
+        if msg["role"] == "system":
+            system_content = msg["content"]
+        elif msg["role"] == "user":
+            if system_content and len(formatted_messages) == 0:
+                # Primeira mensagem: incluir contexto do sistema
+                formatted_messages.append({
+                    "role": "user",
+                    "content": f"{system_content}\n\nMensagem do cliente: {msg['content']}"
+                })
+                system_content = ""  # Já incluído
+            else:
+                formatted_messages.append(msg)
+        elif msg["role"] == "assistant":
+            formatted_messages.append(msg)
+    
+    # Usar modelo Llama 3.1 8B (gratuito e bom para conversação)
+    response = client.chat_completion(
+        messages=formatted_messages,
+        model="meta-llama/Llama-3.1-8B-Instruct",
+        max_tokens=1024,
+        temperature=0.7,
+    )
+    
     return response.choices[0].message.content
 
 

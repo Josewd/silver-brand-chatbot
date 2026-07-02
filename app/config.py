@@ -5,10 +5,9 @@ from functools import lru_cache
 class Settings(BaseSettings):
     """Configurações da aplicação."""
     
-    # IA
-    gemini_api_key: str = ""
+    # IA (Sistema híbrido: Groq -> Hugging Face)
     groq_api_key: str = ""
-    ai_provider: str = "gemini"  # "gemini" ou "groq"
+    huggingface_api_key: str = ""  # Opcional, melhora rate limits
     
     # Database
     database_url: str = "sqlite:///./database/sessions.db"

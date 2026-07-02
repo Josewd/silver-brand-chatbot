@@ -39,12 +39,13 @@ def test_imports():
         settings = get_settings()
         print("  ✅ Configurações carregadas")
         
-        if settings.gemini_api_key:
-            print(f"  ✅ GEMINI_API_KEY configurada ({settings.gemini_api_key[:10]}...)")
-        elif settings.groq_api_key:
+        if settings.groq_api_key:
             print(f"  ✅ GROQ_API_KEY configurada ({settings.groq_api_key[:10]}...)")
         else:
-            print("  ⚠️  Nenhuma API key configurada (configurar .env)")
+            print("  ⚠️  GROQ_API_KEY não configurada (configurar .env)")
+        
+        if settings.huggingface_api_key:
+            print(f"  ✅ HUGGINGFACE_API_KEY configurada (opcional)")
             
     except Exception as e:
         print(f"  ❌ Erro ao carregar configurações: {e}")
@@ -124,18 +125,43 @@ def test_pdf_generation():
 
 
 def test_ai_provider():
-    """Testa conexão com provedor de IA."""
+    """Testa conexão com provedor de IA (sistema híbrido)."""
     print("\n🤖 Testando provedor de IA...")
     
     try:
-        from app.ai import _get_ai_client
-        client, provider = _get_ai_client()
-        print(f"  ✅ Provedor configurado: {provider}")
+        from app.config import get_settings
+        settings = get_settings()
+        
+        has_groq = bool(settings.groq_api_key)
+        has_hf = bool(settings.huggingface_api_key)
+        
+        if has_groq:
+            print(f"  ✅ GROQ_API_KEY configurada ({settings.groq_api_key[:10]}...)")
+        else:
+            print("  ⚠️  GROQ_API_KEY não configurada")
+        
+        if has_hf:
+            print(f"  ✅ HUGGINGFACE_API_KEY configurada (opcional)")
+        else:
+            print("  ℹ️  HUGGINGFACE_API_KEY não configurada (funciona sem, mas com limites)")
+        
+        if not has_groq:
+            print("  ⚠️  Configure pelo menos GROQ_API_KEY no .env")
+            return False
+        
+        # Testar importação dos clientes
+        from app.ai import _get_groq_client, _get_huggingface_client
+        
+        groq_client = _get_groq_client()
+        if groq_client:
+            print("  ✅ Cliente Groq OK (primário)")
+        
+        hf_client = _get_huggingface_client()
+        if hf_client:
+            print("  ✅ Cliente Hugging Face OK (fallback)")
+        
         return True
-    except ValueError as e:
-        print(f"  ⚠️  {e}")
-        print("  ℹ️  Configure GEMINI_API_KEY ou GROQ_API_KEY no .env")
-        return False
+        
     except Exception as e:
         print(f"  ❌ Erro ao conectar com IA: {e}")
         return False
