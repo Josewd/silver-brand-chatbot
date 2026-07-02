@@ -122,14 +122,13 @@ function ChatPage() {
       const botMessage = {
         role: 'assistant',
         content: data.reply,
-        timestamp: new Date().toISOString(),
-        options: data.options
+        timestamp: new Date().toISOString()
       }
       setMessages(prev => [...prev, botMessage])
 
-      // Se houver opções, armazenar para mostrar
-      if (data.options && data.options.length > 0) {
-        setCurrentOptions(data.options)
+      // Se houver opções interativas (checkboxes), armazenar para mostrar
+      if (data.interactive_options && data.interactive_options.length > 0) {
+        setCurrentOptions(data.interactive_options)
         setSelectedOptions([])
       } else {
         setCurrentOptions(null)
@@ -145,7 +144,7 @@ function ChatPage() {
         })
         
         // Recarregar sessão completa para pegar briefing_data atualizado
-        loadSession()
+        await loadSession()
       }
 
     } catch (err) {
@@ -219,9 +218,9 @@ function ChatPage() {
       }
       setMessages(prev => [...prev, botMessage])
 
-      // Se houver novas opções, armazenar
-      if (data.options && data.options.length > 0) {
-        setCurrentOptions(data.options)
+      // Se houver novas opções interativas, armazenar
+      if (data.interactive_options && data.interactive_options.length > 0) {
+        setCurrentOptions(data.interactive_options)
         setSelectedOptions([])
       }
 
@@ -235,7 +234,7 @@ function ChatPage() {
         })
         
         // Recarregar sessão completa para pegar briefing_data atualizado
-        loadSession()
+        await loadSession()
       }
 
     } catch (err) {
