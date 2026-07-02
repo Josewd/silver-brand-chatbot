@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { useParams } from 'react-router-dom'
+import BriefingPreview from '../components/BriefingPreview'
 import './ChatPage.css'
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
@@ -56,6 +57,17 @@ function ChatPage() {
         throw new Error('Sessão não encontrada')
       }
       const data = await response.json()
+      
+      // Garantir que briefing_data sempre exista
+      if (!data.briefing_data) {
+        data.briefing_data = {}
+      }
+      
+      // Adicionar informações iniciais da sessão ao briefing_data se ainda não existirem
+      if (data.client_name && !data.briefing_data.client_name) {
+        data.briefing_data.client_name = data.client_name
+      }
+      
       setSessionData(data)
     } catch (err) {
       setError('Erro ao carregar sessão: ' + err.message)
@@ -122,7 +134,7 @@ function ChatPage() {
         setCurrentOptions(null)
       }
 
-      // Atualizar progresso
+      // Atualizar progresso e recarregar dados do briefing
       if (sessionData) {
         setSessionData({
           ...sessionData,
@@ -130,6 +142,9 @@ function ChatPage() {
           current_section: data.current_section,
           is_completed: data.is_completed
         })
+        
+        // Recarregar sessão completa para pegar briefing_data atualizado
+        loadSession()
       }
 
     } catch (err) {
@@ -209,7 +224,7 @@ function ChatPage() {
         setSelectedOptions([])
       }
 
-      // Atualizar progresso
+      // Atualizar progresso e recarregar dados do briefing
       if (sessionData) {
         setSessionData({
           ...sessionData,
@@ -217,6 +232,9 @@ function ChatPage() {
           current_section: data.current_section,
           is_completed: data.is_completed
         })
+        
+        // Recarregar sessão completa para pegar briefing_data atualizado
+        loadSession()
       }
 
     } catch (err) {
@@ -264,143 +282,154 @@ function ChatPage() {
   }
 
   return (
-    <div className="chat-page">
-      <header className="chat-header">
-        <div className="header-content">
-          <img src="/logo-horizontal.png" alt="Silver Brand Design" className="header-logo" />
-          <p className="client-name">{sessionData.client_name}</p>
-        </div>
-        <div className="progress-container">
-          <span className="progress-text">
-            {sessionData.progress}% concluído
-          </span>
-          <div className="progress-bar">
-            <div 
-              className="progress-fill" 
-              style={{ width: `${sessionData.progress}%` }}
-            />
-            {/* Checkpoints na barra */}
-            {BRIEFING_SECTIONS.filter(section => section.id !== 'intro').map((section, index) => {
-              const position = ((index + 1) / (BRIEFING_SECTIONS.length - 1)) * 100
-              const sectionIndex = BRIEFING_SECTIONS.findIndex(s => s.id === sessionData.current_section)
-              const checkpointIndex = BRIEFING_SECTIONS.findIndex(s => s.id === section.id)
-              const isCompleted = checkpointIndex < sectionIndex
-              const isCurrent = section.id === sessionData.current_section
-              
-              return (
-                <div
-                  key={section.id}
-                  className={`checkpoint ${isCompleted ? 'completed' : ''} ${isCurrent ? 'current' : ''}`}
-                  style={{ left: `${position}%` }}
-                  data-tooltip={section.name}
-                >
-                  <div className="checkpoint-dot"></div>
-                </div>
-              )
-            })}
-          </div>
-        </div>
-      </header>
-
-      <div className="messages-container">
-        {messages.length === 0 && (
-          <div className="welcome-message">
-            <h2>Bem-vindo ao briefing interativo! 👋</h2>
-            <p>Vou te ajudar a estruturar a identidade visual da sua marca.</p>
-            <p>Vamos começar?</p>
-          </div>
-        )}
-        
-        {messages.map((msg, index) => (
-          <div 
-            key={index} 
-            className={`message ${msg.role === 'user' ? 'user-message' : 'bot-message'}`}
-          >
-            <div className="message-content">
-              {msg.content}
-            </div>
-            <span className="message-time">
-              {new Date(msg.timestamp).toLocaleTimeString('pt-BR', { 
-                hour: '2-digit', 
-                minute: '2-digit' 
-              })}
-            </span>
-          </div>
-        ))}
-        
-        {loading && (
-          <div className="message bot-message">
-            <div className="message-content typing">
-              <span></span>
-              <span></span>
-              <span></span>
-            </div>
-          </div>
-        )}
-        
-        <div ref={messagesEndRef} />
+    <div className="chat-page-container">
+      {/* Preview do Briefing (apenas desktop) */}
+      <div className="briefing-preview-panel">
+        <BriefingPreview 
+          sessionData={sessionData} 
+          briefingData={sessionData.briefing_data || {}} 
+        />
       </div>
 
-      {sessionData.is_completed ? (
-        <div className="completion-panel">
-          <h3>🎉 Briefing Completo!</h3>
-          <p>Obrigado por compartilhar essas informações. Agora você pode baixar o PDF com tudo que conversamos.</p>
-          <div className="completion-actions">
-            <button onClick={generatePDF} className="btn-secondary">
-              Gerar PDF
-            </button>
-            <button onClick={downloadPDF} className="btn-primary">
-              Baixar PDF
-            </button>
+      {/* Chat */}
+      <div className="chat-page">
+        <header className="chat-header">
+          <div className="header-content">
+            <img src="/logo-horizontal.png" alt="Silver Brand Design" className="header-logo" />
+            <p className="client-name">{sessionData.client_name}</p>
           </div>
-        </div>
-      ) : (
-        <>
-          {currentOptions && currentOptions.length > 0 && (
-            <div className="options-panel">
-              <p className="options-title">Selecione os itens que você precisa:</p>
-              <div className="options-grid">
-                {currentOptions.map((option, index) => (
-                  <label key={index} className="option-checkbox">
-                    <input
-                      type="checkbox"
-                      checked={selectedOptions.includes(option.value)}
-                      onChange={() => handleCheckboxToggle(option.value)}
-                    />
-                    <span>{option.label}</span>
-                  </label>
-                ))}
-              </div>
-              <button 
-                onClick={submitOptions}
-                className="btn-submit-options"
-                disabled={selectedOptions.length === 0}
-              >
-                Enviar Seleção
-              </button>
+          <div className="progress-container">
+            <span className="progress-text">
+              {sessionData.progress}% concluído
+            </span>
+            <div className="progress-bar">
+              <div 
+                className="progress-fill" 
+                style={{ width: `${sessionData.progress}%` }}
+              />
+              {/* Checkpoints na barra */}
+              {BRIEFING_SECTIONS.filter(section => section.id !== 'intro').map((section, index) => {
+                const position = ((index + 1) / (BRIEFING_SECTIONS.length - 1)) * 100
+                const sectionIndex = BRIEFING_SECTIONS.findIndex(s => s.id === sessionData.current_section)
+                const checkpointIndex = BRIEFING_SECTIONS.findIndex(s => s.id === section.id)
+                const isCompleted = checkpointIndex < sectionIndex
+                const isCurrent = section.id === sessionData.current_section
+                
+                return (
+                  <div
+                    key={section.id}
+                    className={`checkpoint ${isCompleted ? 'completed' : ''} ${isCurrent ? 'current' : ''}`}
+                    style={{ left: `${position}%` }}
+                    data-tooltip={section.name}
+                  >
+                    <div className="checkpoint-dot"></div>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        </header>
+
+        <div className="messages-container">
+          {messages.length === 0 && (
+            <div className="welcome-message">
+              <h2>Bem-vindo ao briefing interativo! 👋</h2>
+              <p>Vou te ajudar a estruturar a identidade visual da sua marca.</p>
+              <p>Vamos começar?</p>
             </div>
           )}
           
-          <form onSubmit={sendMessage} className="input-container">
-            <input
-              ref={inputRef}
-              type="text"
-              value={inputValue}
-              onChange={(e) => setInputValue(e.target.value)}
-              placeholder="Digite sua mensagem..."
-              className="message-input"
-              disabled={loading || currentOptions}
-            />
-            <button 
-              type="submit" 
-              className="send-button"
-              disabled={loading || !inputValue.trim() || currentOptions}
+          {messages.map((msg, index) => (
+            <div 
+              key={index} 
+              className={`message ${msg.role === 'user' ? 'user-message' : 'bot-message'}`}
             >
-              Enviar
-            </button>
-          </form>
-        </>
-      )}
+              <div className="message-content">
+                {msg.content}
+              </div>
+              <span className="message-time">
+                {new Date(msg.timestamp).toLocaleTimeString('pt-BR', { 
+                  hour: '2-digit', 
+                  minute: '2-digit' 
+                })}
+              </span>
+            </div>
+          ))}
+          
+          {loading && (
+            <div className="message bot-message">
+              <div className="message-content typing">
+                <span></span>
+                <span></span>
+                <span></span>
+              </div>
+            </div>
+          )}
+          
+          <div ref={messagesEndRef} />
+        </div>
+
+        {sessionData.is_completed ? (
+          <div className="completion-panel">
+            <h3>🎉 Briefing Completo!</h3>
+            <p>Obrigado por compartilhar essas informações. Agora você pode baixar o PDF com tudo que conversamos.</p>
+            <div className="completion-actions">
+              <button onClick={generatePDF} className="btn-secondary">
+                Gerar PDF
+              </button>
+              <button onClick={downloadPDF} className="btn-primary">
+                Baixar PDF
+              </button>
+            </div>
+          </div>
+        ) : (
+          <>
+            {currentOptions && currentOptions.length > 0 && (
+              <div className="options-panel">
+                <p className="options-title">Selecione os itens que você precisa:</p>
+                <div className="options-grid">
+                  {currentOptions.map((option, index) => (
+                    <label key={index} className="option-checkbox">
+                      <input
+                        type="checkbox"
+                        checked={selectedOptions.includes(option.value)}
+                        onChange={() => handleCheckboxToggle(option.value)}
+                      />
+                      <span>{option.label}</span>
+                    </label>
+                  ))}
+                </div>
+                <button 
+                  onClick={submitOptions}
+                  className="btn-submit-options"
+                  disabled={selectedOptions.length === 0}
+                >
+                  Enviar Seleção
+                </button>
+              </div>
+            )}
+            
+            <form onSubmit={sendMessage} className="input-container">
+              <input
+                ref={inputRef}
+                type="text"
+                value={inputValue}
+                onChange={(e) => setInputValue(e.target.value)}
+                placeholder="Digite sua mensagem..."
+                className="message-input"
+                disabled={loading || currentOptions}
+              />
+              <button 
+                type="submit" 
+                className="send-button"
+                disabled={loading || !inputValue.trim() || currentOptions}
+              >
+                Enviar
+              </button>
+            </form>
+          </>
+        )}
+      </div>
     </div>
   )
 }

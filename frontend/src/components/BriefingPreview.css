@@ -1,0 +1,136 @@
+.briefing-preview {
+  height: 100%;
+  overflow-y: auto;
+  background: white;
+  padding: 40px;
+  font-family: 'Helvetica', Arial, sans-serif;
+  box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.05);
+}
+
+.preview-header {
+  text-align: center;
+  margin-bottom: 40px;
+  padding-bottom: 30px;
+  border-bottom: 2px solid #333;
+}
+
+.preview-logo {
+  height: 60px;
+  margin-bottom: 20px;
+}
+
+.preview-title {
+  font-size: 20px;
+  font-weight: bold;
+  color: #1a1a1a;
+  margin: 15px 0;
+  letter-spacing: 1px;
+}
+
+.preview-client {
+  font-size: 14px;
+  color: #666;
+  margin-top: 15px;
+}
+
+.preview-content {
+  max-width: 100%;
+}
+
+.preview-section {
+  margin-bottom: 35px;
+  page-break-inside: avoid;
+}
+
+.deliverables-section {
+  background: #f8f9fa;
+  padding: 20px;
+  border-radius: 8px;
+  border-left: 4px solid #667eea;
+}
+
+.section-title {
+  font-size: 14px;
+  font-weight: bold;
+  color: #333;
+  margin-bottom: 15px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #ddd;
+  letter-spacing: 0.5px;
+}
+
+.section-content {
+  color: #1a1a1a;
+}
+
+.preview-field {
+  margin-bottom: 15px;
+}
+
+.field-label {
+  font-size: 11px;
+  font-weight: bold;
+  color: #666;
+  margin-bottom: 4px;
+}
+
+.field-value {
+  font-size: 12px;
+  color: #1a1a1a;
+  line-height: 1.6;
+  white-space: pre-wrap;
+}
+
+.field-value ul {
+  margin: 8px 0;
+  padding-left: 20px;
+}
+
+.field-value li {
+  margin: 4px 0;
+  color: #333;
+}
+
+.deliverables-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.deliverables-list li {
+  padding: 8px 0;
+  color: #333;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.preview-footer {
+  margin-top: 50px;
+  padding-top: 20px;
+  border-top: 1px solid #ddd;
+  text-align: center;
+  color: #999;
+  font-size: 11px;
+}
+
+.preview-footer p {
+  margin: 5px 0;
+}
+
+/* Scrollbar customizada */
+.briefing-preview::-webkit-scrollbar {
+  width: 8px;
+}
+
+.briefing-preview::-webkit-scrollbar-track {
+  background: #f1f1f1;
+}
+
+.briefing-preview::-webkit-scrollbar-thumb {
+  background: #ccc;
+  border-radius: 4px;
+}
+
+.briefing-preview::-webkit-scrollbar-thumb:hover {
+  background: #999;
+}
