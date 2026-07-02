@@ -18,8 +18,8 @@ function LoginPage() {
     try {
       // Hash da senha antes de enviar (SHA-256)
       const encoder = new TextEncoder()
-      const data = encoder.encode(password)
-      const hashBuffer = await crypto.subtle.digest('SHA-256', data)
+      const passwordData = encoder.encode(password)
+      const hashBuffer = await crypto.subtle.digest('SHA-256', passwordData)
       const hashArray = Array.from(new Uint8Array(hashBuffer))
       const hashedPassword = hashArray.map(b => b.toString(16).padStart(2, '0')).join('')
       
