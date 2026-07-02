@@ -129,8 +129,8 @@ function ChatPage() {
       setMessages(prev => [...prev, botMessage])
 
       // Se houver opções interativas (checkboxes), armazenar para mostrar
-      if (data.interactive_options && data.interactive_options.length > 0) {
-        setCurrentOptions(data.interactive_options)
+      if (data.options && data.options.length > 0) {
+        setCurrentOptions(data.options)
         setSelectedOptions([])
       } else {
         setCurrentOptions(null)
@@ -229,8 +229,8 @@ function ChatPage() {
       setMessages(prev => [...prev, botMessage])
 
       // Se houver novas opções interativas, armazenar
-      if (data.interactive_options && data.interactive_options.length > 0) {
-        setCurrentOptions(data.interactive_options)
+      if (data.options && data.options.length > 0) {
+        setCurrentOptions(data.options)
         setSelectedOptions([])
       }
 

@@ -64,6 +64,8 @@ Contexto inicial: {initial_context}
 - **CRÍTICO: Faça APENAS UMA pergunta por vez**
 - **CRÍTICO: NÃO confirme a resposta anterior em toda mensagem** (só se houver dúvida REAL)
 - **CRÍTICO: NÃO liste múltiplas perguntas seguidas**
+- **CRÍTICO: NUNCA pergunte "Você já terminou de fornecer as informações?" - Esta pergunta é PROIBIDA**
+- **CRÍTICO: NUNCA invente exemplos de logos, cores, ou identidade visual - Você NÃO é designer**
 - Exemplo CORRETO: "Que cores você gosta para sua marca?"
 - Exemplo ERRADO: "Que cores você gosta? E quais não quer? E que estilo de logo prefere?"
 - **NÃO pergunte informações que já estão em "Dados já coletados" acima**
@@ -86,9 +88,20 @@ Contexto inicial: {initial_context}
 - Depois: "Quando precisa pronto?"
 
 ### Seção 3 (Lista de Entrega):
-- Liste o que está incluído (logo, paleta, manual, etc)
-- Depois pergunte APENAS: "Precisa de algo mais além disso?"
-- NUNCA pergunte múltiplas coisas
+- **FORMATO OBRIGATÓRIO DA MENSAGEM** (copie exatamente):
+  "O projeto inclui:
+  ✓ Logotipo principal (versões horizontal e vertical)
+  ✓ Variações de cor (colorida, P&B, monocromática)
+  ✓ Manual de identidade visual (PDF)
+  ✓ Arquivos editáveis (.AI, .EPS, .SVG)
+  ✓ Arquivos para web (.PNG transparente)
+  ✓ Paleta de cores (códigos RGB, CMYK, HEX)
+  ✓ Tipografia recomendada
+  
+  Além desses itens inclusos, você pode selecionar extras abaixo ou me dizer o que deseja se não estiver listado."
+- **CRÍTICO**: Use EXATAMENTE este formato - não mude as palavras
+- **CRÍTICO**: NÃO invente ou mencione itens extras como se estivessem inclusos
+- **CRÍTICO**: NÃO pergunte nada além desta mensagem na seção de entrega
 
 ### Seção 4 (Perfil da Empresa):
 - UMA pergunta por vez: "Me conte sobre sua empresa"
@@ -114,7 +127,11 @@ Contexto inicial: {initial_context}
 
 ### Seção 8 (Final):
 - "Tem mais algo importante a compartilhar?"
-- Quando terminar: informar sobre o botão PREVIEW
+- **QUANDO O CLIENTE RESPONDER A ÚLTIMA PERGUNTA DA SEÇÃO 8**:
+  - **NÃO pergunte** "Você já terminou de fornecer as informações necessárias?"
+  - **NÃO invente** descrições de identidade visual ou apresente exemplos
+  - **DIGA APENAS**: "Pronto! Agora você pode revisar todas as informações no PREVIEW do briefing. Se estiver tudo correto, clique em ENVIAR. Se quiser alterar algo, me avise!"
+  - **CRÍTICO**: Use exatamente esta mensagem quando finalizar
 
 ## Regras críticas - LEIA COM ATENÇÃO:
 1. **UMA PERGUNTA POR VEZ** - Nunca faça múltiplas perguntas na mesma mensagem
@@ -177,18 +194,67 @@ DATA_COLLECTED:{{"preferred_colors": "preto e dourado"}}
 **CAMPOS POR SEÇÃO:**
 - contato: client_name, client_email, client_phone, city_state, website
 - basicas: project_type, deadline
-- entrega: extra_items
+- entrega: deliverables_confirmed (sempre "sim" quando cliente responder sobre itens), extra_items (lista de itens adicionais ou "nenhum")
 - perfil: company_description, products_services, mission_vision_values, diferencial
 - posicionamento: positioning, keywords, differentiation
 - concorrentes: competitors, references, what_you_like
 - visuais: preferred_colors, excluded_colors, logo_types, font_preferences
 - final: additional_info
 
+**EXEMPLOS ESPECÍFICOS POR SEÇÃO:**
+
+Seção ENTREGA - Quando listar itens inclusos:
+Você responde EXATAMENTE:
+```
+O projeto inclui:
+✓ Logotipo principal (versões horizontal e vertical)
+✓ Variações de cor (colorida, P&B, monocromática)
+✓ Manual de identidade visual (PDF)
+✓ Arquivos editáveis (.AI, .EPS, .SVG)
+✓ Arquivos para web (.PNG transparente)
+✓ Paleta de cores (códigos RGB, CMYK, HEX)
+✓ Tipografia recomendada
+
+Além desses itens inclusos, você pode selecionar extras abaixo ou me dizer o que deseja se não estiver listado.
+```
+(Neste momento, os checkboxes aparecerão automaticamente - NÃO extraia dados ainda)
+
+Seção ENTREGA - Cliente seleciona "Não preciso de itens extras":
+Você responde:
+```
+Entendi. Vamos falar sobre sua empresa?
+
+
+
+DATA_COLLECTED:{"deliverables_confirmed": "sim", "extra_items": "nenhum"}
+```
+
+Seção ENTREGA - Cliente seleciona "Cartão de Visitas":
+Você responde:
+```
+Anotado! Vamos falar sobre sua empresa?
+
+
+
+DATA_COLLECTED:{"deliverables_confirmed": "sim", "extra_items": "Cartão de Visitas"}
+```
+
 **CRÍTICO:** 
 - SEMPRE extraia ALGO quando cliente responder
 - Use três quebras de linha antes de DATA_COLLECTED
 - Mantenha formato JSON válido
 - Se cliente der múltiplas informações, extraia todas
+- **IMPORTANTE**: Quando estiver na seção "final" e o cliente responder a última pergunta, extraia os dados E sugira revisar o briefing (não pergunte se já terminou)
+
+## FINALIZAÇÃO DO BRIEFING:
+Quando todas as seções estiverem completas (especialmente a seção "final"):
+1. **NÃO pergunte**: "Você já terminou de fornecer as informações?" - NUNCA faça essa pergunta
+2. **NÃO invente**: Exemplos de identidade visual, logos, cores, descrições - NUNCA crie conteúdo fictício
+3. **NÃO liste**: Itens que não foram solicitados pelo cliente - NUNCA mencione deliverables não solicitados
+4. **NÃO apresente**: Manuais de marca, artes, templates ou exemplos - Você NÃO é designer
+5. **FAÇA APENAS**: Diga ao cliente para revisar o PREVIEW do briefing e enviar se estiver correto
+6. **MENSAGEM EXATA**: "Pronto! Agora você pode revisar todas as informações no PREVIEW do briefing. Se estiver tudo correto, clique em ENVIAR. Se quiser alterar algo, me avise!"
+7. **SEMPRE EXTRAIA**: Os dados da última resposta usando DATA_COLLECTED antes de finalizar
 
 ## Data/Hora atual: {datetime.now().strftime("%d/%m/%Y %H:%M")}
 """
@@ -302,6 +368,12 @@ async def generate_response(
         
         # Detectar se deve mostrar opções interativas
         interactive_options = _detect_interactive_options(current_section, response)
+        
+        # LOG: Ver se detectou opções interativas
+        if interactive_options:
+            logger.info(f"✅ Opções interativas detectadas: {len(interactive_options)} opções")
+        else:
+            logger.info(f"ℹ️ Nenhuma opção interativa detectada para seção '{current_section}'")
         
         return response, extracted_data, interactive_options
         
@@ -467,11 +539,12 @@ def suggest_next_section(current_section: str, briefing_data: dict) -> str:
         "intro": lambda d: d.get("client_name"),  # Precisa do nome
         "contato": lambda d: d.get("client_email") or d.get("client_phone"),  # Email OU telefone
         "basicas": lambda d: d.get("project_type"),  # Tipo de projeto
-        "entrega": lambda d: True,  # Sempre pode avançar (lista padrão existe)
+        "entrega": lambda d: d.get("deliverables_confirmed"),  # Confirmou itens de entrega
         "perfil": lambda d: d.get("company_description"),  # Descrição da empresa
-        "posicionamento": lambda d: d.get("positioning"),  # Como quer ser percebida
+        "posicionamento": lambda d: d.get("positioning") or d.get("keywords"),  # Posicionamento OU palavras-chave
         "concorrentes": lambda d: d.get("competitors") or d.get("references"),  # Concorrentes OU referências
         "visuais": lambda d: d.get("preferred_colors"),  # Cores preferidas
+        "final": lambda d: True,  # Sempre pode avançar da final
     }
     
     try:
@@ -517,14 +590,15 @@ def calculate_progress(briefing_data: dict) -> int:
     basicas_filled = sum(1 for f in basicas_fields if briefing_data.get(f))
     progress += (basicas_filled / len(basicas_fields)) * section_weights["basicas"]
     
-    # Seção Entrega (10%)
-    if briefing_data.get("deliverables") or briefing_data.get("extra_items"):
+    # Seção Entrega (10%) - Considera apenas que a seção foi visitada
+    if briefing_data.get("deliverables_confirmed") or briefing_data.get("extra_items") is not None:
         progress += section_weights["entrega"]
     
     # Seção Perfil (20%)
     perfil_fields = ["company_description", "products_services", "mission_vision_values", "diferencial"]
     perfil_filled = sum(1 for f in perfil_fields if briefing_data.get(f))
-    progress += (perfil_filled / len(perfil_fields)) * section_weights["perfil"]
+    if perfil_filled > 0:  # Pelo menos um campo preenchido
+        progress += (perfil_filled / len(perfil_fields)) * section_weights["perfil"]
     
     # Seção Posicionamento (20%)
     posicionamento_fields = ["positioning", "differentiation", "keywords"]
@@ -532,17 +606,20 @@ def calculate_progress(briefing_data: dict) -> int:
     if briefing_data.get("personality_scales"):
         posicionamento_filled += 1
         posicionamento_fields.append("personality_scales")
-    progress += (posicionamento_filled / len(posicionamento_fields)) * section_weights["posicionamento"]
+    if posicionamento_filled > 0:
+        progress += (posicionamento_filled / len(posicionamento_fields)) * section_weights["posicionamento"]
     
     # Seção Concorrentes (10%)
     concorrentes_fields = ["competitors", "references"]
     concorrentes_filled = sum(1 for f in concorrentes_fields if briefing_data.get(f))
-    progress += (concorrentes_filled / len(concorrentes_fields)) * section_weights["concorrentes"]
+    if concorrentes_filled > 0:
+        progress += (concorrentes_filled / len(concorrentes_fields)) * section_weights["concorrentes"]
     
     # Seção Visuais (15%)
     visuais_fields = ["preferred_colors", "excluded_colors", "logo_types"]
     visuais_filled = sum(1 for f in visuais_fields if briefing_data.get(f))
-    progress += (visuais_filled / len(visuais_fields)) * section_weights["visuais"]
+    if visuais_filled > 0:
+        progress += (visuais_filled / len(visuais_fields)) * section_weights["visuais"]
     
     return int(min(progress, 100))
 
@@ -557,11 +634,24 @@ def _detect_interactive_options(current_section: str, response: str) -> Optional
         return None
     
     # NÃO mostrar checkboxes se for uma resposta de confirmação/agradecimento
-    if any(word in response_lower for word in ['entendi', 'ótimo', 'perfeito', 'maravilha', 'obrigad']):
+    if any(word in response_lower for word in ['entendi', 'ótimo', 'perfeito', 'maravilha', 'obrigad', 'anotado']):
         return None
     
-    # Detectar lista de entrega - quando pergunta sobre itens extras
-    if any(phrase in response_lower for phrase in ['além desses', 'algo mais', 'precisa de algo', 'itens extras', 'algum item adicional']):
+    # Detectar quando lista os itens inclusos E menciona extras
+    # Deve conter referência aos itens base E mencionar extras/seleção
+    has_base_items = any(phrase in response_lower for phrase in [
+        'logotipo principal', 'variações de cor', 'manual de identidade', 
+        'arquivos editáveis', 'paleta de cores', 'tipografia recomendada',
+        'o projeto inclui', 'itens incluídos'
+    ])
+    
+    mentions_extras = any(phrase in response_lower for phrase in [
+        'além desses', 'itens extras', 'selecionar extras', 'extras abaixo',
+        'algo mais', 'não estiver listado', 'precisa de algo'
+    ])
+    
+    # Mostrar checkboxes apenas se listar itens base E mencionar extras
+    if has_base_items and mentions_extras:
         return [
             {
                 "type": "checkbox",
