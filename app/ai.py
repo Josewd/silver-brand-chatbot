@@ -146,7 +146,7 @@ Contexto inicial: {initial_context}
 ## IMPORTANTE - Formato de extração de dados:
 Quando o cliente fornecer informações importantes (nome, email, telefone, descrições, preferências, etc), você DEVE incluir no FINAL da sua resposta (após a mensagem ao cliente) um marcador especial para registrar os dados:
 
-DATA_COLLECTED:{"campo": "valor", "outro_campo": "outro_valor"}
+DATA_COLLECTED:{{"campo": "valor", "outro_campo": "outro_valor"}}
 
 Exemplo de campos por seção:
 - Seção contato: client_name, client_email, client_phone, city_state, website
