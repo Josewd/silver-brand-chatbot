@@ -5,9 +5,18 @@
 }
 
 .admin-header {
-  text-align: center;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
   color: #000000;
   padding: 40px 20px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.header-left {
+  text-align: center;
+  flex: 1;
 }
 
 .admin-logo {
@@ -23,6 +32,23 @@
 .admin-header p {
   font-size: 16px;
   opacity: 0.9;
+}
+
+.btn-logout {
+  background: #e74c3c;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 6px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.3s, transform 0.2s;
+  font-size: 14px;
+}
+
+.btn-logout:hover {
+  background: #c0392b;
+  transform: translateY(-2px);
 }
 
 .admin-content {

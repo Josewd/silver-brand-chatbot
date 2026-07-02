@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 from contextlib import asynccontextmanager
 import logging
 import uuid
+import secrets
 from typing import Optional
 
 from app.config import get_settings
@@ -83,6 +84,15 @@ class SessionStatusResponse(BaseModel):
     is_completed: bool
     created_at: str
     briefing_data: dict
+
+
+class AdminLoginRequest(BaseModel):
+    password: str
+
+
+class AdminLoginResponse(BaseModel):
+    token: str
+    message: str
 
 
 # === ENDPOINTS ===
@@ -347,6 +357,24 @@ async def download_pdf(
 
 
 # === ADMIN ENDPOINTS ===
+
+@app.post("/api/admin/login", response_model=AdminLoginResponse)
+async def admin_login(request: AdminLoginRequest):
+    """Login do admin com senha."""
+    # Pegar senha do ambiente (ou usar padrão para desenvolvimento)
+    admin_password = settings.admin_password if hasattr(settings, 'admin_password') else "silveradmin2024"
+    
+    if request.password != admin_password:
+        raise HTTPException(status_code=401, detail="Senha incorreta")
+    
+    # Gerar token simples (em produção, use JWT)
+    token = secrets.token_urlsafe(32)
+    
+    return AdminLoginResponse(
+        token=token,
+        message="Login realizado com sucesso"
+    )
+
 
 @app.get("/api/admin/sessions")
 async def list_all_sessions(db: Session = Depends(get_db)):

@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import './AdminPage.css'
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
 
 function AdminPage() {
+  const navigate = useNavigate()
   const [sessions, setSessions] = useState([])
   const [showCreateForm, setShowCreateForm] = useState(false)
   const [formData, setFormData] = useState({
@@ -18,6 +20,11 @@ function AdminPage() {
   useEffect(() => {
     loadSessions()
   }, [])
+
+  const handleLogout = () => {
+    localStorage.removeItem('admin_token')
+    navigate('/login')
+  }
 
   const loadSessions = async () => {
     try {
@@ -81,8 +88,13 @@ function AdminPage() {
   return (
     <div className="admin-page">
       <header className="admin-header">
-        <img src="/logo-vertical.png" alt="Silver Brand Design" className="admin-logo" />
-        <p>Painel de Controle — Sessões de Briefing</p>
+        <div className="header-left">
+          <img src="/logo-vertical.png" alt="Silver Brand Design" className="admin-logo" />
+          <p>Painel de Controle — Sessões de Briefing</p>
+        </div>
+        <button onClick={handleLogout} className="btn-logout">
+          Sair
+        </button>
       </header>
 
       <div className="admin-content">

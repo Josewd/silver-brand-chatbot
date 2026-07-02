@@ -23,6 +23,7 @@ class Settings(BaseSettings):
     
     # Security
     session_secret: str = "change-this-to-random-string"
+    admin_password: str = "silveradmin2024"  # Senha padrão do admin
     
     class Config:
         env_file = ".env"
