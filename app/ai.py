@@ -196,33 +196,47 @@ async def generate_response(
         messages.extend(conversation_history)
         messages.append({"role": "user", "content": user_message})
         
-        # Tentar providers em ordem (Groq primeiro, depois Hugging Face)
+        # Tentar providers em ordem com múltiplos fallbacks
         raw_response = None
         provider_used = None
         last_error = None
         
-        # 1. Tentar Groq primeiro (mais rápido)
-        try:
-            groq_client = _get_groq_client()
-            if groq_client:
-                logger.info("🚀 Tentando Groq...")
-                raw_response = await _generate_groq(groq_client, messages)
-                provider_used = "groq"
-                logger.info("✅ Resposta gerada com Groq")
-        except Exception as e:
-            last_error = e
-            logger.warning(f"⚠️ Groq falhou: {e}")
+        # Lista de modelos Groq para tentar (cada um tem rate limit separado)
+        groq_models = [
+            "llama-3.3-70b-versatile",  # Melhor qualidade
+            "llama-3.1-8b-instant",     # Mais rápido
+            "mixtral-8x7b-32768",       # Alternativa
+        ]
         
-        # 2. Se Groq falhar, tentar Hugging Face
+        # 1. Tentar modelos Groq em sequência
+        groq_client = _get_groq_client()
+        if groq_client:
+            for model in groq_models:
+                try:
+                    logger.info(f"🚀 Tentando Groq ({model})...")
+                    raw_response = await _generate_groq(groq_client, messages, model=model)
+                    provider_used = f"groq-{model}"
+                    logger.info(f"✅ Resposta gerada com Groq ({model})")
+                    break  # Sucesso, parar de tentar
+                except Exception as e:
+                    last_error = e
+                    # Verificar se é rate limit ou outro erro
+                    error_str = str(e)
+                    if "rate_limit" in error_str.lower():
+                        logger.warning(f"⚠️ Groq {model} rate limit atingido")
+                    else:
+                        logger.warning(f"⚠️ Groq {model} falhou: {e}")
+                        break  # Se não for rate limit, não tentar outros modelos
+        
+        # 2. Se todos modelos Groq falharem, retornar erro específico
         if raw_response is None:
-            try:
-                logger.info("🚀 Tentando Hugging Face (fallback)...")
-                raw_response = await _generate_huggingface(messages)
-                provider_used = "huggingface"
-                logger.info("✅ Resposta gerada com Hugging Face")
-            except Exception as e:
-                last_error = e
-                logger.warning(f"⚠️ Hugging Face falhou: {e}")
+            logger.error(f"❌ Todos os modelos Groq atingiram rate limit")
+            return (
+                "Desculpe, nosso sistema está com alto volume de uso no momento. 😅 "
+                "Por favor, tente novamente em alguns minutos ou envie email para brandhousesilver@gmail.com",
+                None,
+                None
+            )
         
         # Se todos falharam, retornar erro
         if raw_response is None:
@@ -258,10 +272,10 @@ async def generate_response(
         )
 
 
-async def _generate_groq(client, messages: list[dict]) -> str:
-    """Gera resposta usando Groq (Llama 3.3 70B)."""
+async def _generate_groq(client, messages: list[dict], model: str = "llama-3.3-70b-versatile") -> str:
+    """Gera resposta usando Groq com modelo especificado."""
     response = client.chat.completions.create(
-        model="llama-3.3-70b-versatile",
+        model=model,
         messages=messages,
         temperature=0.7,
         max_tokens=1024,
@@ -271,20 +285,25 @@ async def _generate_groq(client, messages: list[dict]) -> str:
 
 async def _generate_huggingface(messages: list[dict]) -> str:
     """
-    Gera resposta usando Hugging Face Inference API via REST.
-    Usa modelo Llama 3.2 1B (gratuito, mais rápido que 3B).
+    Fallback final: tenta HF primeiro, depois Replicate (mais estável).
     """
-    # Usar modelo menor e mais rápido
+    # Tentar HF primeiro
+    try:
+        return await _generate_hf_inference(messages)
+    except Exception as e:
+        logger.warning(f"⚠️ HF Inference falhou: {e}, tentando Replicate...")
+        # Fallback para Replicate (mais confiável)
+        return await _generate_replicate(messages)
+
+
+async def _generate_hf_inference(messages: list[dict]) -> str:
+    """Hugging Face Inference API."""
     url = "https://api-inference.huggingface.co/models/meta-llama/Llama-3.2-1B-Instruct"
     
-    # Headers
-    headers = {
-        "Content-Type": "application/json"
-    }
+    headers = {"Content-Type": "application/json"}
     if settings.huggingface_api_key:
         headers["Authorization"] = f"Bearer {settings.huggingface_api_key}"
     
-    # Converter mensagens para texto (API de inferência básica)
     prompt = ""
     for msg in messages:
         if msg["role"] == "system":
@@ -293,10 +312,8 @@ async def _generate_huggingface(messages: list[dict]) -> str:
             prompt += f"Cliente: {msg['content']}\n\n"
         elif msg["role"] == "assistant":
             prompt += f"Consultor: {msg['content']}\n\n"
-    
     prompt += "Consultor:"
     
-    # Payload simplificado
     payload = {
         "inputs": prompt,
         "parameters": {
@@ -308,19 +325,52 @@ async def _generate_huggingface(messages: list[dict]) -> str:
         }
     }
     
-    # Fazer requisição com timeout menor
     async with httpx.AsyncClient(timeout=30.0) as http_client:
         response = await http_client.post(url, json=payload, headers=headers)
         response.raise_for_status()
         data = response.json()
         
-        # Resposta pode vir em formatos diferentes
         if isinstance(data, list) and len(data) > 0:
             return data[0].get("generated_text", "").strip()
         elif isinstance(data, dict):
             return data.get("generated_text", data.get("text", "")).strip()
         else:
-            raise ValueError(f"Formato de resposta inesperado: {data}")
+            raise ValueError(f"Formato inesperado: {data}")
+
+
+async def _generate_replicate(messages: list[dict]) -> str:
+    """
+    Replicate API (gratuito com limites) - mais estável que HF.
+    Não precisa de API key para modelos públicos.
+    """
+    url = "https://api.replicate.com/v1/models/meta/llama-2-7b-chat/predictions"
+    
+    # Montar prompt
+    prompt = ""
+    for msg in messages:
+        if msg["role"] == "system":
+            prompt += f"<<SYS>>\n{msg['content']}\n<</SYS>>\n\n"
+        elif msg["role"] == "user":
+            prompt += f"[INST] {msg['content']} [/INST]\n"
+        elif msg["role"] == "assistant":
+            prompt += f"{msg['content']}\n"
+    
+    payload = {
+        "version": "meta/llama-2-7b-chat",
+        "input": {
+            "prompt": prompt,
+            "max_length": 512,
+            "temperature": 0.7
+        }
+    }
+    
+    headers = {"Content-Type": "application/json"}
+    
+    async with httpx.AsyncClient(timeout=30.0) as http_client:
+        response = await http_client.post(url, json=payload, headers=headers)
+        response.raise_for_status()
+        data = response.json()
+        return data.get("output", "").strip()
 
 
 def _extract_structured_data(response: str, section: str) -> Optional[dict]:
