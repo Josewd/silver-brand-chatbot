@@ -40,7 +40,8 @@ app.add_middleware(
         settings.frontend_url, 
         "http://localhost:5173", 
         "http://localhost:5174",
-        "http://localhost:3000"
+        "http://localhost:3000",
+        "https://silver-brand-chatbot.vercel.app"
     ],
     allow_credentials=True,
     allow_methods=["*"],
