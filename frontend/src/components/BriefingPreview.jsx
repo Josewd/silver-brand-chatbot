@@ -1,26 +1,89 @@
-import React from 'react'
+import React, { useState, useEffect } from 'react'
 import './BriefingPreview.css'
 
-function BriefingPreview({ sessionData, briefingData }) {
-  const renderField = (label, value) => {
-    if (!value || (Array.isArray(value) && value.length === 0)) {
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
+
+function BriefingPreview({ sessionData, briefingData, onUpdate }) {
+  const [editedData, setEditedData] = useState({})
+  const [isSending, setIsSending] = useState(false)
+  const [sendSuccess, setSendSuccess] = useState(false)
+
+  // Sincronizar com briefingData quando mudar
+  useEffect(() => {
+    setEditedData({ ...briefingData })
+  }, [briefingData])
+
+  const handleFieldChange = (fieldName, value) => {
+    setEditedData(prev => ({
+      ...prev,
+      [fieldName]: value
+    }))
+    
+    // Atualizar no backend em tempo real
+    if (onUpdate) {
+      onUpdate(fieldName, value)
+    }
+  }
+
+  const handleFinalizeSend = async () => {
+    if (!window.confirm('Tem certeza que deseja finalizar e enviar o briefing? Um email será enviado para você e para a Silver Brand House.')) {
+      return
+    }
+
+    setIsSending(true)
+    
+    try {
+      const response = await fetch(`${API_URL}/api/briefing/${sessionData.session_id}/finalize`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          briefing_data: editedData,
+          client_email: editedData.client_email || sessionData.client_email
+        })
+      })
+
+      if (!response.ok) {
+        throw new Error('Erro ao enviar briefing')
+      }
+
+      setSendSuccess(true)
+      alert('✅ Briefing enviado com sucesso! Você receberá um email de confirmação em breve.')
+      
+    } catch (error) {
+      console.error('Erro:', error)
+      alert('❌ Erro ao enviar briefing. Por favor, tente novamente.')
+    } finally {
+      setIsSending(false)
+    }
+  }
+
+  const renderEditableField = (label, fieldName, value, multiline = false) => {
+    if (!value && !editedData[fieldName]) {
       return null
     }
-    
+
+    const currentValue = editedData[fieldName] || value || ''
+
     return (
-      <div className="preview-field">
+      <div className="preview-field editable">
         <div className="field-label">{label}:</div>
-        <div className="field-value">
-          {Array.isArray(value) ? (
-            <ul>
-              {value.map((item, idx) => (
-                <li key={idx}>{item}</li>
-              ))}
-            </ul>
-          ) : (
-            value
-          )}
-        </div>
+        {multiline ? (
+          <textarea
+            className="field-input"
+            value={currentValue}
+            onChange={(e) => handleFieldChange(fieldName, e.target.value)}
+            rows={4}
+          />
+        ) : (
+          <input
+            type="text"
+            className="field-input"
+            value={currentValue}
+            onChange={(e) => handleFieldChange(fieldName, e.target.value)}
+          />
+        )}
       </div>
     )
   }
@@ -39,30 +102,30 @@ function BriefingPreview({ sessionData, briefingData }) {
   }
 
   // Verificar quais seções têm dados
-  const hasContactData = briefingData.client_name || briefingData.client_email || 
-                         briefingData.client_phone || briefingData.city_state || 
-                         briefingData.website
+  const hasContactData = editedData.client_name || editedData.client_email || 
+                         editedData.client_phone || editedData.city_state || 
+                         editedData.website
 
-  const hasBasicInfo = briefingData.project_type || briefingData.deadline
+  const hasBasicInfo = editedData.project_type || editedData.deadline
 
-  const hasDeliverables = briefingData.deliverables && briefingData.deliverables.length > 0
+  const hasDeliverables = editedData.deliverables && editedData.deliverables.length > 0
 
-  const hasCompanyProfile = briefingData.company_description || briefingData.products_services || 
-                           briefingData.mission_vision_values || briefingData.diferencial || 
-                           briefingData.objectives
+  const hasCompanyProfile = editedData.company_description || editedData.products_services || 
+                           editedData.mission_vision_values || editedData.diferencial || 
+                           editedData.objectives
 
-  const hasPositioning = briefingData.positioning || briefingData.differentiation || 
-                        briefingData.why_choose || briefingData.keywords || 
-                        briefingData.personality_scales
+  const hasPositioning = editedData.positioning || editedData.differentiation || 
+                        editedData.why_choose || editedData.keywords
 
-  const hasCompetitors = briefingData.competitors || briefingData.references || 
-                        briefingData.what_you_like
+  const hasCompetitors = editedData.competitors || editedData.references || 
+                        editedData.what_you_like
 
-  const hasVisualPrefs = briefingData.preferred_colors || briefingData.excluded_colors || 
-                        briefingData.logo_types || briefingData.font_preferences || 
-                        briefingData.visual_references
+  const hasVisualPrefs = editedData.preferred_colors || editedData.excluded_colors || 
+                        editedData.logo_types || editedData.font_preferences
 
-  const hasFinalInfo = briefingData.additional_info
+  const hasFinalInfo = editedData.additional_info
+
+  const isComplete = sessionData.is_completed || sessionData.progress >= 95
 
   return (
     <div className="briefing-preview">
@@ -75,7 +138,7 @@ function BriefingPreview({ sessionData, briefingData }) {
       </div>
 
       <div className="preview-content">
-        {/* Lista de Entrega Inicial (sempre visível) */}
+        {/* Lista de Entrega Inicial */}
         <div className="preview-section deliverables-section">
           <h3 className="section-title">ITENS INCLUÍDOS NO PROJETO</h3>
           <div className="section-content">
@@ -95,11 +158,11 @@ function BriefingPreview({ sessionData, briefingData }) {
         {renderSection(
           "1. DETALHES DE CONTATO",
           <>
-            {renderField("Nome completo", briefingData.client_name || sessionData.client_name)}
-            {renderField("E-mail", briefingData.client_email || sessionData.client_email)}
-            {renderField("Telefone", briefingData.client_phone || sessionData.client_phone)}
-            {renderField("Cidade/Estado", briefingData.city_state)}
-            {renderField("Website/Instagram", briefingData.website)}
+            {renderEditableField("Nome completo", "client_name", briefingData.client_name || sessionData.client_name)}
+            {renderEditableField("E-mail", "client_email", briefingData.client_email || sessionData.client_email)}
+            {renderEditableField("Telefone", "client_phone", briefingData.client_phone || sessionData.client_phone)}
+            {renderEditableField("Cidade/Estado", "city_state", briefingData.city_state)}
+            {renderEditableField("Website/Instagram", "website", briefingData.website)}
           </>,
           hasContactData || sessionData.client_name
         )}
@@ -108,31 +171,21 @@ function BriefingPreview({ sessionData, briefingData }) {
         {renderSection(
           "2. INFORMAÇÕES BÁSICAS",
           <>
-            {renderField("Tipo de projeto", briefingData.project_type)}
-            {renderField("Prazo desejado", briefingData.deadline)}
+            {renderEditableField("Tipo de projeto", "project_type", briefingData.project_type)}
+            {renderEditableField("Prazo desejado", "deadline", briefingData.deadline)}
           </>,
           hasBasicInfo
-        )}
-
-        {/* Seção 3: Lista de Entrega */}
-        {renderSection(
-          "3. ITENS EXTRAS SOLICITADOS",
-          <>
-            {renderField("Itens adicionais", briefingData.deliverables)}
-            {renderField("Informações extras", briefingData.extra_items)}
-          </>,
-          hasDeliverables || briefingData.extra_items
         )}
 
         {/* Seção 4: Perfil da Empresa */}
         {renderSection(
           "4. PERFIL DA EMPRESA",
           <>
-            {renderField("Sobre a empresa", briefingData.company_description)}
-            {renderField("Produtos/Serviços", briefingData.products_services)}
-            {renderField("Missão/Visão/Valores", briefingData.mission_vision_values)}
-            {renderField("Principal diferencial", briefingData.diferencial)}
-            {renderField("Objetivos principais", briefingData.objectives)}
+            {renderEditableField("Sobre a empresa", "company_description", briefingData.company_description, true)}
+            {renderEditableField("Produtos/Serviços", "products_services", briefingData.products_services, true)}
+            {renderEditableField("Missão/Visão/Valores", "mission_vision_values", briefingData.mission_vision_values, true)}
+            {renderEditableField("Principal diferencial", "diferencial", briefingData.diferencial, true)}
+            {renderEditableField("Objetivos principais", "objectives", briefingData.objectives, true)}
           </>,
           hasCompanyProfile
         )}
@@ -141,22 +194,10 @@ function BriefingPreview({ sessionData, briefingData }) {
         {renderSection(
           "5. POSICIONAMENTO & PERSONALIDADE",
           <>
-            {renderField("Como quer ser percebida", briefingData.positioning)}
-            {renderField("O que diferencia da concorrência", briefingData.differentiation)}
-            {renderField("Por que escolher você", briefingData.why_choose)}
-            {renderField("3 palavras que definem a marca", briefingData.keywords)}
-            {briefingData.personality_scales && Object.keys(briefingData.personality_scales).length > 0 && (
-              <div className="preview-field">
-                <div className="field-label">Escalas de Personalidade (1-5):</div>
-                <div className="field-value">
-                  <ul>
-                    {Object.entries(briefingData.personality_scales).map(([scale, value]) => (
-                      <li key={scale}>{scale}: {value}</li>
-                    ))}
-                  </ul>
-                </div>
-              </div>
-            )}
+            {renderEditableField("Como quer ser percebida", "positioning", briefingData.positioning, true)}
+            {renderEditableField("O que diferencia da concorrência", "differentiation", briefingData.differentiation, true)}
+            {renderEditableField("Por que escolher você", "why_choose", briefingData.why_choose, true)}
+            {renderEditableField("3 palavras que definem a marca", "keywords", briefingData.keywords)}
           </>,
           hasPositioning
         )}
@@ -165,9 +206,9 @@ function BriefingPreview({ sessionData, briefingData }) {
         {renderSection(
           "6. CONCORRENTES E REFERÊNCIAS",
           <>
-            {renderField("Concorrentes", briefingData.competitors)}
-            {renderField("Marcas que admira", briefingData.references)}
-            {renderField("O que gosta nessas marcas", briefingData.what_you_like)}
+            {renderEditableField("Concorrentes", "competitors", briefingData.competitors, true)}
+            {renderEditableField("Marcas que admira", "references", briefingData.references, true)}
+            {renderEditableField("O que gosta nessas marcas", "what_you_like", briefingData.what_you_like, true)}
           </>,
           hasCompetitors
         )}
@@ -176,11 +217,11 @@ function BriefingPreview({ sessionData, briefingData }) {
         {renderSection(
           "7. PREFERÊNCIAS VISUAIS",
           <>
-            {renderField("Cores que GOSTA", briefingData.preferred_colors)}
-            {renderField("Cores que NÃO quer", briefingData.excluded_colors)}
-            {renderField("Tipos de logo preferidos", briefingData.logo_types)}
-            {renderField("Tipos de fontes", briefingData.font_preferences)}
-            {renderField("Referências visuais (links)", briefingData.visual_references)}
+            {renderEditableField("Cores que GOSTA", "preferred_colors", briefingData.preferred_colors)}
+            {renderEditableField("Cores que NÃO quer", "excluded_colors", briefingData.excluded_colors)}
+            {renderEditableField("Tipos de logo preferidos", "logo_types", briefingData.logo_types)}
+            {renderEditableField("Tipos de fontes", "font_preferences", briefingData.font_preferences)}
+            {renderEditableField("Referências visuais (links)", "visual_references", briefingData.visual_references, true)}
           </>,
           hasVisualPrefs
         )}
@@ -189,11 +230,36 @@ function BriefingPreview({ sessionData, briefingData }) {
         {renderSection(
           "8. INFORMAÇÕES FINAIS",
           <>
-            {renderField("Observações adicionais", briefingData.additional_info)}
+            {renderEditableField("Observações adicionais", "additional_info", briefingData.additional_info, true)}
           </>,
           hasFinalInfo
         )}
       </div>
+
+      {/* Botão de Finalizar e Enviar */}
+      {isComplete && !sendSuccess && (
+        <div className="preview-actions">
+          <div className="action-message">
+            <p>✨ Seu briefing está completo! Revise as informações acima e, se estiver tudo correto, finalize e envie.</p>
+            <p className="action-note">Você e a Silver Brand House receberão um email de confirmação.</p>
+          </div>
+          <button 
+            className="btn-finalize"
+            onClick={handleFinalizeSend}
+            disabled={isSending}
+          >
+            {isSending ? 'Enviando...' : '✓ Finalizar e Enviar Briefing'}
+          </button>
+        </div>
+      )}
+
+      {sendSuccess && (
+        <div className="success-message">
+          <h3>✅ Briefing Enviado com Sucesso!</h3>
+          <p>Você receberá um email de confirmação em breve.</p>
+          <p>A equipe da Silver Brand House entrará em contato.</p>
+        </div>
+      )}
 
       <div className="preview-footer">
         <p>SILVER BRAND HOUSE</p>

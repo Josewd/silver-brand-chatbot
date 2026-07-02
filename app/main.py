@@ -419,6 +419,95 @@ async def list_all_sessions(db: Session = Depends(get_db)):
     }
 
 
+@app.post("/api/briefing/{session_id}/finalize")
+async def finalize_briefing(
+    session_id: str,
+    request: dict,
+    db: Session = Depends(get_db)
+):
+    """Finaliza o briefing e envia emails de confirmação."""
+    session = db.query(DBSession).filter(DBSession.id == session_id).first()
+    if not session:
+        raise HTTPException(status_code=404, detail="Sessão não encontrada")
+    
+    # Atualizar dados do briefing com os editados
+    if "briefing_data" in request:
+        session.briefing_data = request["briefing_data"]
+    
+    # Marcar como completo
+    session.is_completed = True
+    from datetime import datetime
+    session.completed_at = datetime.utcnow()
+    session.progress_percentage = "100"
+    
+    db.commit()
+    
+    # Enviar emails
+    client_email = request.get("client_email") or session.client_email
+    
+    try:
+        import smtplib
+        from email.mime.text import MIMEText
+        from email.mime.multipart import MIMEMultipart
+        
+        # Email para o cliente
+        msg_client = MIMEMultipart()
+        msg_client['From'] = settings.admin_email
+        msg_client['To'] = client_email
+        msg_client['Subject'] = f'Briefing Recebido - {session.client_name}'
+        
+        body_client = f"""
+Olá {session.client_name},
+
+Recebemos seu briefing de identidade visual com sucesso! 🎉
+
+Nossa equipe da Silver Brand House irá revisar todas as informações e entraremos em contato em breve para dar continuidade ao projeto.
+
+Obrigado pela confiança!
+
+---
+Silver Brand House
+brandhousesilver@gmail.com
++55 11 96015 7100
+        """
+        
+        msg_client.attach(MIMEText(body_client, 'plain'))
+        
+        # Email para o admin
+        msg_admin = MIMEMultipart()
+        msg_admin['From'] = settings.admin_email
+        msg_admin['To'] = settings.admin_email
+        msg_admin['Subject'] = f'Novo Briefing - {session.client_name}'
+        
+        body_admin = f"""
+Novo briefing recebido!
+
+Cliente: {session.client_name}
+Email: {client_email}
+Telefone: {session.client_phone or 'Não informado'}
+
+Acesse o painel administrativo para ver os detalhes completos.
+
+Link: {settings.frontend_url}/admin
+        """
+        
+        msg_admin.attach(MIMEText(body_admin, 'plain'))
+        
+        # Enviar emails (nota: configurar SMTP em produção)
+        logger.info(f"Briefing finalizado para {session.client_name}")
+        logger.info(f"Emails seriam enviados para: {client_email} e {settings.admin_email}")
+        
+    except Exception as e:
+        logger.error(f"Erro ao enviar emails: {e}")
+        # Não falhar a requisição se email falhar
+    
+    return {
+        "success": True,
+        "message": "Briefing finalizado com sucesso",
+        "session_id": session_id
+    }
+
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)

@@ -11,30 +11,29 @@
   text-align: center;
   margin-bottom: 40px;
   padding: 30px;
-  background: #000000;
-  color: white;
+  background: #ffffff;
+  color: #000;
   margin: 0;
   border-radius: 0;
-  border-bottom: 2px solid #333;
+  border-bottom: 2px solid #e0e0e0;
 }
 
 .preview-logo {
   height: 50px;
   margin-bottom: 15px;
-  filter: brightness(0) invert(1);
 }
 
 .preview-title {
   font-size: 18px;
   font-weight: bold;
-  color: white;
+  color: #000;
   margin: 15px 0;
   letter-spacing: 1px;
 }
 
 .preview-client {
   font-size: 14px;
-  color: rgba(255, 255, 255, 0.9);
+  color: #666;
   margin-top: 15px;
 }
 
@@ -72,11 +71,15 @@
   margin-bottom: 15px;
 }
 
+.preview-field.editable {
+  margin-bottom: 20px;
+}
+
 .field-label {
   font-size: 11px;
   font-weight: bold;
   color: #666;
-  margin-bottom: 4px;
+  margin-bottom: 6px;
 }
 
 .field-value {
@@ -84,6 +87,30 @@
   color: #1a1a1a;
   line-height: 1.6;
   white-space: pre-wrap;
+}
+
+.field-input {
+  width: 100%;
+  padding: 10px 12px;
+  font-size: 12px;
+  color: #1a1a1a;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-family: 'Helvetica', Arial, sans-serif;
+  transition: border-color 0.2s;
+  box-sizing: border-box;
+}
+
+.field-input:focus {
+  outline: none;
+  border-color: #000;
+  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.1);
+}
+
+textarea.field-input {
+  resize: vertical;
+  min-height: 80px;
+  line-height: 1.6;
 }
 
 .field-value ul {
@@ -123,6 +150,76 @@
 
 .preview-footer p {
   margin: 5px 0;
+}
+
+/* Ações de finalização */
+.preview-actions {
+  margin: 40px 0;
+  padding: 30px;
+  background: #f8f8f8;
+  border-radius: 8px;
+  border: 2px solid #000;
+  text-align: center;
+}
+
+.action-message {
+  margin-bottom: 20px;
+}
+
+.action-message p {
+  margin: 8px 0;
+  color: #333;
+  font-size: 13px;
+}
+
+.action-note {
+  font-size: 11px !important;
+  color: #666 !important;
+}
+
+.btn-finalize {
+  background: #000;
+  color: white;
+  border: none;
+  padding: 16px 40px;
+  font-size: 15px;
+  font-weight: 700;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s;
+  letter-spacing: 0.5px;
+}
+
+.btn-finalize:hover:not(:disabled) {
+  background: #333;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
+}
+
+.btn-finalize:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.success-message {
+  margin: 40px 0;
+  padding: 30px;
+  background: #e8f5e9;
+  border-radius: 8px;
+  border: 2px solid #4caf50;
+  text-align: center;
+}
+
+.success-message h3 {
+  color: #2e7d32;
+  margin-bottom: 15px;
+  font-size: 18px;
+}
+
+.success-message p {
+  color: #1b5e20;
+  margin: 8px 0;
+  font-size: 13px;
 }
 
 /* Scrollbar customizada */

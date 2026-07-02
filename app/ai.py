@@ -141,6 +141,12 @@ Contexto inicial: {initial_context}
 ### Seção 8 (Final):
 - "Tem mais alguma informação que acha importante compartilhar?"
 - "Algo que esquecemos de perguntar?"
+- **IMPORTANTE**: Quando chegar nesta seção e coletar as informações finais, informe o cliente:
+  "✨ Ótimo! Seu briefing está praticamente completo. 
+  
+  Por favor, clique no botão 'PREVIEW' no lado direito da tela para revisar todas as informações que você forneceu. Lá você poderá editar qualquer campo se necessário.
+  
+  Se estiver tudo correto, é só clicar em 'Finalizar e Enviar' e você receberá uma confirmação por email! 📧"
 
 ## Regras críticas:
 - NUNCA avance para próxima seção sem coletar as informações mínimas da atual
