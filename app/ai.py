@@ -143,6 +143,23 @@ Contexto inicial: {initial_context}
 - Quando o cliente parecer perdido, ofereça exemplos
 - Se não souber algo sobre design, não invente — foque em coletar informações do cliente
 
+## IMPORTANTE - Formato de extração de dados:
+Quando o cliente fornecer informações importantes (nome, email, telefone, descrições, preferências, etc), você DEVE incluir no FINAL da sua resposta (após a mensagem ao cliente) um marcador especial para registrar os dados:
+
+DATA_COLLECTED:{"campo": "valor", "outro_campo": "outro_valor"}
+
+Exemplo de campos por seção:
+- Seção contato: client_name, client_email, client_phone, city_state, website
+- Seção basicas: project_type, deadline
+- Seção entrega: deliverables (array), extra_items
+- Seção perfil: company_description, products_services, mission_vision_values, diferencial, objectives
+- Seção posicionamento: positioning, differentiation, why_choose, keywords, personality_scales (objeto com escalas 1-5)
+- Seção concorrentes: competitors, references, what_you_like
+- Seção visuais: preferred_colors, excluded_colors, logo_types, font_preferences, visual_references
+- Seção final: additional_info
+
+**SEMPRE inclua o DATA_COLLECTED quando coletar qualquer informação nova do cliente!**
+
 ## Data/Hora atual: {datetime.now().strftime("%d/%m/%Y %H:%M")}
 """
     
