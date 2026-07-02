@@ -132,27 +132,63 @@ Contexto inicial: {initial_context}
    ✅ "Quem são seus principais concorrentes?"
 
 ## IMPORTANTE - Formato de extração de dados:
-Quando o cliente fornecer informações importantes (nome, email, telefone, descrições, preferências, etc), você DEVE incluir um marcador INVISÍVEL (que não aparece para o usuário) para registrar os dados.
+**REGRA OBRIGATÓRIA:** Quando o cliente fornecer QUALQUER informação (nome, descrição, cor, etc), você DEVE SEMPRE incluir o marcador DATA_COLLECTED.
 
-FORMATO: Coloque em uma linha separada no FINAL, precedido por três quebras de linha:
+FORMATO EXATO (copie este modelo):
+
+Sua mensagem normal aqui
 
 
 
-DATA_COLLECTED:{{"campo": "valor", "outro_campo": "outro_valor"}}
+DATA_COLLECTED:{{"campo": "valor"}}
 
-Exemplo de campos por seção:
-- Seção contato: client_name, client_email, client_phone, city_state, website
-- Seção basicas: project_type, deadline
-- Seção entrega: deliverables (array com strings), extra_items
-- Seção perfil: company_description, products_services, mission_vision_values, diferencial, objectives
-- Seção posicionamento: positioning, differentiation, why_choose, keywords, personality_scales (objeto)
-- Seção concorrentes: competitors, references, what_you_like
-- Seção visuais: preferred_colors, excluded_colors, logo_types, font_preferences, visual_references
-- Seção final: additional_info
+**EXEMPLOS PRÁTICOS:**
 
-CRÍTICO: O marcador DATA_COLLECTED deve estar APÓS sua mensagem amigável ao cliente, em linhas separadas, para não aparecer na interface!
+Cliente diz: "Meu nome é João Silva"
+Você responde:
+```
+Prazer, João! Qual seu melhor email?
 
-**SEMPRE inclua o DATA_COLLECTED quando coletar qualquer informação nova do cliente!**
+
+
+DATA_COLLECTED:{{"client_name": "João Silva"}}
+```
+
+Cliente diz: "Minha empresa vende café artesanal"
+Você responde:
+```
+Que cores você gosta para sua marca?
+
+
+
+DATA_COLLECTED:{{"company_description": "vende café artesanal", "products_services": "café artesanal"}}
+```
+
+Cliente diz: "Gosto de preto e dourado"
+Você responde:
+```
+Tem alguma cor que NÃO quer?
+
+
+
+DATA_COLLECTED:{{"preferred_colors": "preto e dourado"}}
+```
+
+**CAMPOS POR SEÇÃO:**
+- contato: client_name, client_email, client_phone, city_state, website
+- basicas: project_type, deadline
+- entrega: extra_items
+- perfil: company_description, products_services, mission_vision_values, diferencial
+- posicionamento: positioning, keywords, differentiation
+- concorrentes: competitors, references, what_you_like
+- visuais: preferred_colors, excluded_colors, logo_types, font_preferences
+- final: additional_info
+
+**CRÍTICO:** 
+- SEMPRE extraia ALGO quando cliente responder
+- Use três quebras de linha antes de DATA_COLLECTED
+- Mantenha formato JSON válido
+- Se cliente der múltiplas informações, extraia todas
 
 ## Data/Hora atual: {datetime.now().strftime("%d/%m/%Y %H:%M")}
 """
@@ -246,8 +282,17 @@ async def generate_response(
                 None
             )
         
+        # LOG: Ver resposta bruta da IA para debug
+        logger.info(f"🤖 Resposta da IA (primeiros 500 chars): {raw_response[:500] if raw_response else 'VAZIO'}")
+        logger.info(f"🔍 Contém DATA_COLLECTED? {'DATA_COLLECTED:' in raw_response if raw_response else False}")
+        
         # Extrair dados estruturados da resposta (se houver)
         extracted_data = _extract_structured_data(raw_response, current_section)
+        
+        if extracted_data:
+            logger.info(f"✅ Dados extraídos: {extracted_data}")
+        else:
+            logger.warning(f"⚠️ NENHUM dado extraído! Verifique se IA está gerando DATA_COLLECTED")
         
         # Remover DATA_COLLECTED da resposta visível ao usuário
         if "DATA_COLLECTED:" in raw_response:

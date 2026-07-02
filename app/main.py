@@ -253,6 +253,7 @@ async def send_message(
     
     # Atualizar briefing_data se houver dados extraídos
     if extracted_data:
+        logger.info(f"📊 Dados extraídos da IA: {extracted_data}")
         current_data = session.briefing_data or {}
         current_data.update(extracted_data)
         session.briefing_data = current_data
@@ -260,10 +261,16 @@ async def send_message(
         # Sugerir próxima seção
         next_section = suggest_next_section(session.current_section, current_data)
         session.current_section = next_section
+    else:
+        logger.warning(f"⚠️ Nenhum dado extraído da resposta da IA")
+    
+    # Log do briefing_data atual
+    logger.info(f"📋 Briefing data atual: {session.briefing_data}")
     
     # Calcular progresso
     progress = calculate_progress(session.briefing_data or {})
     session.progress_percentage = str(progress)
+    logger.info(f"📈 Progresso calculado: {progress}%")
     
     # Verificar se completou
     if progress >= 95:
@@ -416,6 +423,43 @@ async def list_all_sessions(db: Session = Depends(get_db)):
             }
             for s in sessions
         ]
+    }
+
+
+@app.put("/api/briefing/{session_id}/update")
+async def update_briefing(
+    session_id: str,
+    request: dict,
+    db: Session = Depends(get_db)
+):
+    """
+    Atualiza dados do briefing (modo fallback manual).
+    Permite continuar preenchendo quando chat está offline.
+    """
+    session = db.query(DBSession).filter(DBSession.id == session_id).first()
+    if not session:
+        raise HTTPException(status_code=404, detail="Sessão não encontrada")
+    
+    # Atualizar briefing_data
+    if "briefing_data" in request:
+        current_data = session.briefing_data or {}
+        current_data.update(request["briefing_data"])
+        session.briefing_data = current_data
+        
+        # Recalcular progresso
+        progress = calculate_progress(current_data)
+        session.progress_percentage = str(progress)
+        
+        # Verificar se completou
+        if progress >= 95:
+            session.is_completed = True
+    
+    db.commit()
+    
+    return {
+        "success": True,
+        "progress": session.progress_percentage,
+        "is_completed": session.is_completed
     }
 
 

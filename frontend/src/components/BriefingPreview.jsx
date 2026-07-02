@@ -3,10 +3,11 @@ import './BriefingPreview.css'
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
 
-function BriefingPreview({ sessionData, briefingData, onUpdate }) {
+function BriefingPreview({ sessionData, briefingData, fallbackMode, onSave, onUpdate }) {
   const [editedData, setEditedData] = useState({})
   const [isSending, setIsSending] = useState(false)
   const [sendSuccess, setSendSuccess] = useState(false)
+  const [isSaving, setIsSaving] = useState(false)
 
   // Sincronizar com briefingData quando mudar
   useEffect(() => {
@@ -19,9 +20,20 @@ function BriefingPreview({ sessionData, briefingData, onUpdate }) {
       [fieldName]: value
     }))
     
-    // Atualizar no backend em tempo real
-    if (onUpdate) {
+    // Atualizar no backend em tempo real (só se não estiver em fallbackMode)
+    if (onUpdate && !fallbackMode) {
       onUpdate(fieldName, value)
+    }
+  }
+
+  const handleSave = async () => {
+    if (!onSave) return
+    
+    setIsSaving(true)
+    try {
+      await onSave(editedData)
+    } finally {
+      setIsSaving(false)
     }
   }
 
@@ -60,7 +72,8 @@ function BriefingPreview({ sessionData, briefingData, onUpdate }) {
   }
 
   const renderEditableField = (label, fieldName, value, multiline = false) => {
-    if (!value && !editedData[fieldName]) {
+    // No modo fallback, sempre mostrar campo (mesmo vazio)
+    if (!fallbackMode && !value && !editedData[fieldName]) {
       return null
     }
 
@@ -75,6 +88,7 @@ function BriefingPreview({ sessionData, briefingData, onUpdate }) {
             value={currentValue}
             onChange={(e) => handleFieldChange(fieldName, e.target.value)}
             rows={4}
+            placeholder={fallbackMode ? `Digite ${label.toLowerCase()}...` : ''}
           />
         ) : (
           <input
@@ -82,6 +96,7 @@ function BriefingPreview({ sessionData, briefingData, onUpdate }) {
             className="field-input"
             value={currentValue}
             onChange={(e) => handleFieldChange(fieldName, e.target.value)}
+            placeholder={fallbackMode ? `Digite ${label.toLowerCase()}...` : ''}
           />
         )}
       </div>
@@ -89,7 +104,8 @@ function BriefingPreview({ sessionData, briefingData, onUpdate }) {
   }
 
   const renderSection = (title, content, hasData) => {
-    if (!hasData) return null
+    // No modo fallback, sempre mostrar seções (mesmo vazias)
+    if (!fallbackMode && !hasData) return null
     
     return (
       <div className="preview-section">
@@ -126,9 +142,23 @@ function BriefingPreview({ sessionData, briefingData, onUpdate }) {
   const hasFinalInfo = editedData.additional_info
 
   const isComplete = sessionData.is_completed || sessionData.progress >= 95
+  
+  // Verificar campos obrigatórios para modo fallback
+  const requiredFieldsFilled = 
+    editedData.client_name &&
+    editedData.client_email &&
+    editedData.company_description &&
+    editedData.preferred_colors
 
   return (
     <div className="briefing-preview">
+      {/* Aviso de modo fallback */}
+      {fallbackMode && (
+        <div className="fallback-banner">
+          ⚠️ Modo Manual Ativo - O chatbot está offline. Continue preenchendo abaixo.
+        </div>
+      )}
+      
       <div className="preview-header">
         <img src="/logo-horizontal.png" alt="Silver Brand House" className="preview-logo" />
         <h1 className="preview-title">BRIEFING DE IDENTIDADE VISUAL</h1>
@@ -236,8 +266,39 @@ function BriefingPreview({ sessionData, briefingData, onUpdate }) {
         )}
       </div>
 
-      {/* Botão de Finalizar e Enviar */}
-      {isComplete && !sendSuccess && (
+      {/* Botões de ação - Modo Fallback */}
+      {fallbackMode && !sendSuccess && (
+        <div className="preview-actions fallback-actions">
+          <div className="action-message">
+            {requiredFieldsFilled ? (
+              <p>✅ Campos obrigatórios preenchidos! Você pode salvar ou enviar o briefing.</p>
+            ) : (
+              <p>⚠️ Preencha pelo menos: Nome, Email, Sobre a Empresa e Cores Preferidas</p>
+            )}
+          </div>
+          <div className="action-buttons">
+            <button 
+              className="btn-save"
+              onClick={handleSave}
+              disabled={isSaving}
+            >
+              {isSaving ? 'Salvando...' : '💾 Salvar Progresso'}
+            </button>
+            {requiredFieldsFilled && (
+              <button 
+                className="btn-finalize"
+                onClick={handleFinalizeSend}
+                disabled={isSending}
+              >
+                {isSending ? 'Enviando...' : '✓ Finalizar e Enviar'}
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Botão de Finalizar e Enviar - Modo Normal */}
+      {!fallbackMode && isComplete && !sendSuccess && (
         <div className="preview-actions">
           <div className="action-message">
             <p>✨ Seu briefing está completo! Revise as informações acima e, se estiver tudo correto, finalize e envie.</p>

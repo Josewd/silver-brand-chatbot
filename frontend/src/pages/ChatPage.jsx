@@ -28,6 +28,8 @@ function ChatPage() {
   const [currentOptions, setCurrentOptions] = useState(null)
   const [selectedOptions, setSelectedOptions] = useState([])
   const [isPreviewOpen, setIsPreviewOpen] = useState(false)
+  const [chatError, setChatError] = useState(false) // Detectar quando chat falha
+  const [fallbackMode, setFallbackMode] = useState(false) // Modo formulário manual
   const messagesEndRef = useRef(null)
   const inputRef = useRef(null)
 
@@ -149,6 +151,14 @@ function ChatPage() {
 
     } catch (err) {
       setError('Erro ao enviar mensagem: ' + err.message)
+      setChatError(true)
+      
+      // Ativar modo fallback após erro
+      if (chatError) {
+        setFallbackMode(true)
+        setIsPreviewOpen(true)
+        alert('⚠️ O chatbot está temporariamente indisponível. Você pode continuar preenchendo o briefing manualmente no painel lateral.')
+      }
     } finally {
       setLoading(false)
     }
@@ -239,6 +249,13 @@ function ChatPage() {
 
     } catch (err) {
       setError('Erro ao enviar mensagem: ' + err.message)
+      setChatError(true)
+      
+      if (chatError) {
+        setFallbackMode(true)
+        setIsPreviewOpen(true)
+        alert('⚠️ O chatbot está indisponível. Continue preenchendo manualmente no painel lateral.')
+      }
     } finally {
       setLoading(false)
     }
@@ -442,7 +459,25 @@ function ChatPage() {
         </button>
         <BriefingPreview 
           sessionData={sessionData} 
-          briefingData={sessionData.briefing_data || {}} 
+          briefingData={sessionData?.briefing_data || {}}
+          fallbackMode={fallbackMode}
+          onSave={async (data) => {
+            // Salvar dados no backend
+            try {
+              const response = await fetch(`${API_URL}/api/briefing/${sessionId}/update`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ briefing_data: data })
+              })
+              if (response.ok) {
+                await loadSession()
+                alert('✅ Dados salvos com sucesso!')
+                setChatError(false) // Reset erro
+              }
+            } catch (err) {
+              alert('❌ Erro ao salvar: ' + err.message)
+            }
+          }}
         />
       </div>
     </div>

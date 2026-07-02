@@ -239,3 +239,56 @@ textarea.field-input {
 .briefing-preview::-webkit-scrollbar-thumb:hover {
   background: #999;
 }
+
+/* Modo Fallback */
+.fallback-banner {
+  background: #fff3cd;
+  border: 2px solid #ffc107;
+  color: #856404;
+  padding: 15px 20px;
+  margin: -40px -40px 30px -40px;
+  text-align: center;
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.fallback-actions {
+  background: #fff9e6;
+  border-color: #ffc107;
+}
+
+.action-buttons {
+  display: flex;
+  gap: 15px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.btn-save {
+  background: #666;
+  color: white;
+  border: none;
+  padding: 14px 30px;
+  font-size: 14px;
+  font-weight: 600;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.btn-save:hover:not(:disabled) {
+  background: #444;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
+}
+
+.btn-save:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Placeholder mais visível no modo fallback */
+.field-input::placeholder {
+  color: #999;
+  font-style: italic;
+}
