@@ -163,7 +163,9 @@ Contexto inicial: {initial_context}
    ✅ "Quem são seus principais concorrentes?"
 
 ## IMPORTANTE - Formato de extração de dados:
-**REGRA OBRIGATÓRIA:** Quando o cliente fornecer QUALQUER informação (nome, descrição, cor, etc), você DEVE SEMPRE incluir o marcador DATA_COLLECTED.
+**REGRA CRÍTICA OBRIGATÓRIA:** Quando o cliente fornecer QUALQUER informação, você DEVE SEMPRE incluir o marcador DATA_COLLECTED.
+
+**NUNCA ESQUEÇA ESTA REGRA!**
 
 FORMATO EXATO (copie este modelo):
 
@@ -172,6 +174,34 @@ Sua mensagem normal aqui
 
 
 DATA_COLLECTED:{{"campo": "valor"}}
+
+**EXEMPLOS OBRIGATÓRIOS:**
+
+Cliente diz: "É um projeto novo"
+Você DEVE responder:
+```
+Que legal! Quando você precisa ter pronto?
+
+
+
+DATA_COLLECTED:{{"project_type": "projeto novo"}}
+```
+
+Cliente diz: "Preciso em 2 meses"  
+Você DEVE responder:
+```
+Perfeito! Vamos falar sobre o que você precisa?
+
+
+
+DATA_COLLECTED:{{"deadline": "2 meses"}}
+```
+
+**ATENÇÃO ESPECIAL:**
+- TODO cliente que responder = SEMPRE incluir DATA_COLLECTED
+- Usar EXATAMENTE 3 quebras de linha antes
+- JSON deve ser válido com aspas duplas
+- Se não souber o campo exato, use "user_response": "texto completo da resposta"
 
 **EXEMPLOS PRÁTICOS:**
 
@@ -445,6 +475,19 @@ async def generate_response(
         # Detectar opções interativas baseado na seção e conteúdo
         interactive_options = detect_interactive_trigger(current_section, message_content)
         
+        # VERIFICAÇÃO CRÍTICA: Se usuário forneceu informação mas IA não extraiu dados
+        if not extracted_data and _user_provided_info(user_message, current_section):
+            logger.warning(f"🚨 CRÍTICO: IA não extraiu dados mas usuário forneceu info!")
+            logger.warning(f"👤 Mensagem do usuário: {user_message}")
+            logger.warning(f"🤖 Resposta da IA: {message_content}")
+            
+            # Forçar extração usando sistema de fallback
+            forced_extraction = _extract_fallback_data_ai(user_message, current_section)
+            if forced_extraction:
+                logger.info(f"🔧 Extração forçada aplicada: {forced_extraction}")
+                extracted_data = forced_extraction
+                briefing_data.update(extracted_data)
+        
         # LOG: Ver se detectou opções interativas
         if interactive_options:
             logger.info(f"✅ Opções interativas detectadas: {len(interactive_options)} opções")
@@ -643,5 +686,128 @@ def _extract_structured_data(response: str, section: str) -> Optional[dict]:
     except (json.JSONDecodeError, ValueError, IndexError) as e:
         logger.error(f"Erro ao extrair dados estruturados: {e}")
         return None
+
+
+def _user_provided_info(user_message: str, current_section: SectionId) -> bool:
+    """Detecta se o usuário forneceu informação relevante que deveria ser extraída."""
+    message_lower = user_message.lower().strip()
+    
+    # Filtrar mensagens muito curtas ou de saudação
+    if len(message_lower) < 3 or message_lower in ["oi", "olá", "ok", "sim", "não"]:
+        return False
+    
+    # Detectar padrões de informação por seção
+    info_patterns = {
+        SectionId.CONTATO: [
+            r'@\w+',  # email
+            r'\+?\d{2,3}[-\s]?\d',  # telefone
+            r'whatsapp', r'instagram', r'site', r'www'
+        ],
+        SectionId.BASICAS: [
+            r'projeto\s+(novo|redesign)',
+            r'(preciso|quero).+(em|até|para)',
+            r'\d+\s+(dia|semana|mês|ano)',
+            r'(urgente|rápido|devagar)'
+        ],
+        SectionId.PERFIL: [
+            r'(somos|sou|trabalho|empresa|negócio)',
+            r'(vendemos|oferecemos|fazemos)',
+            r'há?\s+\d+\s+(ano|mês)',
+            r'(missão|visão|objetivo)'
+        ],
+        SectionId.VISUAIS: [
+            r'(azul|verde|vermelho|amarelo|preto|branco|rosa|roxo|laranja)',
+            r'(gosto|prefiro|quero|não quero)',
+            r'(cor|logo|fonte|estilo)'
+        ]
+    }
+    
+    section_patterns = info_patterns.get(current_section, [])
+    
+    import re
+    for pattern in section_patterns:
+        if re.search(pattern, message_lower):
+            return True
+    
+    # Detectar respostas a perguntas (mais de 5 palavras)
+    words = message_lower.split()
+    if len(words) >= 5:
+        return True
+        
+    return False
+
+
+def _extract_fallback_data_ai(user_message: str, current_section: SectionId) -> dict:
+    """Extração de fallback mais sofisticada para o contexto da IA."""
+    import re
+    
+    data = {}
+    message_lower = user_message.lower()
+    
+    # Mapeamento de seção para campos
+    if current_section == SectionId.CONTATO:
+        # Email
+        email_pattern = r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b'
+        email_match = re.search(email_pattern, user_message)
+        if email_match:
+            data["client_email"] = email_match.group()
+        
+        # Telefone
+        phone_patterns = [
+            r'\+\d{1,4}[-\s]?\d{2,3}[-\s]?\d{3,4}[-\s]?\d{3,4}',
+            r'\(\d{2}\)[-\s]?\d{4,5}[-\s]?\d{4}',
+            r'\d{2}[-\s]?\d{4,5}[-\s]?\d{4}'
+        ]
+        for pattern in phone_patterns:
+            phone_match = re.search(pattern, user_message)
+            if phone_match:
+                data["client_phone"] = phone_match.group()
+                break
+    
+    elif current_section == SectionId.BASICAS:
+        # Tipo de projeto
+        if any(word in message_lower for word in ["novo", "nova", "começar", "criar"]):
+            data["project_type"] = "projeto novo"
+        elif any(word in message_lower for word in ["redesign", "reformular", "mudar", "atualizar"]):
+            data["project_type"] = "redesign"
+        
+        # Prazo
+        deadline_patterns = [
+            r'(\d+)\s+(dia|semana|mês|meses|ano)s?',
+            r'(até|para|em)\s+(\w+)',
+            r'(urgente|rápido|logo)'
+        ]
+        for pattern in deadline_patterns:
+            match = re.search(pattern, message_lower)
+            if match:
+                data["deadline"] = match.group()
+                break
+    
+    elif current_section == SectionId.PERFIL:
+        # Capturar descrição da empresa
+        if any(trigger in message_lower for trigger in ["somos", "sou", "empresa", "trabalho", "negócio"]):
+            # Pegar a frase completa
+            sentences = user_message.split('.')
+            for sentence in sentences:
+                if any(trigger in sentence.lower() for trigger in ["somos", "empresa", "trabalho"]):
+                    data["about_company"] = sentence.strip()
+                    break
+        
+        # Produtos/serviços
+        if any(word in message_lower for word in ["vendemos", "oferecemos", "fazemos", "produto"]):
+            data["products_services"] = user_message.strip()
+    
+    elif current_section == SectionId.VISUAIS:
+        # Cores
+        color_words = ["azul", "verde", "vermelho", "amarelo", "preto", "branco", "rosa", "roxo", "laranja", "cinza", "dourado", "prata"]
+        mentioned_colors = [color for color in color_words if color in message_lower]
+        if mentioned_colors:
+            data["preferred_colors"] = ", ".join(mentioned_colors)
+    
+    # Se não conseguiu extrair nada específico, guardar a resposta completa
+    if not data and len(user_message.strip()) > 10:
+        data["user_response"] = user_message.strip()
+    
+    return data
 
 

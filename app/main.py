@@ -616,6 +616,25 @@ def _extract_fallback_data(user_message: str, current_section: str) -> dict:
             data["client_phone"] = phone_match.group()
             break
     
+    # Detectar tipo de projeto (seção básicas)
+    if current_section == "basicas":
+        if any(word in message_lower for word in ["novo", "nova", "começar", "criar"]):
+            data["project_type"] = "projeto novo"
+        elif any(word in message_lower for word in ["redesign", "reformular", "mudar", "atualizar"]):
+            data["project_type"] = "redesign"
+        
+        # Detectar prazo
+        deadline_patterns = [
+            r'(\d+)\s+(dia|semana|mês|meses|ano)s?',
+            r'(em|até|para)\s+(\w+)',
+            r'(urgente|rápido|logo)'
+        ]
+        for pattern in deadline_patterns:
+            match = re.search(pattern, message_lower)
+            if match:
+                data["deadline"] = match.group()
+                break
+    
     # Detectar cores (seção visual)
     if current_section == "visuais":
         color_keywords = [
@@ -635,6 +654,16 @@ def _extract_fallback_data(user_message: str, current_section: str) -> dict:
                 if any(word in sentence.lower() for word in ["somos", "empresa", "trabalho", "oferecemos"]):
                     data["about_company"] = sentence.strip()
                     break
+        
+        # Se mencionou produtos/serviços
+        if any(word in message_lower for word in ["vendemos", "oferecemos", "fazemos", "produto", "serviço"]):
+            data["products_services"] = user_message.strip()
+    
+    # Se detectou informação mas não conseguiu categorizar, salvar como resposta genérica
+    if not data and len(user_message.strip()) > 10:
+        # Evitar salvar saudações simples
+        if not any(greeting in message_lower for greeting in ["oi", "olá", "boa", "tudo bem"]):
+            data["user_response"] = user_message.strip()
     
     return data
 
