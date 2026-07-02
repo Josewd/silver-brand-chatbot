@@ -10,26 +10,30 @@
 .preview-header {
   text-align: center;
   margin-bottom: 40px;
-  padding-bottom: 30px;
-  border-bottom: 2px solid #333;
+  padding: 30px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  margin: 0;
+  border-radius: 0;
 }
 
 .preview-logo {
-  height: 60px;
-  margin-bottom: 20px;
+  height: 50px;
+  margin-bottom: 15px;
+  filter: brightness(0) invert(1);
 }
 
 .preview-title {
-  font-size: 20px;
+  font-size: 18px;
   font-weight: bold;
-  color: #1a1a1a;
+  color: white;
   margin: 15px 0;
   letter-spacing: 1px;
 }
 
 .preview-client {
   font-size: 14px;
-  color: #666;
+  color: rgba(255, 255, 255, 0.95);
   margin-top: 15px;
 }
 
@@ -43,7 +47,7 @@
 }
 
 .deliverables-section {
-  background: #f8f9fa;
+  background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
   padding: 20px;
   border-radius: 8px;
   border-left: 4px solid #667eea;
@@ -52,10 +56,10 @@
 .section-title {
   font-size: 14px;
   font-weight: bold;
-  color: #333;
+  color: #667eea;
   margin-bottom: 15px;
   padding-bottom: 8px;
-  border-bottom: 1px solid #ddd;
+  border-bottom: 2px solid #667eea;
   letter-spacing: 0.5px;
 }
 
@@ -95,10 +99,13 @@
   list-style: none;
   padding: 0;
   margin: 0;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px 16px;
 }
 
 .deliverables-list li {
-  padding: 8px 0;
+  padding: 6px 0;
   color: #333;
   font-size: 12px;
   line-height: 1.5;
