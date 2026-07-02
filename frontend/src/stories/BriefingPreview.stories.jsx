@@ -20,13 +20,21 @@ const sampleBriefingData = {
   project_type: 'Novo projeto',
   deadline: 'Em 30 dias',
   extra_items: 'Cartão de visitas, Instagram',
-  company_description: 'Cafeteria artesanal especializada em grãos selecionados do Brasil',
+  about_company: 'Cafeteria artesanal especializada em grãos selecionados do Brasil. Atuamos há 3 anos no mercado.',
   products_services: 'Café em grãos, café moído, bebidas quentes e frias',
-  mission_vision_values: 'Missão: Proporcionar experiências únicas. Visão: Ser referência em café artesanal.',
   diferencial: 'Torra própria e grãos de produtores locais',
+  mission_vision_values: 'Missão: Proporcionar experiências únicas. Visão: Ser referência em café artesanal.',
+  main_objectives: 'Expandir para novas regiões e fortalecer presença digital',
   positioning: 'Marca sofisticada e acolhedora para apreciadores de café',
   keywords: 'Qualidade, Acolhimento, Artesanal',
   differentiation: 'Relacionamento direto com produtores e torra artesanal',
+  personality_scales: {
+    scale_sophisticated: '4',
+    scale_technical: '2',
+    scale_formal: '3',
+    scale_traditional: '2',
+    scale_exclusive: '4'
+  },
   competitors: 'Starbucks, cafeterias locais',
   references: 'Blue Bottle, Intelligentsia',
   what_you_like: 'Design minimalista e foco na qualidade',
@@ -64,7 +72,7 @@ export const PreviewParcial = {
       client_name: 'João Silva',
       client_email: 'joao@exemplo.com',
       client_phone: '+55 11 98765-4321',
-      company_description: 'Cafeteria artesanal especializada em grãos selecionados',
+      about_company: 'Cafeteria artesanal especializada em grãos selecionados',
       preferred_colors: 'Preto, marrom, dourado',
     },
     fallbackMode: false,
@@ -136,7 +144,7 @@ export const FallbackProntoEnviar = {
     briefingData: {
       client_name: 'Carlos Oliveira',
       client_email: 'carlos@exemplo.com',
-      company_description: 'Loja de roupas sustentáveis',
+      about_company: 'Loja de roupas sustentáveis',
       preferred_colors: 'Verde, bege, branco',
     },
     fallbackMode: true,
@@ -144,5 +152,32 @@ export const FallbackProntoEnviar = {
       console.log('Salvando:', data)
       return Promise.resolve()
     },
+  },
+}
+
+// História 7: Preview com Escalas de Personalidade
+export const PreviewComEscalas = {
+  args: {
+    sessionData: {
+      session_id: '123',
+      client_name: 'Ana Costa',
+      progress: 75,
+      is_completed: false,
+    },
+    briefingData: {
+      client_name: 'Ana Costa',
+      client_email: 'ana@exemplo.com',
+      about_company: 'Marca de cosméticos naturais',
+      keywords: 'Natural, Sustentável, Beleza',
+      personality_scales: {
+        scale_sophisticated: '4',
+        scale_technical: '3',
+        scale_formal: '2',
+        scale_traditional: '1',
+        scale_exclusive: '3'
+      },
+      preferred_colors: 'Verde, branco, dourado',
+    },
+    fallbackMode: false,
   },
 }

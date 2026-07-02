@@ -21,6 +21,7 @@ Visualize o preview do briefing em diferentes estados:
 - ✅ Preview Enviado - Após finalização
 - ✅ Modo Fallback - Formulário manual (chat offline)
 - ✅ Fallback Pronto para Enviar - Com campos obrigatórios
+- ✅ Preview com Escalas - Mostra escalas de personalidade preenchidas
 
 ### 2. **Chat Messages** (Componentes/Chat/Mensagens)
 Visualize os diferentes tipos de mensagens:
@@ -36,7 +37,15 @@ Visualize os checkboxes de seleção:
 - ✅ Vários Itens Selecionados
 - ✅ Nenhum Item (selecionado "não preciso")
 
-### 4. **Progress Bar** (Componentes/Chat/ProgressBar)
+### 4. **Escalas de Personalidade** (Componentes/Chat/Escalas de Personalidade)
+Visualize as escalas interativas de 1 a 5:
+- ✅ Escalas Interativas - Valores padrão (3)
+- ✅ Marca Sofisticada - Perfil premium
+- ✅ Marca Descontraída - Perfil casual
+- ✅ Marca Equilibrada - Perfil neutro
+- ✅ Marca Moderna e Popular - Perfil jovem
+
+### 5. **Progress Bar** (Componentes/Chat/ProgressBar)
 Visualize a barra de progresso em diferentes estágios:
 - ✅ Início (0%)
 - ✅ Contato Preenchido (15%)
@@ -45,7 +54,7 @@ Visualize a barra de progresso em diferentes estágios:
 - ✅ Quase Completo (85%)
 - ✅ Completo (100%)
 
-### 5. **Chat Completo** (Páginas/ChatCompleto)
+### 6. **Chat Completo** (Páginas/ChatCompleto)
 Visualize a página completa do chat:
 - ✅ Chat Vazio - Primeira interação
 - ✅ Chat Ativo - Conversa em andamento
@@ -57,6 +66,7 @@ Visualize a página completa do chat:
 Todos os componentes são interativos! Você pode:
 - ✏️ **Editar campos** no Preview do Briefing
 - ☑️ **Clicar checkboxes** para testar seleção
+- 🎚️ **Ajustar escalas** de personalidade (1-5)
 - 💾 **Clicar botões** para ver logs no console
 - 🎯 **Testar responsividade** redimensionando a janela
 
