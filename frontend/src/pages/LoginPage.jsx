@@ -16,12 +16,19 @@ function LoginPage() {
     setError('')
 
     try {
+      // Hash da senha antes de enviar (SHA-256)
+      const encoder = new TextEncoder()
+      const data = encoder.encode(password)
+      const hashBuffer = await crypto.subtle.digest('SHA-256', data)
+      const hashArray = Array.from(new Uint8Array(hashBuffer))
+      const hashedPassword = hashArray.map(b => b.toString(16).padStart(2, '0')).join('')
+      
       const response = await fetch(`${API_URL}/api/admin/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ password })
+        body: JSON.stringify({ password: hashedPassword })
       })
 
       if (!response.ok) {

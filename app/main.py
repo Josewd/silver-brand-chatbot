@@ -360,11 +360,17 @@ async def download_pdf(
 
 @app.post("/api/admin/login", response_model=AdminLoginResponse)
 async def admin_login(request: AdminLoginRequest):
-    """Login do admin com senha."""
+    """Login do admin com senha (recebe hash SHA-256)."""
+    import hashlib
+    
     # Pegar senha do ambiente (ou usar padrão para desenvolvimento)
     admin_password = settings.admin_password if hasattr(settings, 'admin_password') else "silveradmin2024"
     
-    if request.password != admin_password:
+    # Fazer hash da senha configurada
+    admin_password_hash = hashlib.sha256(admin_password.encode()).hexdigest()
+    
+    # Comparar hashes
+    if request.password != admin_password_hash:
         raise HTTPException(status_code=401, detail="Senha incorreta")
     
     # Gerar token simples (em produção, use JWT)
