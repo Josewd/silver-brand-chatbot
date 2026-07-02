@@ -8,11 +8,19 @@ function BriefingPreview({ sessionData, briefingData, fallbackMode, onSave, onUp
   const [isSending, setIsSending] = useState(false)
   const [sendSuccess, setSendSuccess] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
+  const [manualMode, setManualMode] = useState(fallbackMode || false)
 
   // Sincronizar com briefingData quando mudar
   useEffect(() => {
     setEditedData({ ...briefingData })
   }, [briefingData])
+
+  // Ativar modo manual automaticamente quando fallbackMode ativar
+  useEffect(() => {
+    if (fallbackMode) {
+      setManualMode(true)
+    }
+  }, [fallbackMode])
 
   const handleFieldChange = (fieldName, value) => {
     setEditedData(prev => ({
@@ -20,8 +28,8 @@ function BriefingPreview({ sessionData, briefingData, fallbackMode, onSave, onUp
       [fieldName]: value
     }))
     
-    // Atualizar no backend em tempo real (só se não estiver em fallbackMode)
-    if (onUpdate && !fallbackMode) {
+    // Atualizar no backend em tempo real (só se não estiver em fallbackMode ou manualMode)
+    if (onUpdate && !fallbackMode && !manualMode) {
       onUpdate(fieldName, value)
     }
   }
@@ -72,8 +80,8 @@ function BriefingPreview({ sessionData, briefingData, fallbackMode, onSave, onUp
   }
 
   const renderEditableField = (label, fieldName, value, multiline = false) => {
-    // No modo fallback, sempre mostrar campo (mesmo vazio)
-    if (!fallbackMode && !value && !editedData[fieldName]) {
+    // No modo manual ou fallback, sempre mostrar campo (mesmo vazio)
+    if (!manualMode && !fallbackMode && !value && !editedData[fieldName]) {
       return null
     }
 
@@ -88,7 +96,7 @@ function BriefingPreview({ sessionData, briefingData, fallbackMode, onSave, onUp
             value={currentValue}
             onChange={(e) => handleFieldChange(fieldName, e.target.value)}
             rows={4}
-            placeholder={fallbackMode ? `Digite ${label.toLowerCase()}...` : ''}
+            placeholder={(fallbackMode || manualMode) ? `Digite ${label.toLowerCase()}...` : ''}
           />
         ) : (
           <input
@@ -96,7 +104,7 @@ function BriefingPreview({ sessionData, briefingData, fallbackMode, onSave, onUp
             className="field-input"
             value={currentValue}
             onChange={(e) => handleFieldChange(fieldName, e.target.value)}
-            placeholder={fallbackMode ? `Digite ${label.toLowerCase()}...` : ''}
+            placeholder={(fallbackMode || manualMode) ? `Digite ${label.toLowerCase()}...` : ''}
           />
         )}
       </div>
@@ -253,6 +261,27 @@ function BriefingPreview({ sessionData, briefingData, fallbackMode, onSave, onUp
         <div className="preview-client">
           <strong>Cliente:</strong> {sessionData.client_name}
         </div>
+        
+        {/* Switch para modo manual */}
+        <div className="mode-switch">
+          <label className="switch-label">
+            <input
+              type="checkbox"
+              checked={manualMode}
+              onChange={(e) => setManualMode(e.target.checked)}
+              className="switch-checkbox"
+            />
+            <span className="switch-slider"></span>
+            <span className="switch-text">
+              {manualMode ? '✏️ Modo Edição Manual' : '💬 Modo Chat (Somente Leitura)'}
+            </span>
+          </label>
+          {manualMode && (
+            <div className="mode-hint">
+              💡 Você pode preencher todos os campos diretamente
+            </div>
+          )}
+        </div>
       </div>
 
       <div className="preview-content">
@@ -355,8 +384,8 @@ function BriefingPreview({ sessionData, briefingData, fallbackMode, onSave, onUp
         )}
       </div>
 
-      {/* Botões de ação - Modo Fallback */}
-      {fallbackMode && !sendSuccess && (
+      {/* Botões de ação - Modo Manual ou Fallback */}
+      {(manualMode || fallbackMode) && !sendSuccess && (
         <div className="preview-actions fallback-actions">
           <div className="action-message">
             {requiredFieldsFilled ? (
@@ -386,8 +415,8 @@ function BriefingPreview({ sessionData, briefingData, fallbackMode, onSave, onUp
         </div>
       )}
 
-      {/* Botão de Finalizar e Enviar - Modo Normal */}
-      {!fallbackMode && isComplete && !sendSuccess && (
+      {/* Botão de Finalizar e Enviar - Modo Normal (apenas leitura) */}
+      {!manualMode && !fallbackMode && isComplete && !sendSuccess && (
         <div className="preview-actions">
           <div className="action-message">
             <p>✨ Seu briefing está completo! Revise as informações acima e, se estiver tudo correto, finalize e envie.</p>

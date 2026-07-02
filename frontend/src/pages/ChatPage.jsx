@@ -128,6 +128,28 @@ function ChatPage() {
       }
       setMessages(prev => [...prev, botMessage])
 
+      // Detectar mensagem de erro do sistema
+      const isErrorMessage = data.reply && (
+        data.reply.includes('alto volume de uso') ||
+        data.reply.includes('sistema está com') ||
+        data.reply.includes('tente novamente em alguns minutos') ||
+        data.reply.includes('Desculpe, nosso sistema')
+      )
+
+      if (isErrorMessage) {
+        // Ativar modo fallback e mostrar dica no chat
+        setFallbackMode(true)
+        setIsPreviewOpen(true)
+        
+        // Adicionar mensagem informativa no chat
+        const infoMessage = {
+          role: 'system',
+          content: '💡 Dica: Você pode preencher o briefing manualmente! Ative o modo de edição no painel lateral usando o switch "Modo Edição Manual".',
+          timestamp: new Date().toISOString()
+        }
+        setMessages(prev => [...prev, infoMessage])
+      }
+
       // Se houver opções interativas (checkboxes), armazenar para mostrar
       if (data.options && data.options.length > 0) {
         setCurrentOptions(data.options)
@@ -380,17 +402,23 @@ function ChatPage() {
           {messages.map((msg, index) => (
             <div 
               key={index} 
-              className={`message ${msg.role === 'user' ? 'user-message' : 'bot-message'}`}
+              className={`message ${
+                msg.role === 'user' ? 'user-message' : 
+                msg.role === 'system' ? 'system-message' : 
+                'bot-message'
+              }`}
             >
               <div className="message-content">
                 {msg.content}
               </div>
-              <span className="message-time">
-                {new Date(msg.timestamp).toLocaleTimeString('pt-BR', { 
-                  hour: '2-digit', 
-                  minute: '2-digit' 
-                })}
-              </span>
+              {msg.role !== 'system' && (
+                <span className="message-time">
+                  {new Date(msg.timestamp).toLocaleTimeString('pt-BR', { 
+                    hour: '2-digit', 
+                    minute: '2-digit' 
+                  })}
+                </span>
+              )}
             </div>
           ))}
           

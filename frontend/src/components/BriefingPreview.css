@@ -37,6 +37,76 @@
   margin-top: 15px;
 }
 
+/* Switch para modo manual */
+.mode-switch {
+  margin-top: 20px;
+  padding: 15px;
+  background: #f5f5f5;
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+.switch-label {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.switch-checkbox {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.switch-slider {
+  position: relative;
+  display: inline-block;
+  width: 50px;
+  height: 26px;
+  background-color: #ccc;
+  border-radius: 26px;
+  transition: background-color 0.3s;
+}
+
+.switch-slider::before {
+  content: '';
+  position: absolute;
+  width: 20px;
+  height: 20px;
+  left: 3px;
+  top: 3px;
+  background-color: white;
+  border-radius: 50%;
+  transition: transform 0.3s;
+}
+
+.switch-checkbox:checked + .switch-slider {
+  background-color: #d4af37;
+}
+
+.switch-checkbox:checked + .switch-slider::before {
+  transform: translateX(24px);
+}
+
+.switch-text {
+  font-size: 14px;
+  font-weight: 600;
+  color: #333;
+}
+
+.mode-hint {
+  font-size: 12px;
+  color: #666;
+  text-align: center;
+  font-style: italic;
+}
+
 .preview-content {
   max-width: 100%;
 }
