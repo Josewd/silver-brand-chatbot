@@ -11,10 +11,11 @@
   text-align: center;
   margin-bottom: 40px;
   padding: 30px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: #000000;
   color: white;
   margin: 0;
   border-radius: 0;
+  border-bottom: 2px solid #333;
 }
 
 .preview-logo {
@@ -33,7 +34,7 @@
 
 .preview-client {
   font-size: 14px;
-  color: rgba(255, 255, 255, 0.95);
+  color: rgba(255, 255, 255, 0.9);
   margin-top: 15px;
 }
 
@@ -47,19 +48,19 @@
 }
 
 .deliverables-section {
-  background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
+  background: #f8f8f8;
   padding: 20px;
   border-radius: 8px;
-  border-left: 4px solid #667eea;
+  border-left: 4px solid #000000;
 }
 
 .section-title {
   font-size: 14px;
   font-weight: bold;
-  color: #667eea;
+  color: #000000;
   margin-bottom: 15px;
   padding-bottom: 8px;
-  border-bottom: 2px solid #667eea;
+  border-bottom: 2px solid #333;
   letter-spacing: 0.5px;
 }
 

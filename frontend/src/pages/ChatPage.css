@@ -33,14 +33,14 @@
   right: 0;
   top: 50%;
   transform: translateY(-50%);
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: #000000;
   color: white;
   border: none;
   padding: 24px 14px;
   cursor: pointer;
   z-index: 999;
   border-radius: 12px 0 0 12px;
-  box-shadow: -3px 3px 15px rgba(102, 126, 234, 0.4);
+  box-shadow: -3px 3px 15px rgba(0, 0, 0, 0.3);
   writing-mode: vertical-rl;
   text-orientation: mixed;
   font-weight: 700;
@@ -51,8 +51,8 @@
 
 .preview-toggle-button:hover {
   padding-right: 18px;
-  box-shadow: -5px 5px 20px rgba(102, 126, 234, 0.6);
-  background: linear-gradient(135deg, #5568d3 0%, #6a3d8f 100%);
+  box-shadow: -5px 5px 20px rgba(0, 0, 0, 0.5);
+  background: #1a1a1a;
 }
 
 .preview-toggle-button.hidden {
@@ -65,7 +65,7 @@
   position: absolute;
   top: 20px;
   left: 20px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: #000000;
   color: white;
   border: none;
   width: 40px;
@@ -79,13 +79,13 @@
   justify-content: center;
   z-index: 10;
   transition: all 0.3s;
-  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
 }
 
 .preview-close-button:hover {
-  background: linear-gradient(135deg, #5568d3 0%, #6a3d8f 100%);
+  background: #333333;
   transform: rotate(90deg) scale(1.1);
-  box-shadow: 0 6px 16px rgba(102, 126, 234, 0.5);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.3);
 }
 
 /* Chat - flexível, encolhe quando preview abre */
@@ -132,10 +132,11 @@
 
 /* Melhorias no preview para Silver Brand theme */
 .briefing-preview-panel .preview-header {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: #000000;
   color: white;
   padding: 30px;
   margin: 0;
+  border-bottom: 2px solid #333;
 }
 
 .briefing-preview-panel .preview-title {
