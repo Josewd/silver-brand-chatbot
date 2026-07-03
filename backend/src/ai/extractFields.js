@@ -132,15 +132,20 @@ async function extractFieldsWithOpenAI(conversationHistory, currentFormState, fo
     messageGenerated: !!aiMessage
   });
 
+  // Detectar se precisa enviar opções interativas
+  const interactiveOptions = detectInteractiveOptions(formSchema, { ...currentFormState, ...fieldUpdates });
+
   return {
     message: aiMessage,
     fieldUpdates,
+    options: interactiveOptions,
     metadata: {
       provider: 'openai',
       model: 'gpt-4o-mini',
       toolCallsCount: Object.keys(fieldUpdates).length,
       strictMode: true,
-      singlePhase: true
+      singlePhase: true,
+      hasOptions: !!interactiveOptions
     }
   };
 }
@@ -210,8 +215,21 @@ EXEMPLOS DE PERGUNTAS ESPECIALISTAS:
 FORMATO DE RESPOSTA PROFISSIONAL:
 1. Extraia informações usando update_form_fields
 2. Se a resposta foi básica, reformule profissionalmente
-3. Faça pergunta específica e educativa sobre o próximo campo
-4. Conecte a pergunta com estratégia de marca
+3. Para campos com opções (select/multiselect/scale), NÃO liste as opções no texto
+4. Faça pergunta específica e educativa sobre o próximo campo
+5. Conecte a pergunta com estratégia de marca
+
+CAMPOS COM OPÇÕES INTERATIVAS (não liste no texto):
+- tipo_projeto: ["Projeto novo", "Redesenho"] 
+- prazo: ["Em 1 mês", "Em 2 meses", "Indefinido", "Urgente"]
+- itens_padrao: ["Logo Principal", "Logo Reduzida", "Paleta de Cores", "Tipografia", "Manual de Marca", "Registro de Direito Autoral"]
+- itens_extra: ["Template PowerPoint", "Capa Destaques Instagram", "Arte para Cartão de Visitas", "Arte para Impresso"]
+- tipos_logo: ["Com símbolo", "Só a tipografia", "Minimalista", "Clássico", "Moderno"]
+- Campos scale: escala_sofisticada_descontraida, escala_tecnica_emocional, etc.
+
+EXEMPLO CORRETO para itens_padrao:
+❌ "Você precisa de: Logo Principal, Logo Reduzida, Paleta de Cores..." (não fazer)
+✅ "Agora vamos definir quais itens de identidade visual são essenciais para a Pradella Food. Vou apresentar as opções principais para você escolher:" (sistema mostrará checkboxes)
 
 REGRA DE OURO:
 Transforme cada interação em uma mini-consultoria de branding. O cliente deve sair da conversa entendendo melhor sua própria marca e com um briefing realmente valioso.`;
@@ -370,6 +388,7 @@ async function callGroqAPI(conversationHistory, currentFormState, formSchema, mo
   return {
     message: cleanMessage,
     fieldUpdates: extractionResult.fieldUpdates,
+    options: detectInteractiveOptions(formSchema, updatedFormState),
     metadata: {
       provider: 'groq',
       model: model.name,
@@ -657,6 +676,46 @@ function removeMalformedFunctionCalls(text) {
   return cleaned;
 }
 
+// Função para detectar quando enviar opções interativas
+function detectInteractiveOptions(formSchema, currentFormState) {
+  // Encontrar o próximo campo a ser preenchido
+  for (const section of formSchema.sections) {
+    for (const field of section.fields) {
+      if (!currentFormState[field.id] || currentFormState[field.id].toString().trim() === '') {
+        
+        // Se o campo tem opções (select ou multiselect), enviar como interativo
+        if (field.options && (field.type === 'select' || field.type === 'multiselect')) {
+          return {
+            type: field.type === 'multiselect' ? 'checkbox' : 'radio',
+            fieldId: field.id,
+            question: getQuestionForField(field),
+            options: field.options.map(option => ({
+              value: option,
+              text: option
+            }))
+          };
+        }
+        
+        // Se o campo é scale, enviar como scale interativo
+        if (field.type === 'scale') {
+          return {
+            type: 'scale',
+            fieldId: field.id,
+            question: field.label,
+            min: field.min || 1,
+            max: field.max || 5
+          };
+        }
+        
+        // Se chegou aqui, não precisa de opções interativas
+        return null;
+      }
+    }
+  }
+  
+  return null; // Formulário completo
+}
+
 // Função para gerar fallback contextual especializado
 function generateContextualFallback(formSchema, currentFormState) {
   const nextFieldInfo = getCurrentFieldToWork(formSchema, currentFormState);
@@ -768,34 +827,34 @@ function getQuestionForField(field) {
     'website': 'Você tem website ou Instagram da empresa?',
     'telefone': 'Qual é o seu telefone para contato?',
     'cidade_estado': 'Em que cidade e estado você está?',
-    'tipo_projeto': 'Este é um projeto novo ou um redesenho de identidade existente?',
-    'prazo': 'Para quando você precisa do projeto pronto?',
-    'itens_padrao': 'Quais itens de identidade visual você precisa? (Ex: Logo principal, paleta de cores, tipografia, manual)',
-    'itens_extra': 'Precisa de algum item adicional? (Ex: template PowerPoint, cartão de visitas, capas Instagram)',
+    'tipo_projeto': 'Este é um projeto de identidade visual novo ou um redesenho de algo que já existe?',
+    'prazo': 'Para quando você precisa do projeto finalizado?',
+    'itens_padrao': 'Agora vamos definir quais itens de identidade visual são essenciais para sua marca. Selecione os que considera importantes:',
+    'itens_extra': 'Além dos itens principais, há algo adicional que gostaria? Por exemplo, materiais específicos ou templates:',
     'info_extra_itens': 'Tem alguma informação extra sobre os itens que mencionou?',
-    'sobre_empresa': 'Me conte sobre sua empresa: o que vocês fazem e há quanto tempo existe?',
-    'missao_visao_valores': 'Vocês têm missão, visão e valores definidos? Quais são?',
+    'sobre_empresa': 'Para criar uma identidade visual que comunique bem o posicionamento, me conte: o que sua empresa faz e há quanto tempo existe?',
+    'missao_visao_valores': 'Sua empresa já tem missão, visão e valores definidos? Quais são?',
     'produtos_servicos': 'Quais produtos ou serviços vocês oferecem?',
     'objetivos_hoje': 'Quais são os principais objetivos da empresa atualmente?',
-    'diferencial': 'Qual é o principal diferencial do seu negócio?',
-    'como_ser_percebida': 'Como vocês querem ser percebidos pelo mercado?',
+    'diferencial': 'No seu mercado, qual é o principal diferencial competitivo? O que vocês fazem de especial?',
+    'como_ser_percebida': 'Quando alguém vê sua marca, qual primeira impressão deve ter? Como querem ser percebidos?',
     'diferencial_concorrencia': 'O que diferencia vocês da concorrência?',
     'por_que_escolher': 'Por que alguém deveria escolher vocês em vez dos concorrentes?',
-    'escala_sofisticada_descontraida': 'Em uma escala de 1 a 5, onde 1 é descontraída e 5 é sofisticada, como vocês se veem?',
-    'escala_tecnica_emocional': 'De 1 a 5, onde 1 é emocional e 5 é técnica, qual o tom da marca?',
-    'escala_formal_informal': 'De 1 a 5, onde 1 é informal e 5 é formal, como vocês se comunicam?',
-    'escala_tradicional_moderna': 'De 1 a 5, onde 1 é moderna e 5 é tradicional, qual o estilo da marca?',
-    'escala_exclusiva_popular': 'De 1 a 5, onde 1 é popular e 5 é exclusiva, como se posicionam?',
+    'escala_sofisticada_descontraida': 'Como classificaria sua marca numa escala de 1 (descontraída) a 5 (sofisticada)?',
+    'escala_tecnica_emocional': 'Sua comunicação é mais técnica (5) ou emocional (1)?',
+    'escala_formal_informal': 'O tom da marca é mais formal (5) ou informal (1)?',
+    'escala_tradicional_moderna': 'O estilo é mais tradicional (5) ou moderno (1)?',
+    'escala_exclusiva_popular': 'O posicionamento é mais exclusivo (5) ou popular (1)?',
     'tres_palavras': 'Me diga 3 palavras que definem a personalidade da sua marca.',
-    'concorrentes_locais': 'Quem são os principais concorrentes de vocês? (locais, regionais ou mundiais)',
+    'concorrentes_locais': 'Quem são os principais concorrentes de vocês?',
     'gosta_nessas_marcas': 'O que você gosta nessas marcas concorrentes?',
     'marcas_admira': 'Que outras marcas vocês admiram, mesmo fora do seu nicho?',
     'info_extra_concorrentes': 'Tem mais alguma informação sobre concorrentes ou referências?',
     'cores_nao_quer': 'Existem cores que vocês definitivamente NÃO querem usar?',
     'cores_quer': 'Que cores vocês gostam e gostariam de explorar na identidade?',
-    'fontes_gosta': 'Que tipos de fontes vocês gostam? (pode enviar links de referência)',
-    'tipos_logo': 'Que tipos de logo vocês preferem? (com símbolo, só tipografia, minimalista, clássico, moderno)',
-    'referencias_visuais': 'Você tem referências visuais que gosta? (pode enviar links)',
+    'fontes_gosta': 'Que tipos de fontes vocês gostam?',
+    'tipos_logo': 'Que estilo de logo prefere para sua marca? Vou mostrar as opções:',
+    'referencias_visuais': 'Você tem referências visuais que gosta?',
     'algo_a_dizer': 'Para finalizar, tem mais alguma coisa importante que gostaria de compartilhar sobre o projeto?'
   };
   

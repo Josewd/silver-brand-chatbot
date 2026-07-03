@@ -246,7 +246,7 @@ Vamos começar com as informações básicas de contato. Qual é o seu nome comp
         aiMessage = 'Obrigado pela informação. Poderia me contar mais sobre sua empresa?';
         console.log('⚠️ IA não retornou mensagem, usando fallback');
       }
-      
+
       console.log(`📨 Mensagem final da IA: "${aiMessage}"`);
       
       // Salvar resposta da IA
@@ -258,9 +258,17 @@ Vamos começar com as informações básicas de contato. Qual é o seu nome comp
       console.log(`📊 Progresso atualizado: ${updatedProgress.overall}%`);
       
       // Emitir resposta para o cliente
-      socket.emit('assistant_message', {
+      const responseData = {
         text: aiMessage
-      });
+      };
+      
+      // Adicionar opções interativas se houver
+      if (extractionResponse.options) {
+        responseData.options = extractionResponse.options;
+        console.log(`🎛️ Enviando opções interativas:`, extractionResponse.options);
+      }
+      
+      socket.emit('assistant_message', responseData);
       
       // Emitir atualizações do formulário se houver mudanças na FASE 1
       if (extractionResponse.fieldUpdates && Object.keys(extractionResponse.fieldUpdates).length > 0) {
