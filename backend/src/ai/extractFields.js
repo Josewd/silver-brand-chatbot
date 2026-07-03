@@ -172,9 +172,15 @@ async function callGroqAPI(conversationHistory, currentFormState, formSchema, mo
   
   console.log(`🤖 ${model.name} respondeu:`, {
     content: assistantMessage.content?.substring(0, 80) + '...',
+    content_length: assistantMessage.content?.length || 0,
     tool_calls: assistantMessage.tool_calls?.length || 0,
     finish_reason: result.choices[0].finish_reason
   });
+  
+  // Debug: Log completo da resposta se content estiver vazio
+  if (!assistantMessage.content) {
+    console.log('⚠️ IA retornou content vazio! Resposta completa:', JSON.stringify(assistantMessage, null, 2));
+  }
   
   // Extrair tool calls se houver
   const fieldUpdates = {};
@@ -192,13 +198,29 @@ async function callGroqAPI(conversationHistory, currentFormState, formSchema, mo
     });
   }
   
+  // Melhorar fallback baseado no contexto atual
+  let fallbackMessage = "Entendi! Continue...";
+  if (!assistantMessage.content) {
+    const nextFieldInfo = getCurrentFieldToWork(formSchema, currentFormState);
+    if (nextFieldInfo.includes('nome')) {
+      fallbackMessage = "Qual é o seu nome completo?";
+    } else if (nextFieldInfo.includes('email')) {
+      fallbackMessage = "Qual é o seu e-mail para contato?";  
+    } else if (nextFieldInfo.includes('telefone')) {
+      fallbackMessage = "Qual é o seu telefone para contato?";
+    } else {
+      fallbackMessage = "Pode me dar mais informações sobre isso?";
+    }
+  }
+  
   return {
-    message: assistantMessage.content || "Entendi! Continue...",
+    message: assistantMessage.content || fallbackMessage,
     fieldUpdates,
     metadata: {
       provider: 'groq',
       model: model.name,
-      toolCallsCount: assistantMessage.tool_calls?.length || 0
+      toolCallsCount: assistantMessage.tool_calls?.length || 0,
+      contentEmpty: !assistantMessage.content
     }
   };
 }
@@ -258,7 +280,9 @@ Assistente:
 REGRA ABSOLUTA: 
 - Use as funções adequadamente (não coloque no texto!)
 - Sempre responda com texto conversacional separado da função
-- NUNCA inclua <function=...> no texto da resposta`;
+- NUNCA inclua <function=...> no texto da resposta
+- PROIBIDO responder "Entendi! Continue..." ou respostas genéricas
+- SEMPRE faça uma pergunta específica e útil sobre o próximo campo`;
 }
 
 function getCurrentFieldToWork(formSchema, currentFormState) {
