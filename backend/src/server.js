@@ -156,13 +156,18 @@ Vamos começar com as informações básicas de contato. Qual é o seu nome comp
     try {
       const { sessionId, text } = data;
       
+      console.log('🔍 user_message recebido:', { sessionId, text });
+      
       if (!sessionId || !text) {
         socket.emit('error', { message: 'SessionId e text são obrigatórios' });
         return;
       }
       
       // Carregar estado atual
+      console.log('🗄️ Buscando sessão:', sessionId);
       const session = await getSession(sessionId);
+      console.log('🗄️ Resultado getSession:', session ? 'ENCONTRADA' : 'NÃO ENCONTRADA');
+      
       if (!session) {
         socket.emit('error', { message: 'Sessão não encontrada' });
         return;
