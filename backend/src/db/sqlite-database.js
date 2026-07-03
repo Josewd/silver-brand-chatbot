@@ -124,12 +124,24 @@ class LocalDatabase {
                     data: JSON.parse(formState.data || '{}'),
                     progress: JSON.parse(formState.progress || '{}')
                   };
+                } else {
+                  // Se não tem form_state, criar estrutura vazia
+                  row.form_state = {
+                    data: {},
+                    progress: {}
+                  };
                 }
+                console.log('🗄️ Sessão carregada:', {
+                  id: sessionId,
+                  hasData: !!formState,
+                  dataKeys: Object.keys(row.form_state.data)
+                });
                 resolve(row);
               }
             );
           } else {
-            resolve(row);
+            console.log('❌ Sessão não encontrada:', sessionId);
+            resolve(null);
           }
         }
       );
