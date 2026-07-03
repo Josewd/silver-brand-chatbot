@@ -32,11 +32,24 @@ export function useBriefingSync(sessionId) {
   useEffect(() => {
     if (!connected || !socket) return
     
-    let currentSessionId = getSessionId()
+    // PRIORIZAR sessionId da URL sempre - se existir, usar ele
+    let currentSessionId;
     
-    if (!currentSessionId) {
-      currentSessionId = sessionId || generateSessionId()
-      setSessionId(currentSessionId)
+    if (sessionId) {
+      // URL tem sessionId: usar sempre
+      currentSessionId = sessionId;
+      setSessionId(currentSessionId); // Atualizar cache
+      console.log('📍 Usando sessionId da URL:', sessionId);
+    } else {
+      // URL não tem sessionId: usar cache ou gerar novo  
+      currentSessionId = getSessionId();
+      if (!currentSessionId) {
+        currentSessionId = generateSessionId();
+        setSessionId(currentSessionId);
+        console.log('🆕 Novo sessionId gerado:', currentSessionId);
+      } else {
+        console.log('💾 Usando sessionId do cache:', currentSessionId);
+      }
     }
     
     setWsSessionId(currentSessionId)
