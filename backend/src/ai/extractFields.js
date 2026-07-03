@@ -1,7 +1,33 @@
 // Interface trocável para diferentes provedores de IA
 async function extractFields(conversationHistory, currentFormState, formSchema) {
-  // Por enquanto, usar Groq API
-  return await extractFieldsWithGroq(conversationHistory, currentFormState, formSchema);
+  // Verificar se API Key está configurada
+  if (!process.env.GROQ_API_KEY) {
+    console.error('❌ GROQ_API_KEY não configurada');
+    return {
+      message: generateContextualFallback(formSchema, currentFormState),
+      fieldUpdates: {},
+      metadata: { provider: 'none', error: 'API key missing' }
+    };
+  }
+  
+  try {
+    // Tentar usar Groq API
+    return await extractFieldsWithGroq(conversationHistory, currentFormState, formSchema);
+  } catch (error) {
+    console.error('❌ Falha completa da IA, usando fallback manual:', error.message);
+    
+    // Extração manual simples baseada na última mensagem
+    const lastUserMessage = conversationHistory.filter(msg => msg.role === 'user').pop()?.content || '';
+    const manualUpdates = manualFieldExtraction(lastUserMessage, currentFormState);
+    
+    console.log('🔧 Extração manual:', manualUpdates);
+    
+    return {
+      message: generateContextualFallback(formSchema, { ...currentFormState, ...manualUpdates }),
+      fieldUpdates: manualUpdates,
+      metadata: { provider: 'manual', error: error.message, noAI: true }
+    };
+  }
 }
 
 async function extractFieldsWithGroq(conversationHistory, currentFormState, formSchema) {
@@ -16,23 +42,23 @@ async function extractFieldsWithGroq(conversationHistory, currentFormState, form
     };
   }
   
-  // Sistema de fallback com modelos otimizados para tool use
+  // Sistema de fallback com modelos Groq reais e funcionais
   const groqModels = [
     { 
-      name: "llama-3-groq-70b-tool-use", 
-      description: "Modelo principal - especializado em tool use",
+      name: "llama-3.3-70b-versatile", 
+      description: "Modelo principal - mais capaz e estável",
       maxTokens: 800,
       temperature: 0.5 
     },
     { 
-      name: "llama-3.3-70b-versatile", 
-      description: "Fallback 1 - modelo versátil",
+      name: "llama-3.1-70b-versatile", 
+      description: "Fallback 1 - modelo estável",
       maxTokens: 600,
       temperature: 0.5 
     },
     { 
-      name: "llama-3-groq-8b-tool-use", 
-      description: "Fallback 2 - rápido e otimizado para tools",
+      name: "llama-3.1-8b-instant", 
+      description: "Fallback 2 - rápido e confiável",
       maxTokens: 400,
       temperature: 0.3 
     }
@@ -264,6 +290,16 @@ Extraia APENAS novos dados da última mensagem do usuário.`;
 
   } catch (error) {
     console.error('❌ Erro na extração:', error);
+    
+    // Log mais detalhado do erro
+    if (error.message.includes('404')) {
+      console.error('🚫 Modelo não encontrado na API Groq:', model.name);
+    } else if (error.message.includes('401')) {
+      console.error('🔑 Problema de autenticação com API Groq');
+    } else if (error.message.includes('429')) {
+      console.error('⏳ Rate limit atingido na API Groq');
+    }
+    
     return {
       fieldUpdates: {},
       success: false,
@@ -325,6 +361,16 @@ async function callGroqReply(conversationHistory, updatedFormState, formSchema, 
 
   } catch (error) {
     console.error('❌ Erro na geração de resposta:', error);
+    
+    // Log mais detalhado do erro
+    if (error.message.includes('404')) {
+      console.error('🚫 Modelo não encontrado na API Groq:', model.name);
+    } else if (error.message.includes('401')) {
+      console.error('🔑 Problema de autenticação com API Groq');
+    } else if (error.message.includes('429')) {
+      console.error('⏳ Rate limit atingido na API Groq');
+    }
+    
     const fallbackMessage = generateContextualFallback(formSchema, updatedFormState);
     return {
       message: fallbackMessage,
@@ -429,6 +475,25 @@ function generateContextualFallback(formSchema, currentFormState) {
   } else {
     return "Pode me contar mais detalhes sobre isso?";
   }
+}
+
+// Função de extração manual simples (fallback quando IA falha)
+function manualFieldExtraction(userMessage, currentFormState) {
+  const fieldUpdates = {};
+  const message = userMessage.toLowerCase();
+  
+  // Detectar informações básicas por padrões simples
+  if (!currentFormState.empresa_slogan && message.length > 2) {
+    // Se está perguntando sobre empresa e não temos empresa_slogan ainda
+    fieldUpdates.empresa_slogan = userMessage;
+  } else if (!currentFormState.website && (message.includes('www.') || message.includes('http') || message.includes('@'))) {
+    fieldUpdates.website = userMessage;
+  } else if (!currentFormState.sobre_empresa && message.length > 10) {
+    // Respostas longas provavelmente são sobre a empresa
+    fieldUpdates.sobre_empresa = userMessage;
+  }
+  
+  return fieldUpdates;
 }
 function buildSystemPrompt(formSchema, currentFormState) {
   // Função mantida para compatibilidade, mas não mais usada na nova implementação
