@@ -45,6 +45,24 @@ const PORT = process.env.PORT || 3001;
 // Inicialização do banco SQLite
 initDatabase().catch(console.error);
 
+// Função utilitária para limpar campos duplicados legados
+function cleanLegacyFields(formState) {
+  const cleaned = { ...formState };
+  
+  // Remover campos duplicados em inglês se existirem em português
+  if (cleaned.nome && cleaned.client_name) {
+    delete cleaned.client_name;
+  }
+  if (cleaned.email && cleaned.client_email) {
+    delete cleaned.client_email;
+  }
+  if (cleaned.telefone && cleaned.client_phone) {
+    delete cleaned.client_phone;
+  }
+  
+  return cleaned;
+}
+
 // === ROTAS HTTP ===
 
 app.get('/', (req, res) => {
@@ -289,12 +307,19 @@ app.post('/api/session/create', async (req, res) => {
       client_name: client_name
     });
     
-    // Criar estado inicial do formulário com dados fornecidos
-    const initialFormData = {};
-    if (client_name) initialFormData.nome = client_name;
-    if (client_email) initialFormData.email = client_email;
-    if (client_phone) initialFormData.telefone = client_phone;
-    if (initial_context) initialFormData.initial_context = initial_context;
+  // Criar estado inicial do formulário com dados fornecidos
+  const initialFormData = {};
+  
+  // Mapear campos de inglês para português (compatibilidade com API antiga)
+  if (client_name) initialFormData.nome = client_name;
+  if (client_email) initialFormData.email = client_email;
+  if (client_phone) initialFormData.telefone = client_phone;
+  if (initial_context) initialFormData.initial_context = initial_context;
+  
+  console.log('🔄 Mapeamento de campos:', {
+    input: { client_name, client_email, client_phone },
+    output: initialFormData
+  });
     
     if (Object.keys(initialFormData).length > 0) {
       await updateFormState(sessionId, initialFormData);
@@ -435,9 +460,9 @@ app.get('/api/admin/sessions', async (req, res) => {
     // Buscar sessões do SQLite
     const sessions = await getAllSessions(50);
     
-    // Formatar dados para o frontend
+    // Formatar dados para o frontend (apenas campos em português)
     const formattedSessions = (sessions || []).map(session => {
-      const formState = session.form_states?.[0]?.data || {};
+      const formState = cleanLegacyFields(session.form_states?.[0]?.data || {});
       const progress = calculateProgress(formState, formSchema);
       
       return {
@@ -447,10 +472,8 @@ app.get('/api/admin/sessions', async (req, res) => {
         is_completed: progress.overall >= 95,
         created_at: session.created_at,
         data: {
-          client_name: formState.nome || 'Cliente Sem Nome',
-          client_email: formState.email || '',
-          client_phone: formState.telefone || '',
-          ...formState // Incluir todos os campos do formulário
+          // Apenas campos do schema em português
+          ...formState
         }
       };
     });
@@ -477,8 +500,8 @@ app.get('/sessions/:sessionId', async (req, res) => {
       return res.status(404).json({ error: 'Sessão não encontrada' });
     }
     
-    // Carregar também os dados do formulário
-    const formState = session.form_state?.data || {};
+    // Carregar também os dados do formulário (apenas campos em português)
+    const formState = cleanLegacyFields(session.form_state?.data || {});
     const progress = calculateProgress(formState, formSchema);
     
     res.json({
@@ -489,16 +512,66 @@ app.get('/sessions/:sessionId', async (req, res) => {
       is_completed: progress.overall >= 95,
       exists: true,
       data: {
-        client_name: formState.nome || 'Cliente',
-        client_email: formState.email || '',
-        client_phone: formState.telefone || '',
-        ...formState // Incluir todos os campos do formulário
+        // Apenas campos do schema em português
+        ...formState
       }
     });
     
   } catch (error) {
     console.error('❌ Erro ao verificar sessão:', error);
     res.status(500).json({ error: 'Erro ao verificar sessão' });
+  }
+});
+
+// Endpoint para migrar dados legados (remover campos duplicados)
+app.post('/api/admin/migrate-legacy-fields', async (req, res) => {
+  try {
+    console.log('🔄 === MIGRAÇÃO DE CAMPOS LEGADOS ===');
+    
+    // Buscar todas as sessões
+    const sessions = await getAllSessions(1000);
+    let migratedCount = 0;
+    
+    for (const session of sessions) {
+      const formState = session.form_states?.[0]?.data || {};
+      
+      // Verificar se tem campos duplicados
+      const hasDuplicates = (
+        (formState.nome && formState.client_name) ||
+        (formState.email && formState.client_email) ||
+        (formState.telefone && formState.client_phone)
+      );
+      
+      if (hasDuplicates) {
+        console.log(`📋 Migrando sessão ${session.id}...`);
+        
+        // Limpar campos duplicados
+        const cleanedData = cleanLegacyFields(formState);
+        
+        // Salvar dados limpos
+        await updateFormState(session.id, cleanedData);
+        migratedCount++;
+        
+        console.log(`✅ Sessão ${session.id} migrada:`, {
+          before: Object.keys(formState).length,
+          after: Object.keys(cleanedData).length,
+          removed: Object.keys(formState).filter(key => !Object.keys(cleanedData).includes(key))
+        });
+      }
+    }
+    
+    console.log(`✅ Migração concluída: ${migratedCount} sessões atualizadas`);
+    
+    res.json({
+      success: true,
+      sessionsChecked: sessions.length,
+      sessionsMigrated: migratedCount,
+      message: `Migração concluída. ${migratedCount} sessões foram atualizadas.`
+    });
+    
+  } catch (error) {
+    console.error('❌ Erro na migração:', error);
+    res.status(500).json({ error: 'Erro durante a migração' });
   }
 });
 
