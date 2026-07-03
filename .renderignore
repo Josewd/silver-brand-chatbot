@@ -1,0 +1,15 @@
+# Ignorar código Python antigo arquivado
+archive/
+*.py
+__pycache__/
+*.pyc
+
+# Ignorar frontend (deployado no Vercel)
+frontend/
+
+# Ignorar arquivos de desenvolvimento
+.git/
+.vscode/
+.cursor/
+*.md
+*.log

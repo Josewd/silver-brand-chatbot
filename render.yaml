@@ -29,3 +29,6 @@ services:
         value: +5511960157100
       - key: COMPANY_NAME
         value: Silver Brand House
+    buildFilter:
+      paths:
+        - backend/**
