@@ -92,34 +92,8 @@ export function useBriefingSync(sessionId) {
         role: 'assistant',
         content: data.text,
         timestamp: new Date().toISOString(),
-        options: data.options // Adicionar suporte a opções
+        options: data.options // Passar opções para a mensagem
       }])
-      
-      // Se há opções interativas, configurar o painel de opções
-      if (data.options) {
-        console.log('🎛️ Configurando opções interativas:', data.options);
-        if (data.options.type === 'checkbox') {
-          setCurrentOptions(data.options.options.map(opt => ({
-            type: 'checkbox',
-            value: opt.value,
-            text: opt.text
-          })));
-        } else if (data.options.type === 'scale') {
-          setCurrentOptions([{
-            type: 'scale',
-            value: data.options.fieldId,
-            text: data.options.question
-          }]);
-        } else if (data.options.type === 'multiple_scales') {
-          setCurrentOptions(data.options.scales.map(scale => ({
-            type: 'scale',
-            value: scale.id,
-            text: scale.label,
-            min: scale.min,
-            max: scale.max
-          })));
-        }
-      }
       
       setLoading(false)
     })

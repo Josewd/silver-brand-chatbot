@@ -64,6 +64,38 @@ function ChatPage() {
   useEffect(() => {
     scrollToBottom()
   }, [messages])
+  
+  // Detectar opções interativas na última mensagem
+  useEffect(() => {
+    if (messages.length > 0) {
+      const lastMessage = messages[messages.length - 1];
+      if (lastMessage.role === 'assistant' && lastMessage.options) {
+        console.log('🎛️ Configurando opções interativas:', lastMessage.options);
+        
+        if (lastMessage.options.type === 'checkbox') {
+          setCurrentOptions(lastMessage.options.options.map(opt => ({
+            type: 'checkbox',
+            value: opt.value,
+            text: opt.text
+          })));
+        } else if (lastMessage.options.type === 'scale') {
+          setCurrentOptions([{
+            type: 'scale',
+            value: lastMessage.options.fieldId,
+            text: lastMessage.options.question
+          }]);
+        } else if (lastMessage.options.type === 'multiple_scales') {
+          setCurrentOptions(lastMessage.options.scales.map(scale => ({
+            type: 'scale',
+            value: scale.id,
+            text: scale.label,
+            min: scale.min,
+            max: scale.max
+          })));
+        }
+      }
+    }
+  }, [messages])
 
   // Focar no input quando carregar
   useEffect(() => {
