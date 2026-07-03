@@ -1,33 +1,189 @@
 // Interface trocável para diferentes provedores de IA
 async function extractFields(conversationHistory, currentFormState, formSchema) {
-  // Verificar se API Key está configurada
-  if (!process.env.GROQ_API_KEY) {
-    console.error('❌ GROQ_API_KEY não configurada');
-    return {
-      message: generateContextualFallback(formSchema, currentFormState),
-      fieldUpdates: {},
-      metadata: { provider: 'none', error: 'API key missing' }
-    };
+  // Priorizar OpenAI se disponível (mais confiável com strict mode)
+  if (process.env.OPENAI_API_KEY) {
+    try {
+      console.log('🎯 Usando OpenAI com structured outputs (strict mode)...');
+      return await extractFieldsWithOpenAI(conversationHistory, currentFormState, formSchema);
+    } catch (error) {
+      console.warn('⚠️ OpenAI falhou, tentando Groq como fallback:', error.message);
+    }
   }
   
-  try {
-    // Tentar usar Groq API
-    return await extractFieldsWithGroq(conversationHistory, currentFormState, formSchema);
-  } catch (error) {
-    console.error('❌ Falha completa da IA, usando fallback manual:', error.message);
-    
-    // Extração manual simples baseada na última mensagem
-    const lastUserMessage = conversationHistory.filter(msg => msg.role === 'user').pop()?.content || '';
-    const manualUpdates = manualFieldExtraction(lastUserMessage, currentFormState);
-    
-    console.log('🔧 Extração manual:', manualUpdates);
-    
-    return {
-      message: generateContextualFallback(formSchema, { ...currentFormState, ...manualUpdates }),
-      fieldUpdates: manualUpdates,
-      metadata: { provider: 'manual', error: error.message, noAI: true }
-    };
+  // Fallback para Groq se OpenAI não disponível ou falhar
+  if (process.env.GROQ_API_KEY) {
+    try {
+      console.log('🤖 Usando Groq API (sistema de 2 fases)...');
+      return await extractFieldsWithGroq(conversationHistory, currentFormState, formSchema);
+    } catch (error) {
+      console.warn('⚠️ Groq falhou, usando extração manual:', error.message);
+    }
   }
+  
+  // Último recurso: extração manual
+  console.error('❌ Nenhuma IA disponível, usando fallback manual');
+  const lastUserMessage = conversationHistory.filter(msg => msg.role === 'user').pop()?.content || '';
+  const manualUpdates = manualFieldExtraction(lastUserMessage, currentFormState);
+  
+  return {
+    message: generateContextualFallback(formSchema, { ...currentFormState, ...manualUpdates }),
+    fieldUpdates: manualUpdates,
+    metadata: { provider: 'manual', noAI: true }
+  };
+}
+
+// Extração com OpenAI usando structured outputs (strict mode) - MAIS CONFIÁVEL
+async function extractFieldsWithOpenAI(conversationHistory, currentFormState, formSchema) {
+  console.log('🎯 === OPENAI STRUCTURED OUTPUTS ===');
+  
+  // Schema com strict mode - garante formato perfeito
+  const tools = [{
+    type: "function",
+    function: {
+      name: "update_form_fields",
+      description: "Registra uma ou mais respostas extraídas da última mensagem do usuário",
+      strict: true,
+      parameters: {
+        type: "object",
+        properties: {
+          updates: {
+            type: "array",
+            items: {
+              type: "object",
+              properties: {
+                field_id: { type: "string" },
+                value: { type: "string" }
+              },
+              required: ["field_id", "value"],
+              additionalProperties: false
+            }
+          }
+        },
+        required: ["updates"],
+        additionalProperties: false
+      }
+    }
+  }];
+
+  const systemPrompt = buildOpenAISystemPrompt(formSchema, currentFormState);
+  
+  const messages = [
+    { role: "system", content: systemPrompt },
+    ...conversationHistory
+  ];
+
+  console.log('🔄 Chamada OpenAI API - Modelo: gpt-4o-mini (custo-benefício otimizado)');
+
+  const response = await fetch("https://api.openai.com/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${process.env.OPENAI_API_KEY}`,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      model: "gpt-4o-mini",
+      messages,
+      tools,
+      tool_choice: "auto",
+      temperature: 0.3,
+      max_tokens: 500,
+      parallel_tool_calls: false // Obrigatório com strict mode
+    })
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`OpenAI API error: ${response.status} - ${errorText}`);
+  }
+
+  const result = await response.json();
+  const assistantMessage = result.choices[0].message;
+
+  console.log(`✅ OpenAI respondeu:`, {
+    content_length: assistantMessage.content?.length || 0,
+    tool_calls: assistantMessage.tool_calls?.length || 0,
+    finish_reason: result.choices[0].finish_reason
+  });
+
+  // Extrair atualizações dos tool calls
+  const fieldUpdates = {};
+  
+  if (assistantMessage.tool_calls) {
+    assistantMessage.tool_calls.forEach(toolCall => {
+      if (toolCall.function.name === "update_form_fields") {
+        try {
+          const args = JSON.parse(toolCall.function.arguments);
+          // Processar array de updates
+          args.updates.forEach(update => {
+            fieldUpdates[update.field_id] = update.value;
+          });
+        } catch (e) {
+          console.error('❌ Erro ao parsear tool call OpenAI:', e);
+        }
+      }
+    });
+  }
+
+  // Com OpenAI, podemos confiar no texto + tool calls na mesma resposta
+  const aiMessage = assistantMessage.content || generateContextualFallback(formSchema, { ...currentFormState, ...fieldUpdates });
+
+  console.log(`✅ OpenAI processamento concluído:`, {
+    fieldsExtracted: Object.keys(fieldUpdates).length,
+    messageGenerated: !!aiMessage
+  });
+
+  return {
+    message: aiMessage,
+    fieldUpdates,
+    metadata: {
+      provider: 'openai',
+      model: 'gpt-4o-mini',
+      toolCallsCount: Object.keys(fieldUpdates).length,
+      strictMode: true,
+      singlePhase: true
+    }
+  };
+}
+
+function buildOpenAISystemPrompt(formSchema, currentFormState) {
+  const filledFields = Object.keys(currentFormState).length;
+  const totalFields = formSchema.sections.reduce((sum, section) => sum + section.fields.length, 0);
+  
+  const nextField = getCurrentFieldToWork(formSchema, currentFormState);
+  
+  return `Você é um assistente especializado em coleta de briefing para projetos de identidade visual da Silver Brand House.
+
+CONTEXTO ATUAL:
+- Campos já preenchidos: ${filledFields}/${totalFields}
+- Estado atual do formulário: ${JSON.stringify(currentFormState, null, 2)}
+
+PRÓXIMO CAMPO PARA TRABALHAR:
+${nextField}
+
+INSTRUÇÕES CRÍTICAS:
+1. 🎯 EXTRAIA dados da última mensagem do usuário usando update_form_fields
+2. 📝 RESPONDA com uma pergunta sobre o próximo campo necessário
+3. 🇧🇷 Use linguagem brasileira informal e acolhedora
+4. ⚠️ Para campos já preenchidos, NÃO pergunte novamente
+5. 🔄 Avance automaticamente para a próxima seção quando necessário
+
+CAMPOS DISPONÍVEIS: nome, email, telefone, empresa_slogan, website, cidade_estado, tipo_projeto, prazo, sobre_empresa, missao_visao_valores, produtos_servicos, objetivos_hoje, diferencial, como_ser_percebida, diferencial_concorrencia, por_que_escolher, etc.
+
+FORMATO DE RESPOSTA:
+- Use update_form_fields para extrair informações identificadas
+- Responda com texto conversacional perguntando o próximo campo
+- Seja específico sobre o que quer saber
+- Termine sempre com uma pergunta clara
+
+EXEMPLO:
+Usuário: "Minha empresa se chama Tech Solutions"
+Ação: update_form_fields([{field_id: "empresa_slogan", value: "Tech Solutions"}])
+Resposta: "Ótimo! A Tech Solutions tem algum slogan ou você tem website que possa compartilhar?"
+
+REGRA ABSOLUTA:
+- Extraia TODA informação relevante da última mensagem
+- Faça UMA pergunta específica sobre o próximo campo necessário
+- Mantenha tom conversacional e acolhedor`;
 }
 
 async function extractFieldsWithGroq(conversationHistory, currentFormState, formSchema) {
