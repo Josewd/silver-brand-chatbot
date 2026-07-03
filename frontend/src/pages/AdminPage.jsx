@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import './AdminPage.css'
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3002'
 
 function AdminPage() {
   const navigate = useNavigate()
@@ -28,7 +28,7 @@ function AdminPage() {
 
   const loadSessions = async () => {
     try {
-      const response = await fetch(`${API_URL}/api/admin/sessions`)
+      const response = await fetch(`${BACKEND_URL}/api/admin/sessions`)
       if (response.ok) {
         const data = await response.json()
         setSessions(data.sessions || [])
@@ -51,7 +51,7 @@ function AdminPage() {
     setLoading(true)
 
     try {
-      const response = await fetch(`${API_URL}/api/session/create`, {
+      const response = await fetch(`${BACKEND_URL}/api/session/create`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -222,7 +222,7 @@ function AdminPage() {
                     </button>
                     {session.is_completed && (
                       <button 
-                        onClick={() => window.open(`${API_URL}/api/briefing/${session.id}/download`, '_blank')}
+                        onClick={() => window.open(`${BACKEND_URL}/api/briefing/${session.id}/download`, '_blank')}
                         className="btn-download"
                       >
                         📄 Baixar PDF

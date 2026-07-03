@@ -1,14 +1,20 @@
 services:
   - type: web
-    name: silver-brand-api
-    runtime: python
+    name: silver-brand-backend
+    runtime: node
     region: frankfurt
     plan: free
-    buildCommand: pip install -r requirements.txt && mkdir -p database generated_pdfs
-    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    buildCommand: cd backend && npm install
+    startCommand: cd backend && npm start
     envVars:
-      - key: PYTHON_VERSION
-        value: "3.11"
+      - key: NODE_VERSION
+        value: "18"
+      - key: PORT
+        value: "3002"
+      - key: CORS_ORIGIN
+        sync: false
+      - key: ADMIN_PASSWORD
+        sync: false
       - key: GROQ_API_KEY
         sync: false
       - key: GEMINI_API_KEY
@@ -21,5 +27,3 @@ services:
         value: +5511960157100
       - key: COMPANY_NAME
         value: Silver Brand House
-      - key: FRONTEND_URL
-        sync: false

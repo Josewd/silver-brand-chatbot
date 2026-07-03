@@ -4,6 +4,7 @@ import ChatPage from './pages/ChatPage'
 import AdminPage from './pages/AdminPage'
 import LoginPage from './pages/LoginPage'
 import ProtectedRoute from './components/ProtectedRoute'
+import ChatProtectedRoute from './components/ChatProtectedRoute'
 
 function App() {
   return (
@@ -11,7 +12,17 @@ function App() {
       <Routes>
         <Route path="/" element={<Navigate to="/login" replace />} />
         <Route path="/login" element={<LoginPage />} />
-        <Route path="/chat/:sessionId" element={<ChatPage />} />
+        {/* Chat só acessível com sessionId específico e válido */}
+        <Route 
+          path="/chat/:sessionId" 
+          element={
+            <ChatProtectedRoute>
+              <ChatPage />
+            </ChatProtectedRoute>
+          } 
+        />
+        {/* Qualquer acesso a /chat sem sessionId redireciona para login */}
+        <Route path="/chat" element={<Navigate to="/login" replace />} />
         <Route 
           path="/admin" 
           element={

@@ -5,37 +5,34 @@ import SectionProgressIndicator from '../components/SectionProgressIndicator'
 import { useBriefingSync } from '../hooks/useBriefingSync'
 import './ChatPage.css'
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
+// Sistema usando apenas WebSocket + SQLite (Node.js porta 3002)
+// API Python (porta 8000) removida completamente
 
 // Definir as seções do briefing (IDs devem corresponder ao backend)
 const BRIEFING_SECTIONS = [
-  { id: 'intro', name: 'Início' },
   { id: 'contato', name: 'Detalhes de Contato' },
-  { id: 'basicas', name: 'Informações Básicas' },
+  { id: 'info_basicas', name: 'Informações Básicas' },
   { id: 'entrega', name: 'Lista de Entrega' },
   { id: 'perfil', name: 'Perfil da Empresa' },
-  { id: 'posicionamento', name: 'Posicionamento & Personalidade' },
+  { id: 'posicionamento', name: 'Posicionamento' },
+  { id: 'personalidade', name: 'Personalidade da Marca' },
   { id: 'concorrentes', name: 'Concorrentes e Referências' },
-  { id: 'visuais', name: 'Preferências Visuais' },
-  { id: 'final', name: 'Informações Finais' }
+  { id: 'visual', name: 'Preferências Visuais' },
+  { id: 'final', name: 'Final' }
 ]
 
 function ChatPage() {
   const { sessionId } = useParams()
-  const [messages, setMessages] = useState([])
   const [inputValue, setInputValue] = useState('')
-  const [loading, setLoading] = useState(false)
   const [sessionData, setSessionData] = useState(null)
   const [error, setError] = useState(null)
   const [currentOptions, setCurrentOptions] = useState(null)
   const [selectedOptions, setSelectedOptions] = useState([])
   const [isPreviewOpen, setIsPreviewOpen] = useState(false)
-  const [chatError, setChatError] = useState(false) // Detectar quando chat falha
-  const [fallbackMode, setFallbackMode] = useState(false) // Modo formulário manual
   const messagesEndRef = useRef(null)
   const inputRef = useRef(null)
 
-  // Hook de sincronização do briefing
+  // Hook híbrido (WebSocket + REST)
   const {
     briefingData,
     progress: syncedProgress,
@@ -45,176 +42,78 @@ function ChatPage() {
     saveBriefingData,
     finalizeBriefing,
     hasRequiredFields,
-    getSectionProgress
+    getSectionProgress,
+    // Novos: WebSocket
+    messages,
+    loading,
+    connected,
+    sessionReady,
+    sendMessage,
+    sessionId: wsSessionId,
+    fallbackMode,
+    chatError,
+    setChatError,
+    setFallbackMode
   } = useBriefingSync(sessionId)
 
-  useEffect(() => {
-    loadSession()
-    loadHistory()
-  }, [sessionId])
+  // Estados calculados
+  const progress = syncedProgress || 0
+  const isCompleted = syncedIsCompleted || false
 
+  // Auto-scroll para última mensagem
   useEffect(() => {
     scrollToBottom()
   }, [messages])
 
-  // Auto-focus no input após carregar ou enviar mensagem
+  // Focar no input quando carregar
   useEffect(() => {
-    if (!loading && !currentOptions && inputRef.current) {
+    if (inputRef.current) {
       inputRef.current.focus()
     }
-  }, [loading, currentOptions])
+  }, [])
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }
 
-  const loadSession = async () => {
-    try {
-      const response = await fetch(`${API_URL}/api/session/${sessionId}`)
-      if (!response.ok) {
-        throw new Error('Sessão não encontrada')
-      }
-      const data = await response.json()
-      
-      // Garantir que briefing_data sempre exista
-      if (!data.briefing_data) {
-        data.briefing_data = {}
-      }
-      
-      // Adicionar informações iniciais da sessão ao briefing_data se ainda não existirem
-      if (data.client_name && !data.briefing_data.client_name) {
-        data.briefing_data.client_name = data.client_name
-      }
-      
-      setSessionData(data)
-    } catch (err) {
-      setError('Erro ao carregar sessão: ' + err.message)
-    }
+  // Funções desabilitadas - API Python removida
+  const loadSessionViaRest = async () => {
+    console.log('⚠️ loadSessionViaRest: API Python desabilitada - usando apenas WebSocket + SQLite')
+    return null
   }
 
-  const loadHistory = async () => {
-    try {
-      const response = await fetch(`${API_URL}/api/chat/${sessionId}/history`)
-      if (response.ok) {
-        const data = await response.json()
-        setMessages(data.messages || [])
-      }
-    } catch (err) {
-      console.error('Erro ao carregar histórico:', err)
-    }
+  const sendMessageViaRest = async (userMessage) => {
+    console.log('⚠️ sendMessageViaRest: API Python desabilitada - usando apenas WebSocket + SQLite')
+    setLoading(false)
+    return null
   }
 
-  const sendMessage = async (e) => {
+  const generatePDF = async () => {
+    alert('⚠️ Funcionalidade de PDF temporariamente indisponível. Sistema migrado para SQLite + WebSocket.')
+  }
+
+  const downloadPDF = () => {
+    alert('⚠️ Funcionalidade de PDF temporariamente indisponível. Sistema migrado para SQLite + WebSocket.')
+  }
+
+  const handleSendMessage = async (e) => {
     e.preventDefault()
     if (!inputValue.trim() || loading) return
 
     const userMessage = inputValue.trim()
     setInputValue('')
-    setLoading(true)
-
-    // Adicionar mensagem do usuário imediatamente
-    const newUserMessage = {
-      role: 'user',
-      content: userMessage,
-      timestamp: new Date().toISOString()
-    }
-    setMessages(prev => [...prev, newUserMessage])
-
-    try {
-      const response = await fetch(`${API_URL}/api/chat/${sessionId}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ message: userMessage })
-      })
-
-      if (!response.ok) {
-        throw new Error('Erro ao enviar mensagem')
-      }
-
-      const data = await response.json()
-      
-      // Adicionar resposta do bot
-      const botMessage = {
-        role: 'assistant',
-        content: data.reply,
-        timestamp: new Date().toISOString()
-      }
-      setMessages(prev => [...prev, botMessage])
-
-      // Detectar mensagem de erro do sistema
-      const isErrorMessage = data.reply && (
-        data.reply.includes('alto volume de uso') ||
-        data.reply.includes('sistema está com') ||
-        data.reply.includes('tente novamente em alguns minutos') ||
-        data.reply.includes('Desculpe, nosso sistema')
-      )
-
-      if (isErrorMessage) {
-        // Ativar modo fallback e mostrar dica no chat
-        setFallbackMode(true)
-        setIsPreviewOpen(true)
-        
-        // Adicionar mensagem informativa no chat
-        const infoMessage = {
-          role: 'system',
-          content: '💡 Dica: Você pode preencher o briefing manualmente! Ative o modo de edição no painel lateral usando o switch "Modo Edição Manual".',
-          timestamp: new Date().toISOString()
-        }
-        setMessages(prev => [...prev, infoMessage])
-      }
-
-      // Se houver opções interativas (checkboxes), armazenar para mostrar
-      if (data.options && data.options.length > 0) {
-        setCurrentOptions(data.options)
-        setSelectedOptions([])
-      } else {
-        setCurrentOptions(null)
-      }
-
-      // Atualizar progresso e recarregar dados do briefing
-      if (sessionData) {
-        // Usar progresso da resposta da IA ou do hook sincronizado
-        const finalProgress = data.progress !== undefined ? data.progress : syncedProgress
-        
-        setSessionData({
-          ...sessionData,
-          progress: finalProgress,
-          current_section: data.current_section,
-          is_completed: data.is_completed
-        })
-        
-        // Recarregar sessão completa para pegar briefing_data atualizado
-        await Promise.all([
-          loadSession(),
-          loadBriefingData()
-        ])
-      }
-
-      // Se a IA sugerir mostrar o preview, abrir automaticamente
-      if (data.should_show_preview) {
-        setIsPreviewOpen(true)
-      }
-
-    } catch (err) {
-      setError('Erro ao enviar mensagem: ' + err.message)
-      setChatError(true)
-      
-      // Ativar modo fallback após erro
-      if (chatError) {
-        setFallbackMode(true)
-        setIsPreviewOpen(true)
-        alert('⚠️ O chatbot está temporariamente indisponível. Você pode continuar preenchendo o briefing manualmente no painel lateral.')
-      }
-    } finally {
-      setLoading(false)
+    
+    // Enviar via WebSocket
+    const success = sendMessage(userMessage)
+    
+    if (!success) {
+      console.log('WebSocket failed - API Python desabilitada')
+      setError('Erro de conectividade. Sistema usando apenas WebSocket.')
     }
   }
 
   const handleCheckboxToggle = (value) => {
     if (value === 'none') {
-      // Se selecionar "nenhum", desmarcar todos outros
       setSelectedOptions(['none'])
     } else {
       setSelectedOptions(prev => {
@@ -240,120 +139,34 @@ function ChatPage() {
     
     setLoading(true)
     
-    // Determinar tipo de opções (checkbox ou scale)
     const optionType = currentOptions[0]?.type
+    let formattedMessage = ''
     
-    let message = ''
+    if (optionType === 'checkbox') {
+      if (selectedOptions.includes('none')) {
+        formattedMessage = 'Nenhuma das opções acima'
+      } else {
+        formattedMessage = `Selecionei: ${selectedOptions.join(', ')}`
+      }
+    } else if (optionType === 'scale') {
+      const ratings = selectedOptions.map(selection => {
+        const [value, rating] = selection.split(':')
+        return `${value}: ${rating}`
+      }).join('; ')
+      formattedMessage = `Avaliações: ${ratings}`
+    }
+
+    // Enviar via WebSocket
+    const success = sendMessage(formattedMessage)
     
-    if (optionType === 'scale') {
-      // Para escalas, montar mensagem com valores
-      const scaleValues = {}
-      selectedOptions.forEach(opt => {
-        const [key, value] = opt.split(':')
-        scaleValues[key] = value
-      })
-      message = JSON.stringify(scaleValues)
+    if (success) {
+      setCurrentOptions(null)
+      setSelectedOptions([])
     } else {
-      // Para checkboxes, usar labels
-      const labels = currentOptions
-        .filter(opt => selectedOptions.includes(opt.value))
-        .map(opt => opt.label)
-      message = labels.length > 0 ? labels.join(', ') : 'Nenhum item extra'
+      console.log('WebSocket failed para opções')
     }
     
-    // Adicionar mensagem do usuário imediatamente
-    const newUserMessage = {
-      role: 'user',
-      content: message,
-      timestamp: new Date().toISOString()
-    }
-    setMessages(prev => [...prev, newUserMessage])
-    
-    // Limpar opções
-    setCurrentOptions(null)
-    setSelectedOptions([])
-    
-    try {
-      const response = await fetch(`${API_URL}/api/chat/${sessionId}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ message })
-      })
-
-      if (!response.ok) {
-        throw new Error('Erro ao enviar mensagem')
-      }
-
-      const data = await response.json()
-      
-      // Adicionar resposta do bot
-      const botMessage = {
-        role: 'assistant',
-        content: data.reply,
-        timestamp: new Date().toISOString(),
-        options: data.options
-      }
-      setMessages(prev => [...prev, botMessage])
-
-      // Se houver novas opções interativas, armazenar
-      if (data.options && data.options.length > 0) {
-        setCurrentOptions(data.options)
-        setSelectedOptions([])
-      }
-
-      // Atualizar progresso e recarregar dados do briefing
-      if (sessionData) {
-        const finalProgress = data.progress !== undefined ? data.progress : syncedProgress
-        
-        setSessionData({
-          ...sessionData,
-          progress: finalProgress,
-          current_section: data.current_section,
-          is_completed: data.is_completed
-        })
-        
-        // Recarregar dados do briefing
-        await Promise.all([
-          loadSession(),
-          loadBriefingData()
-        ])
-      }
-
-    } catch (err) {
-      setError('Erro ao enviar mensagem: ' + err.message)
-      setChatError(true)
-      
-      if (chatError) {
-        setFallbackMode(true)
-        setIsPreviewOpen(true)
-        alert('⚠️ O chatbot está indisponível. Continue preenchendo manualmente no painel lateral.')
-      }
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const downloadPDF = async () => {
-    try {
-      window.open(`${API_URL}/api/briefing/${sessionId}/download`, '_blank')
-    } catch (err) {
-      alert('Erro ao baixar PDF: ' + err.message)
-    }
-  }
-
-  const generatePDF = async () => {
-    try {
-      const response = await fetch(`${API_URL}/api/briefing/${sessionId}/generate-pdf`, {
-        method: 'POST'
-      })
-      if (response.ok) {
-        alert('PDF gerado com sucesso! Clique em "Baixar PDF" para fazer o download.')
-      }
-    } catch (err) {
-      alert('Erro ao gerar PDF: ' + err.message)
-    }
+    setLoading(false)
   }
 
   if (error) {
@@ -364,7 +177,7 @@ function ChatPage() {
     )
   }
 
-  if (!sessionData) {
+  if (!sessionData && !sessionReady) {
     return (
       <div className="chat-page loading">
         <div className="loading-spinner">Carregando...</div>
@@ -372,199 +185,192 @@ function ChatPage() {
     )
   }
 
+  // Dados mock se sessionData não estiver disponível
+  const mockSessionData = sessionData || {
+    id: sessionId,
+    client_name: 'Cliente',
+    created_at: new Date().toISOString()
+  }
+
   return (
     <div className="chat-page-container">
       {/* Botão flutuante para abrir preview */}
       <button 
-        className={`preview-toggle-button ${isPreviewOpen ? 'hidden' : ''}`}
         onClick={() => setIsPreviewOpen(true)}
+        className={`preview-toggle-button ${isPreviewOpen ? 'hidden' : ''}`}
       >
-        PREVIEW
+        Preview
       </button>
 
-      {/* Chat */}
+      {/* Chat Principal */}
       <div className="chat-page">
-        <header className="chat-header">
-          <div className="header-content">
-            <img src="/logo-horizontal.png" alt="Silver Brand Design" className="header-logo" />
-            <p className="client-name">{sessionData.client_name}</p>
+        {/* Header */}
+        <div className="chat-header">
+          <div className="session-info">
+          <img src="/logo-horizontal.png" alt="Silver Brand Design" className="header-logo" />
+            <span className={`connection-status ${connected ? 'status-connected' : 'status-disconnected'}`}>
+              {connected ? '🟢 Conectado' : '🔴 Desconectado'}
+            </span>
           </div>
-          <div className="progress-container">
-            <SectionProgressIndicator
-              currentSection={sessionData.current_section}
-              overallProgress={sessionData.progress}
-              getSectionProgress={getSectionProgress}
-              showDetailed={false}
-            />
-          </div>
-        </header>
+        </div>
 
+        {/* Progress */}
+        <SectionProgressIndicator 
+          sections={BRIEFING_SECTIONS}
+          briefingData={briefingData}
+          getSectionProgress={getSectionProgress}
+          currentProgress={progress}
+        />
+
+        {/* Messages */}
         <div className="messages-container">
-          {messages.length === 0 && (
-            <div className="welcome-message">
-              <h2>Bem-vindo ao briefing interativo! 👋</h2>
-              <p>Vou te ajudar a estruturar a identidade visual da sua marca.</p>
-              <p>Vamos começar?</p>
-            </div>
-          )}
-          
           {messages.map((msg, index) => (
-            <div 
-              key={index} 
-              className={`message ${
-                msg.role === 'user' ? 'user-message' : 
-                msg.role === 'system' ? 'system-message' : 
-                'bot-message'
-              }`}
-            >
+            <div key={index} className={msg.role === 'user' ? 'user-message' : 'bot-message'}>
               <div className="message-content">
                 {msg.content}
+                {msg.options && msg.options.length > 0 && (
+                  <div className="message-options">
+                    {msg.options.map((option, optIndex) => (
+                      <span key={optIndex} className="option-tag">
+                        {option.text || option}
+                      </span>
+                    ))}
+                  </div>
+                )}
               </div>
-              {msg.role !== 'system' && (
-                <span className="message-time">
-                  {new Date(msg.timestamp).toLocaleTimeString('pt-BR', { 
-                    hour: '2-digit', 
-                    minute: '2-digit' 
-                  })}
-                </span>
-              )}
+              <div className="message-time">
+                {new Date(msg.timestamp).toLocaleTimeString()}
+              </div>
             </div>
           ))}
-          
-          {loading && (
-            <div className="message bot-message">
-              <div className="message-content typing">
-                <span></span>
-                <span></span>
-                <span></span>
-              </div>
-            </div>
-          )}
-          
           <div ref={messagesEndRef} />
         </div>
 
-        {sessionData.is_completed ? (
+        {/* Completion State */}
+        {isCompleted ? (
           <div className="completion-panel">
             <h3>🎉 Briefing Completo!</h3>
-            <p>Obrigado por compartilhar essas informações. Agora você pode baixar o PDF com tudo que conversamos.</p>
+            <p>Obrigado por compartilhar essas informações.</p>
             <div className="completion-actions">
               <button onClick={generatePDF} className="btn-secondary">
-                Gerar PDF
+                Gerar PDF (Indisponível)
               </button>
               <button onClick={downloadPDF} className="btn-primary">
-                Baixar PDF
+                Baixar PDF (Indisponível)
               </button>
             </div>
           </div>
         ) : (
           <>
+            {/* Interactive Options */}
             {currentOptions && currentOptions.length > 0 && (
               <div className="options-panel">
                 {currentOptions[0]?.type === 'checkbox' && (
                   <>
-                    <p className="options-title">Selecione os itens que você precisa:</p>
-                    <div className="options-grid">
+                    <h4>Selecione as opções que se aplicam:</h4>
+                    <div className="checkbox-options">
                       {currentOptions.map((option, index) => (
-                        <label key={index} className="option-checkbox">
-                          <input
+                        <label key={index} className="checkbox-option">
+                          <input 
                             type="checkbox"
                             checked={selectedOptions.includes(option.value)}
                             onChange={() => handleCheckboxToggle(option.value)}
                           />
-                          <span>{option.label}</span>
+                          {option.text}
                         </label>
                       ))}
+                      <label className="checkbox-option">
+                        <input 
+                          type="checkbox"
+                          checked={selectedOptions.includes('none')}
+                          onChange={() => handleCheckboxToggle('none')}
+                        />
+                        Nenhuma das opções acima
+                      </label>
                     </div>
+                    <button 
+                      onClick={submitOptions} 
+                      className="btn-primary"
+                      disabled={selectedOptions.length === 0 || loading}
+                    >
+                      {loading ? 'Enviando...' : 'Enviar Seleção'}
+                    </button>
                   </>
                 )}
-                
+
                 {currentOptions[0]?.type === 'scale' && (
                   <>
-                    <p className="options-title">Marque de 1 a 5 para cada característica:</p>
-                    <div className="scales-container">
-                      {currentOptions.map((option, index) => {
-                        const currentValue = selectedOptions.find(v => v.startsWith(option.value))?.split(':')[1] || '3'
-                        return (
-                          <div key={index} className="scale-item">
-                            <div className="scale-labels">
-                              <span className="scale-label-left">{option.min_label}</span>
-                              <div className="scale-control">
-                                {[1, 2, 3, 4, 5].map(rating => (
-                                  <label key={rating} className="scale-radio">
-                                    <input
-                                      type="radio"
-                                      name={option.value}
-                                      value={rating}
-                                      checked={currentValue === String(rating)}
-                                      onChange={() => handleScaleChange(option.value, rating)}
-                                    />
-                                    <span className="scale-number">{rating}</span>
-                                  </label>
-                                ))}
-                              </div>
-                              <span className="scale-label-right">{option.max_label}</span>
-                            </div>
+                    <h4>Avalie de 1 a 5:</h4>
+                    <div className="scale-options">
+                      {currentOptions.map((option, index) => (
+                        <div key={index} className="scale-option">
+                          <label>{option.text}:</label>
+                          <div className="scale-buttons">
+                            {[1, 2, 3, 4, 5].map(rating => (
+                              <button
+                                key={rating}
+                                className={`scale-btn ${selectedOptions.some(s => s === `${option.value}:${rating}`) ? 'selected' : ''}`}
+                                onClick={() => handleScaleChange(option.value, rating)}
+                              >
+                                {rating}
+                              </button>
+                            ))}
                           </div>
-                        )
-                      })}
+                        </div>
+                      ))}
                     </div>
+                    <button 
+                      onClick={submitOptions} 
+                      className="btn-primary"
+                      disabled={selectedOptions.length === 0 || loading}
+                    >
+                      {loading ? 'Enviando...' : 'Enviar Avaliações'}
+                    </button>
                   </>
                 )}
-                
-                <button 
-                  onClick={submitOptions}
-                  className="btn-submit-options"
-                  disabled={selectedOptions.length === 0}
-                >
-                  Enviar Seleção
-                </button>
               </div>
             )}
-            
-            <form onSubmit={sendMessage} className="input-container">
+
+            {/* Input Form */}
+            <form onSubmit={handleSendMessage} className="input-container">
               <input
                 ref={inputRef}
                 type="text"
                 value={inputValue}
                 onChange={(e) => setInputValue(e.target.value)}
                 placeholder="Digite sua mensagem..."
+                disabled={loading}
                 className="message-input"
-                disabled={loading || currentOptions}
               />
               <button 
                 type="submit" 
+                disabled={loading || !inputValue.trim()}
                 className="send-button"
-                disabled={loading || !inputValue.trim() || currentOptions}
               >
-                Enviar
+                {loading ? 'Enviando...' : 'Enviar'}
               </button>
             </form>
           </>
         )}
       </div>
 
-      {/* Preview do Briefing - lado direito */}
+      {/* Preview Panel */}
       <div className={`briefing-preview-panel ${isPreviewOpen ? 'open' : ''}`}>
-        <button 
-          className="preview-close-button"
-          onClick={() => setIsPreviewOpen(false)}
-          title="Fechar preview"
-        >
-          ×
-        </button>
-        <BriefingPreview 
-          sessionData={sessionData} 
-          briefingData={briefingData}
-          progress={syncedProgress}
-          isCompleted={syncedIsCompleted}
-          fallbackMode={fallbackMode}
-          hasRequiredFields={hasRequiredFields()}
-          getSectionProgress={getSectionProgress}
-          onFieldUpdate={updateField}
-          onSave={saveBriefingData}
-          onFinalize={finalizeBriefing}
-        />
+        {isPreviewOpen && (
+          <BriefingPreview 
+            sessionData={mockSessionData}
+            briefingData={briefingData || {}}
+            progress={progress}
+            isCompleted={isCompleted}
+            fallbackMode={fallbackMode || false}
+            hasRequiredFields={hasRequiredFields}
+            getSectionProgress={getSectionProgress}
+            onFieldUpdate={updateField}
+            onSave={saveBriefingData}
+            onFinalize={finalizeBriefing}
+            onClose={() => setIsPreviewOpen(false)}
+          />
+        )}
       </div>
     </div>
   )

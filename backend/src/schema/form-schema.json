@@ -1,0 +1,93 @@
+{
+  "sections": [
+    {
+      "id": "contato",
+      "label": "Detalhes de Contato",
+      "fields": [
+        { "id": "nome", "label": "Seu nome", "type": "text", "required": true },
+        { "id": "email", "label": "Seu e-mail", "type": "text", "required": true },
+        { "id": "empresa_slogan", "label": "Nome da empresa e slogan", "type": "text" },
+        { "id": "website", "label": "Website/Instagram", "type": "text" },
+        { "id": "telefone", "label": "Telefone", "type": "text" },
+        { "id": "cidade_estado", "label": "Cidade/Estado", "type": "text" }
+      ]
+    },
+    {
+      "id": "info_basicas",
+      "label": "Informações Básicas",
+      "fields": [
+        { "id": "tipo_projeto", "label": "Projeto novo ou redesenho?", "type": "select", "options": ["Projeto novo", "Redesenho"] },
+        { "id": "prazo", "label": "Quando precisa do projeto pronto?", "type": "select", "options": ["Em 1 mês", "Em 2 meses", "Indefinido", "Urgente"] }
+      ]
+    },
+    {
+      "id": "entrega",
+      "label": "Lista de Entrega",
+      "fields": [
+        { "id": "itens_padrao", "label": "Itens de identidade visual", "type": "multiselect", "options": ["Logo Principal", "Logo Reduzida", "Paleta de Cores", "Tipografia", "Manual de Marca", "Registro de Direito Autoral"] },
+        { "id": "itens_extra", "label": "Itens adicionais", "type": "multiselect", "options": ["Template PowerPoint", "Capa Destaques Instagram", "Arte para Cartão de Visitas", "Arte para Impresso"] },
+        { "id": "info_extra_itens", "label": "Informações extras sobre os itens", "type": "textarea" }
+      ]
+    },
+    {
+      "id": "perfil",
+      "label": "Perfil da Empresa",
+      "fields": [
+        { "id": "sobre_empresa", "label": "Sobre a empresa (o que é, há quanto tempo existe)", "type": "textarea" },
+        { "id": "missao_visao_valores", "label": "Missão, visão e valores", "type": "textarea" },
+        { "id": "produtos_servicos", "label": "Produtos/serviços oferecidos", "type": "textarea" },
+        { "id": "objetivos_hoje", "label": "Principais objetivos hoje", "type": "textarea" },
+        { "id": "diferencial", "label": "Principal diferencial do negócio", "type": "textarea" }
+      ]
+    },
+    {
+      "id": "posicionamento",
+      "label": "Posicionamento",
+      "fields": [
+        { "id": "como_ser_percebida", "label": "Como quer ser percebida", "type": "textarea" },
+        { "id": "diferencial_concorrencia", "label": "O que diferencia da concorrência", "type": "textarea" },
+        { "id": "por_que_escolher", "label": "Por que alguém deveria escolher você", "type": "textarea" }
+      ]
+    },
+    {
+      "id": "personalidade",
+      "label": "Personalidade da Marca",
+      "fields": [
+        { "id": "escala_sofisticada_descontraida", "label": "Sofisticada — Descontraída", "type": "scale", "min": 1, "max": 5 },
+        { "id": "escala_tecnica_emocional", "label": "Técnica — Emocional", "type": "scale", "min": 1, "max": 5 },
+        { "id": "escala_formal_informal", "label": "Formal — Informal", "type": "scale", "min": 1, "max": 5 },
+        { "id": "escala_tradicional_moderna", "label": "Tradicional — Moderna", "type": "scale", "min": 1, "max": 5 },
+        { "id": "escala_exclusiva_popular", "label": "Exclusiva — Popular", "type": "scale", "min": 1, "max": 5 },
+        { "id": "tres_palavras", "label": "3 palavras que definem a marca", "type": "text" }
+      ]
+    },
+    {
+      "id": "concorrentes",
+      "label": "Concorrentes e Referências",
+      "fields": [
+        { "id": "concorrentes_locais", "label": "Concorrentes locais/regionais/mundiais", "type": "textarea" },
+        { "id": "gosta_nessas_marcas", "label": "O que gosta nessas marcas", "type": "textarea" },
+        { "id": "marcas_admira", "label": "Marcas que admira (mesmo fora do nicho)", "type": "textarea" },
+        { "id": "info_extra_concorrentes", "label": "Outras informações", "type": "textarea" }
+      ]
+    },
+    {
+      "id": "visual",
+      "label": "Preferências Visuais",
+      "fields": [
+        { "id": "cores_nao_quer", "label": "Cores que NÃO quer", "type": "text" },
+        { "id": "cores_quer", "label": "Cores que gosta e quer explorar", "type": "text" },
+        { "id": "fontes_gosta", "label": "Tipos de fontes que gosta (links)", "type": "text" },
+        { "id": "tipos_logo", "label": "Tipos de logo que prefere", "type": "multiselect", "options": ["Com símbolo", "Só a tipografia", "Minimalista", "Clássico", "Moderno"] },
+        { "id": "referencias_visuais", "label": "Referências visuais (links)", "type": "textarea" }
+      ]
+    },
+    {
+      "id": "final",
+      "label": "Final",
+      "fields": [
+        { "id": "algo_a_dizer", "label": "Algo mais a dizer", "type": "textarea" }
+      ]
+    }
+  ]
+}
