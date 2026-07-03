@@ -16,146 +16,180 @@ async function extractFieldsWithGroq(conversationHistory, currentFormState, form
     };
   }
   
-  // Retry logic para rate limits
-  const maxRetries = 3;
-  let retryDelay = 1000; // 1 segundo inicial
+  // Sistema de fallback com 3 modelos Groq (do mais capaz ao mais rápido)
+  const groqModels = [
+    { 
+      name: "llama-3.3-70b-versatile", 
+      description: "Modelo principal - mais capaz",
+      maxTokens: 800,
+      temperature: 0.5 
+    },
+    { 
+      name: "llama-3.1-70b-versatile", 
+      description: "Fallback 1 - estável",
+      maxTokens: 600,
+      temperature: 0.7 
+    },
+    { 
+      name: "llama-3.1-8b-instant", 
+      description: "Fallback 2 - rápido",
+      maxTokens: 400,
+      temperature: 0.3 
+    }
+  ];
   
-  for (let attempt = 1; attempt <= maxRetries; attempt++) {
-    try {
-      const systemPrompt = buildSystemPrompt(formSchema, currentFormState);
-      
-      const tools = [{
-        type: "function",
-        function: {
-          name: "update_form_field",
-          description: "Registra a resposta do usuário para um ou mais campos do formulário de briefing",
-          parameters: {
-            type: "object",
-            properties: {
-              field_id: {
-                type: "string",
-                description: "ID do campo no schema, ex: contato.nome, perfil.sobre_empresa"
-              },
-              value: {
-                type: "string",
-                description: "Valor extraído da conversa do usuário"
-              }
-            },
-            required: ["field_id", "value"]
-          }
-        }
-      }];
-      
-      const messages = [
-        { role: "system", content: systemPrompt },
-        ...conversationHistory
-      ];
-      
-      console.log(`🤖 Chamando Groq API (tentativa ${attempt}/${maxRetries})...`);
-      
-      const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${groqApiKey}`,
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          model: "llama-3.3-70b-versatile",
-          messages,
-          tools,
-          tool_choice: "auto",
-          parallel_tool_calls: false,
-          temperature: 0.5,
-          max_tokens: 800
-        })
-      });
-      
-      if (!response.ok) {
-        // Se for rate limit (429), tenta novamente
-        if (response.status === 429 && attempt < maxRetries) {
-          console.log(`⏳ Rate limit detectado, aguardando ${retryDelay}ms antes da próxima tentativa...`);
-          await new Promise(resolve => setTimeout(resolve, retryDelay));
-          retryDelay *= 2; // Exponential backoff
-          continue;
-        }
-        throw new Error(`Groq API error: ${response.status} ${response.statusText}`);
-      }
-      
-      const result = await response.json();
-      const assistantMessage = result.choices[0].message;
-      
-      console.log('🤖 Groq resposta completa:', {
-        content: assistantMessage.content,
-        tool_calls: assistantMessage.tool_calls?.length || 0,
-        finish_reason: result.choices[0].finish_reason
-      });
-      
-      // Extrair tool calls se houver
-      const fieldUpdates = {};
-      
-      if (assistantMessage.tool_calls) {
-        assistantMessage.tool_calls.forEach(toolCall => {
-          if (toolCall.function.name === "update_form_field") {
-            try {
-              const args = JSON.parse(toolCall.function.arguments);
-              fieldUpdates[args.field_id] = args.value;
-            } catch (e) {
-              console.error('❌ Erro ao parsear tool call:', e);
-            }
-          }
-        });
-      }
-      
-      console.log('✅ Groq respondeu:', {
-        message: assistantMessage.content?.substring(0, 100) + '...',
-        fieldUpdates: Object.keys(fieldUpdates)
-      });
-      
-      return {
-        message: assistantMessage.content || "Entendi! Continue...",
-        fieldUpdates,
-        metadata: {
-          provider: 'groq',
-          model: 'llama-3.3-70b-versatile',
-          toolCallsCount: assistantMessage.tool_calls?.length || 0,
-          attempt: attempt
-        }
-      };
-      
-    } catch (error) {
-      console.error(`❌ Erro na tentativa ${attempt}:`, error);
-      
-      // Se foi o último attempt ou não é rate limit, retorna erro
-      if (attempt === maxRetries || !error.message.includes('429')) {
+  let lastError = null;
+  
+  // Tentar cada modelo em sequência
+  for (let modelIndex = 0; modelIndex < groqModels.length; modelIndex++) {
+    const model = groqModels[modelIndex];
+    console.log(`🤖 Tentando modelo ${modelIndex + 1}/${groqModels.length}: ${model.name} (${model.description})`);
+    
+    // Retry logic por modelo (2 tentativas por modelo)
+    const maxRetriesPerModel = 2;
+    let retryDelay = 1000;
+    
+    for (let attempt = 1; attempt <= maxRetriesPerModel; attempt++) {
+      try {
+        const result = await callGroqAPI(
+          conversationHistory, 
+          currentFormState, 
+          formSchema, 
+          model, 
+          groqApiKey,
+          attempt,
+          modelIndex + 1
+        );
+        
+        // Sucesso! Retornar resultado
         return {
-          message: "Desculpe, houve um problema técnico. Pode repetir sua resposta?",
-          fieldUpdates: {},
-          metadata: { 
-            provider: 'groq', 
-            error: error.message,
-            fallback: true,
-            attempt: attempt
+          ...result,
+          metadata: {
+            ...result.metadata,
+            modelUsed: model.name,
+            modelIndex: modelIndex + 1,
+            attempt: attempt,
+            fallbackLevel: modelIndex
           }
         };
-      }
-      
-      // Se for rate limit e não foi último attempt, aguarda e tenta novamente
-      if (error.message.includes('429')) {
-        console.log(`⏳ Rate limit, aguardando ${retryDelay}ms...`);
-        await new Promise(resolve => setTimeout(resolve, retryDelay));
-        retryDelay *= 2;
+        
+      } catch (error) {
+        lastError = error;
+        console.error(`❌ Erro no modelo ${model.name} (tentativa ${attempt}/${maxRetriesPerModel}):`, error.message);
+        
+        // Se for rate limit e não foi último attempt do modelo, tenta novamente
+        if (error.message.includes('429') && attempt < maxRetriesPerModel) {
+          console.log(`⏳ Rate limit no ${model.name}, aguardando ${retryDelay}ms...`);
+          await new Promise(resolve => setTimeout(resolve, retryDelay));
+          retryDelay *= 2;
+          continue;
+        }
+        
+        // Se não foi rate limit ou foi último attempt, passa para próximo modelo
+        break;
       }
     }
   }
   
-  // Fallback se todas as tentativas falharam
+  // Se todos os modelos falharam, retornar fallback
+  console.error('❌ Todos os modelos Groq falharam:', lastError?.message);
   return {
-    message: "Desculpe, houve um problema técnico. Pode repetir sua resposta?",
+    message: "Desculpe, houve um problema técnico com o sistema de IA. Pode repetir sua resposta?",
     fieldUpdates: {},
     metadata: { 
       provider: 'groq', 
-      error: 'All retries failed',
-      fallback: true
+      error: lastError?.message || 'All models failed',
+      fallback: true,
+      modelsAttempted: groqModels.length
+    }
+  };
+}
+
+async function callGroqAPI(conversationHistory, currentFormState, formSchema, model, apiKey, attempt, modelIndex) {
+  const systemPrompt = buildSystemPrompt(formSchema, currentFormState);
+  
+  const tools = [{
+    type: "function",
+    function: {
+      name: "update_form_field",
+      description: "Registra a resposta do usuário para um ou mais campos do formulário de briefing",
+      parameters: {
+        type: "object",
+        properties: {
+          field_id: {
+            type: "string",
+            description: "ID do campo no schema, ex: contato.nome, perfil.sobre_empresa"
+          },
+          value: {
+            type: "string",
+            description: "Valor extraído da conversa do usuário"
+          }
+        },
+        required: ["field_id", "value"]
+      }
+    }
+  }];
+  
+  const messages = [
+    { role: "system", content: systemPrompt },
+    ...conversationHistory
+  ];
+  
+  console.log(`🔄 Chamada Groq API - Modelo: ${model.name}, Tentativa: ${attempt}, Índice: ${modelIndex}`);
+  
+  const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${apiKey}`,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      model: model.name,
+      messages,
+      tools,
+      tool_choice: "auto",
+      parallel_tool_calls: false,
+      temperature: model.temperature,
+      max_tokens: model.maxTokens
+    })
+  });
+  
+  if (!response.ok) {
+    throw new Error(`Groq API error: ${response.status} ${response.statusText}`);
+  }
+  
+  const result = await response.json();
+  const assistantMessage = result.choices[0].message;
+  
+  console.log(`🤖 ${model.name} respondeu:`, {
+    content: assistantMessage.content?.substring(0, 80) + '...',
+    tool_calls: assistantMessage.tool_calls?.length || 0,
+    finish_reason: result.choices[0].finish_reason
+  });
+  
+  // Extrair tool calls se houver
+  const fieldUpdates = {};
+  
+  if (assistantMessage.tool_calls) {
+    assistantMessage.tool_calls.forEach(toolCall => {
+      if (toolCall.function.name === "update_form_field") {
+        try {
+          const args = JSON.parse(toolCall.function.arguments);
+          fieldUpdates[args.field_id] = args.value;
+        } catch (e) {
+          console.error('❌ Erro ao parsear tool call:', e);
+        }
+      }
+    });
+  }
+  
+  return {
+    message: assistantMessage.content || "Entendi! Continue...",
+    fieldUpdates,
+    metadata: {
+      provider: 'groq',
+      model: model.name,
+      toolCallsCount: assistantMessage.tool_calls?.length || 0
     }
   };
 }

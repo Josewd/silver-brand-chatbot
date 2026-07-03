@@ -10,31 +10,9 @@ function LoginPage() {
   const [loading, setLoading] = useState(false)
   const navigate = useNavigate()
 
-  // Verificar se já está logado ao carregar a página
-  React.useEffect(() => {
-    const token = localStorage.getItem('admin_token')
-    if (token) {
-      // Verificar se o token ainda é válido fazendo uma requisição
-      fetch(`${BACKEND_URL}/api/admin/verify`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      })
-      .then(response => {
-        if (response.ok) {
-          // Token válido, redirecionar para admin
-          navigate('/admin')
-        } else {
-          // Token inválido, remover do localStorage
-          localStorage.removeItem('admin_token')
-        }
-      })
-      .catch(() => {
-        // Erro na verificação, remover token
-        localStorage.removeItem('admin_token')
-      })
-    }
-  }, [navigate])
+  // ❌ REDIRECIONAMENTO AUTOMÁTICO REMOVIDO 
+  // (Anteriormente havia um useEffect aqui que redirecionava automaticamente para /admin
+  // se existisse um token válido. Foi removido para permitir acesso manual à página de login.)
 
   const handleLogin = async (e) => {
     e.preventDefault()
