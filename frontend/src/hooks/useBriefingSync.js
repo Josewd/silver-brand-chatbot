@@ -56,10 +56,19 @@ export function useBriefingSync(sessionId) {
     socket.on('session_ready', (data) => {
       console.log('✅ Sessão WebSocket pronta:', data)
       setWsSessionId(data.sessionId)
-      setBriefingData(data.formState || {})
+      
+      // O backend envia formState, mas o frontend espera data.data
+      const formData = data.formState || {}
+      setBriefingData(formData)
       setProgress(data.progress?.overall || 0)
       setMessages(data.messages || [])
       setSessionReady(true)
+      
+      console.log('📊 Dados carregados:', {
+        fieldsCount: Object.keys(formData).length,
+        progress: data.progress?.overall || 0,
+        messagesCount: data.messages?.length || 0
+      })
     })
     
     // Nova mensagem do assistente
@@ -78,11 +87,20 @@ export function useBriefingSync(sessionId) {
       console.log('📝 Atualização do formulário via WebSocket:', data)
       
       if (data.fields) {
-        setBriefingData(prev => ({ ...prev, ...data.fields }))
+        setBriefingData(prev => {
+          const updated = { ...prev, ...data.fields }
+          console.log('📊 Briefing atualizado:', {
+            fieldsUpdated: Object.keys(data.fields),
+            totalFields: Object.keys(updated).length
+          })
+          return updated
+        })
       }
       
       if (data.progress) {
-        setProgress(data.progress.overall || 0)
+        const newProgress = data.progress.overall || 0
+        setProgress(newProgress)
+        console.log('📈 Progresso atualizado:', newProgress + '%')
       }
       
       setLastUpdated(new Date().toISOString())

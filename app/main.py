@@ -273,8 +273,10 @@ async def send_message(
     if extracted_data:
         logger.info(f"📊 Dados extraídos da IA: {extracted_data}")
         current_data = session.briefing_data or {}
+        logger.info(f"📊 Dados existentes antes da atualização: {current_data}")
         current_data.update(extracted_data)
         session.briefing_data = current_data
+        logger.info(f"📊 Dados após atualização: {session.briefing_data}")
         
         # Sugerir próxima seção baseado nos dados atualizados
         try:
@@ -300,8 +302,10 @@ async def send_message(
             logger.info(f"🔄 FALLBACK - Dados extraídos da mensagem do usuário: {fallback_data}")
             logger.info(f"🔄 FALLBACK - Seção atual: {session.current_section}")
             current_data = session.briefing_data or {}
+            logger.info(f"🔄 FALLBACK - Dados existentes antes da atualização: {current_data}")
             current_data.update(fallback_data)
             session.briefing_data = current_data
+            logger.info(f"🔄 FALLBACK - Dados após atualização: {session.briefing_data}")
     
     # Log do briefing_data atual
     logger.info(f"📋 Briefing data atual: {session.briefing_data}")
@@ -309,22 +313,37 @@ async def send_message(
     # VERIFICAÇÃO CRÍTICA: Forçar transição de seção se temos dados suficientes
     _force_section_progression_if_needed(session, logger)
     
-    # Usar progresso da IA ou calcular localmente
-    if updated_progress is not None:
-        progress = updated_progress
-    else:
-        progress = calculate_overall_progress(session.briefing_data or {})
+    # Sempre usar os dados mais atuais da sessão para calcular progresso
+    # Não confiar apenas no progresso da IA, pois pode usar dados desatualizados
+    current_briefing_data = session.briefing_data or {}
+    progress = calculate_overall_progress(current_briefing_data)
+    
+    # Log detalhado para debug do progresso
+    logger.info(f"📊 Progresso da IA: {updated_progress}")
+    logger.info(f"📊 Progresso calculado com dados atuais: {progress}")
+    logger.info(f"📊 Dados usados para cálculo: {list(current_briefing_data.keys())}")
+    logger.info(f"📊 Total de campos preenchidos: {len([v for v in current_briefing_data.values() if v])}")
+    
+    # Debug específico por seção
+    from app.interfaces import SECTION_CONFIG
+    for section_id, config in SECTION_CONFIG.items():
+        required_fields = config.get("required_fields", [])
+        filled_required = [field for field in required_fields if current_briefing_data.get(field)]
+        logger.info(f"📊 {section_id.value}: {len(filled_required)}/{len(required_fields)} campos obrigatórios preenchidos")
         
     session.progress_percentage = str(progress)
-    logger.info(f"📈 Progresso calculado: {progress}%")
+    logger.info(f"📈 Progresso salvo na sessão: {progress}%")
     
     # Verificar se completou
     if progress >= 95:
         session.is_completed = True
         from datetime import datetime
         session.completed_at = datetime.utcnow()
+        logger.info(f"🎉 Briefing marcado como completo!")
     
+    # Commit das mudanças no banco de dados
     db.commit()
+    logger.info(f"💾 Dados persistidos no banco - Seção: {session.current_section}, Progresso: {session.progress_percentage}%")
     
     return ChatMessageResponse(
         reply=response_text,
@@ -631,21 +650,23 @@ def _extract_fallback_data(user_message: str, current_section: str) -> dict:
             data["client_phone"] = phone_match.group()
             break
     
-    # Detectar tipo de projeto (seção básicas)
+    # Mapear dados específicos por seção
     if current_section == "basicas":
-        logger.info(f"🔧 FALLBACK: Detectando tipo de projeto em seção básicas")
-        if any(word in message_lower for word in ["novo", "nova", "começar", "criar"]):
+        logger.info(f"🔧 FALLBACK: Detectando dados para seção básicas")
+        
+        # Detectar tipo de projeto
+        if any(word in message_lower for word in ["novo", "nova", "começar", "criar", "iniciar"]):
             data["project_type"] = "projeto novo"
             logger.info(f"🔧 FALLBACK: Detectado projeto novo!")
-        elif any(word in message_lower for word in ["redesign", "reformular", "mudar", "atualizar"]):
+        elif any(word in message_lower for word in ["redesign", "reformular", "mudar", "atualizar", "melhorar"]):
             data["project_type"] = "redesign"
             logger.info(f"🔧 FALLBACK: Detectado redesign!")
         
         # Detectar prazo
         deadline_patterns = [
             r'(\d+)\s+(dia|semana|mês|meses|ano)s?',
-            r'(em|até|para)\s+(\w+)',
-            r'(urgente|rápido|logo)'
+            r'(urgente|rápido|logo|pressa)',
+            r'(sem pressa|flexible|quando)'
         ]
         for pattern in deadline_patterns:
             match = re.search(pattern, message_lower)
@@ -654,36 +675,71 @@ def _extract_fallback_data(user_message: str, current_section: str) -> dict:
                 logger.info(f"🔧 FALLBACK: Detectado prazo: {match.group()}")
                 break
     
-    # Detectar cores (seção visual)
-    if current_section == "visuais":
+    elif current_section == "perfil":
+        logger.info(f"🔧 FALLBACK: Detectando dados para seção perfil")
+        
+        # Mapear informações da empresa
+        if any(word in message_lower for word in ["vendemos", "oferecemos", "fazemos", "produto", "serviço"]):
+            data["products_services"] = user_message.strip()
+            logger.info(f"🔧 FALLBACK: Detectado products_services")
+            
+        # Detectar sobre a empresa
+        if any(word in message_lower for word in ["somos", "empresa", "trabalho", "negócio", "atividade"]):
+            data["about_company"] = user_message.strip()
+            logger.info(f"🔧 FALLBACK: Detectado about_company")
+            
+        # Detectar diferencial
+        if any(word in message_lower for word in ["diferencial", "especial", "único", "destaque", "atendimento"]):
+            data["diferencial"] = user_message.strip()
+            logger.info(f"🔧 FALLBACK: Detectado diferencial")
+    
+    elif current_section == "visuais":
+        logger.info(f"🔧 FALLBACK: Detectando dados para seção visuais")
+        
+        # Detectar cores preferidas
         color_keywords = [
             "azul", "vermelho", "verde", "amarelo", "roxo", "rosa", "laranja", 
-            "preto", "branco", "cinza", "dourado", "prata", "marrom"
+            "preto", "branco", "cinza", "dourado", "prata", "marrom", "bege"
         ]
         mentioned_colors = [color for color in color_keywords if color in message_lower]
         if mentioned_colors:
             data["preferred_colors"] = ", ".join(mentioned_colors)
+            logger.info(f"🔧 FALLBACK: Detectado preferred_colors: {mentioned_colors}")
     
-    # Detectar informações básicas da empresa (seção perfil)
-    if current_section == "perfil":
-        if any(word in message_lower for word in ["somos", "empresa", "trabalho", "faço", "oferecemos"]):
-            # Capturar a frase que descreve a empresa
-            sentences = user_message.split(".")
-            for sentence in sentences:
-                if any(word in sentence.lower() for word in ["somos", "empresa", "trabalho", "oferecemos"]):
-                    data["about_company"] = sentence.strip()
-                    break
+    elif current_section == "posicionamento":
+        logger.info(f"🔧 FALLBACK: Detectando dados para seção posicionamento")
         
-        # Se mencionou produtos/serviços
-        if any(word in message_lower for word in ["vendemos", "oferecemos", "fazemos", "produto", "serviço"]):
-            data["products_services"] = user_message.strip()
+        # Detectar palavras-chave
+        if len(user_message.strip()) > 10:
+            data["keywords"] = user_message.strip()
+            logger.info(f"🔧 FALLBACK: Detectado keywords")
     
-    # Se detectou informação mas não conseguiu categorizar, salvar como resposta genérica
-    if not data and len(user_message.strip()) > 10:
+    elif current_section == "concorrentes":
+        logger.info(f"🔧 FALLBACK: Detectando dados para seção concorrentes")
+        
+        if len(user_message.strip()) > 5:
+            data["competitors"] = user_message.strip()
+            logger.info(f"🔧 FALLBACK: Detectado competitors")
+    
+    elif current_section == "entrega":
+        logger.info(f"🔧 FALLBACK: Detectando dados para seção entrega")
+        
+        # Se o usuário interagiu, confirmar deliverables
+        if len(user_message.strip()) > 3:
+            data["deliverables_confirmed"] = "sim"
+            # Se mencionou itens específicos
+            if any(word in message_lower for word in ["não", "nenhum", "só", "apenas"]):
+                data["extra_items"] = "nenhum"
+            else:
+                data["extra_items"] = user_message.strip()
+            logger.info(f"🔧 FALLBACK: Detectado entrega confirmada")
+    
+    # Se não conseguiu mapear especificamente, salvar como resposta genérica
+    if not data and len(user_message.strip()) > 5:
         # Evitar salvar saudações simples
-        if not any(greeting in message_lower for greeting in ["oi", "olá", "boa", "tudo bem"]):
+        if not any(greeting in message_lower for greeting in ["oi", "olá", "boa", "tudo bem", "ok"]):
             data["user_response"] = user_message.strip()
-            logger.info(f"🔧 FALLBACK: Salvando resposta genérica: {user_message.strip()}")
+            logger.info(f"🔧 FALLBACK: Salvando user_response genérica")
     
     logger.info(f"🔧 FALLBACK RESULTADO: {data}")
     return data

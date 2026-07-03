@@ -123,44 +123,109 @@ function buildSystemPrompt(formSchema, currentFormState) {
   const filledFields = Object.keys(currentFormState).length;
   const totalFields = formSchema.sections.reduce((sum, section) => sum + section.fields.length, 0);
   
-  return `Você é um assistente especializado em coleta de briefing para projetos de identidade visual.
+  // Encontrar o próximo campo a ser preenchido
+  const nextField = getCurrentFieldToWork(formSchema, currentFormState);
+  
+  return `Você é um assistente especializado em coleta de briefing para projetos de identidade visual da Silver Brand House.
 
 CONTEXTO ATUAL:
 - Campos já preenchidos: ${filledFields}/${totalFields}
 - Estado atual do formulário: ${JSON.stringify(currentFormState, null, 2)}
 
+CAMPO ATUAL PARA TRABALHAR:
+${nextField}
+
 SCHEMA DO FORMULÁRIO:
 ${JSON.stringify(formSchema, null, 2)}
 
-INSTRUÇÕES IMPORTANTES:
-1. Faça UMA pergunta por vez, de forma natural e conversacional
-2. Siga a ordem das seções: ${formSchema.sections.map(s => s.label).join(' → ')}
-3. Para campos já preenchidos, NÃO pergunte novamente
-4. Use a função update_form_field SEMPRE que extrair informação do usuário
-5. Use EXATAMENTE os IDs dos campos do schema (ex: "nome", "email", "sobre_empresa")
-6. Seja acolhedor e use linguagem brasileira informal
-7. Quando uma seção estiver completa, avance naturalmente para a próxima
+INSTRUÇÕES CRÍTICAS:
+1. 🎯 SEMPRE faça UMA pergunta específica por vez
+2. 🔄 AUTOMATICAMENTE pergunte o próximo campo assim que receber uma resposta
+3. 📝 Use a função update_form_field SEMPRE que extrair informação do usuário
+4. 🎯 Siga RIGOROSAMENTE a ordem das seções: ${formSchema.sections.map(s => s.label).join(' → ')}
+5. ⚠️ Para campos já preenchidos, NÃO pergunte novamente
+6. 🇧🇷 Use linguagem brasileira informal e acolhedora
+7. 🔄 Quando uma seção estiver completa, avance AUTOMATICAMENTE para a próxima
 
-CAMPO ATUAL A TRABALHAR:
-${getCurrentFieldToWork(formSchema, currentFormState)}
+FORMATO DA PERGUNTA:
+- Seja direto e específico sobre o que quer saber
+- Adicione um exemplo ou contexto quando necessário
+- Termine sempre com uma pergunta clara
 
-EXEMPLOS DE USO DA FUNÇÃO:
-- Usuário: "Me chamo João Silva" → update_form_field("nome", "João Silva")
-- Usuário: "Meu email é joao@empresa.com" → update_form_field("email", "joao@empresa.com") 
-- Usuário: "Somos uma consultoria há 5 anos" → update_form_field("sobre_empresa", "Somos uma consultoria há 5 anos")
+FORMATO DA FUNÇÃO:
+- Use EXATAMENTE os IDs dos campos do schema (ex: "nome", "email", "sobre_empresa")
+- Extraia TODA a informação relevante da resposta do usuário
+- Não peça confirmação, apenas extraia e continue
 
-Sua próxima pergunta deve ser natural e focada no campo atual.`;
+COMPORTAMENTO AUTOMÁTICO:
+- Se o usuário responder qualquer coisa, extraia a informação E imediatamente faça a próxima pergunta
+- Não espere o usuário pedir para continuar
+- Mantenha o fluxo sempre em movimento
+
+EXEMPLO DE FLUXO:
+Usuário: "Me chamo João Silva"
+Assistente: [chama update_form_field("nome", "João Silva")] "Ótimo, João! Agora preciso do seu e-mail para contato. Qual é o seu e-mail?"
+
+Sua próxima ação deve ser fazer uma pergunta específica sobre o campo atual.`;
 }
 
 function getCurrentFieldToWork(formSchema, currentFormState) {
   for (const section of formSchema.sections) {
     for (const field of section.fields) {
       if (!currentFormState[field.id] || currentFormState[field.id].toString().trim() === '') {
-        return `Seção: ${section.label} | Campo: ${field.label} (${field.id})`;
+        return `Seção: ${section.label}
+Campo: ${field.label} (ID: ${field.id})
+Tipo: ${field.type}
+${field.required ? '⭐ OBRIGATÓRIO' : ''}
+${field.options ? `Opções: ${field.options.join(', ')}` : ''}
+
+PERGUNTA SUGERIDA: "${getQuestionForField(field)}"`;
       }
     }
   }
-  return 'Formulário completo!';
+  return 'Formulário completo! 🎉 Pergunte se o usuário quer revisar ou finalizar o briefing.';
+}
+
+function getQuestionForField(field) {
+  const questions = {
+    'nome': 'Qual é o seu nome completo?',
+    'email': 'Qual é o seu e-mail para contato?',
+    'empresa_slogan': 'Qual é o nome da sua empresa? Tem algum slogan?',
+    'website': 'Você tem website ou Instagram da empresa?',
+    'telefone': 'Qual é o seu telefone para contato?',
+    'cidade_estado': 'Em que cidade e estado você está?',
+    'tipo_projeto': 'Este é um projeto novo ou um redesenho de identidade existente?',
+    'prazo': 'Para quando você precisa do projeto pronto?',
+    'itens_padrao': 'Quais itens de identidade visual você precisa? (Ex: Logo principal, paleta de cores, tipografia, manual)',
+    'itens_extra': 'Precisa de algum item adicional? (Ex: template PowerPoint, cartão de visitas, capas Instagram)',
+    'info_extra_itens': 'Tem alguma informação extra sobre os itens que mencionou?',
+    'sobre_empresa': 'Me conte sobre sua empresa: o que vocês fazem e há quanto tempo existe?',
+    'missao_visao_valores': 'Vocês têm missão, visão e valores definidos? Quais são?',
+    'produtos_servicos': 'Quais produtos ou serviços vocês oferecem?',
+    'objetivos_hoje': 'Quais são os principais objetivos da empresa atualmente?',
+    'diferencial': 'Qual é o principal diferencial do seu negócio?',
+    'como_ser_percebida': 'Como vocês querem ser percebidos pelo mercado?',
+    'diferencial_concorrencia': 'O que diferencia vocês da concorrência?',
+    'por_que_escolher': 'Por que alguém deveria escolher vocês em vez dos concorrentes?',
+    'escala_sofisticada_descontraida': 'Em uma escala de 1 a 5, onde 1 é descontraída e 5 é sofisticada, como vocês se veem?',
+    'escala_tecnica_emocional': 'De 1 a 5, onde 1 é emocional e 5 é técnica, qual o tom da marca?',
+    'escala_formal_informal': 'De 1 a 5, onde 1 é informal e 5 é formal, como vocês se comunicam?',
+    'escala_tradicional_moderna': 'De 1 a 5, onde 1 é moderna e 5 é tradicional, qual o estilo da marca?',
+    'escala_exclusiva_popular': 'De 1 a 5, onde 1 é popular e 5 é exclusiva, como se posicionam?',
+    'tres_palavras': 'Me diga 3 palavras que definem a personalidade da sua marca.',
+    'concorrentes_locais': 'Quem são os principais concorrentes de vocês? (locais, regionais ou mundiais)',
+    'gosta_nessas_marcas': 'O que você gosta nessas marcas concorrentes?',
+    'marcas_admira': 'Que outras marcas vocês admiram, mesmo fora do seu nicho?',
+    'info_extra_concorrentes': 'Tem mais alguma informação sobre concorrentes ou referências?',
+    'cores_nao_quer': 'Existem cores que vocês definitivamente NÃO querem usar?',
+    'cores_quer': 'Que cores vocês gostam e gostariam de explorar na identidade?',
+    'fontes_gosta': 'Que tipos de fontes vocês gostam? (pode enviar links de referência)',
+    'tipos_logo': 'Que tipos de logo vocês preferem? (com símbolo, só tipografia, minimalista, clássico, moderno)',
+    'referencias_visuais': 'Você tem referências visuais que gosta? (pode enviar links)',
+    'algo_a_dizer': 'Para finalizar, tem mais alguma coisa importante que gostaria de compartilhar sobre o projeto?'
+  };
+  
+  return questions[field.id] || `Me conte sobre: ${field.label}`;
 }
 
 module.exports = {

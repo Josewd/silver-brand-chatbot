@@ -742,9 +742,9 @@ def _extract_fallback_data_ai(user_message: str, current_section: SectionId) -> 
     import re
     
     data = {}
-    message_lower = user_message.lower()
+    message_lower = user_message.lower().strip()
     
-    # Mapeamento de seção para campos
+    # Mapeamento de seção para campos baseado no SECTION_CONFIG
     if current_section == SectionId.CONTATO:
         # Email
         email_pattern = r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b'
@@ -763,50 +763,103 @@ def _extract_fallback_data_ai(user_message: str, current_section: SectionId) -> 
             if phone_match:
                 data["client_phone"] = phone_match.group()
                 break
+        
+        # Cidade/estado
+        if any(word in message_lower for word in ["moro", "vivo", "localizado", "cidade", "estado"]):
+            data["city_state"] = user_message.strip()
     
     elif current_section == SectionId.BASICAS:
-        # Tipo de projeto
-        if any(word in message_lower for word in ["novo", "nova", "começar", "criar"]):
+        # Tipo de projeto (campo obrigatório)
+        if any(word in message_lower for word in ["novo", "nova", "começar", "criar", "iniciar"]):
             data["project_type"] = "projeto novo"
-        elif any(word in message_lower for word in ["redesign", "reformular", "mudar", "atualizar"]):
+        elif any(word in message_lower for word in ["redesign", "reformular", "mudar", "atualizar", "melhorar"]):
             data["project_type"] = "redesign"
         
-        # Prazo
+        # Prazo (campo opcional)
         deadline_patterns = [
             r'(\d+)\s+(dia|semana|mês|meses|ano)s?',
             r'(até|para|em)\s+(\w+)',
-            r'(urgente|rápido|logo)'
+            r'(urgente|rápido|logo|pressa)',
+            r'(sem pressa|flexível|quando|contexto)'
         ]
         for pattern in deadline_patterns:
             match = re.search(pattern, message_lower)
             if match:
                 data["deadline"] = match.group()
                 break
+        
+        # Se não detectou deadline mas mencionou prazo
+        if not data.get("deadline") and any(word in message_lower for word in ["prazo", "tempo", "quando"]):
+            data["deadline"] = user_message.strip()
+    
+    elif current_section == SectionId.ENTREGA:
+        # Sempre confirmar deliverables quando usuário responde
+        data["deliverables_confirmed"] = "sim"
+        
+        # Detectar itens extras
+        if any(word in message_lower for word in ["não", "nenhum", "só", "apenas", "basic"]):
+            data["extra_items"] = "nenhum"
+        elif any(word in message_lower for word in ["cartão", "powerpoint", "instagram", "impressão"]):
+            data["extra_items"] = user_message.strip()
     
     elif current_section == SectionId.PERFIL:
-        # Capturar descrição da empresa
-        if any(trigger in message_lower for trigger in ["somos", "sou", "empresa", "trabalho", "negócio"]):
-            # Pegar a frase completa
-            sentences = user_message.split('.')
-            for sentence in sentences:
-                if any(trigger in sentence.lower() for trigger in ["somos", "empresa", "trabalho"]):
-                    data["about_company"] = sentence.strip()
-                    break
+        # about_company (obrigatório) - sobre a empresa, tempo de existência
+        if any(trigger in message_lower for trigger in ["somos", "sou", "empresa", "trabalho", "negócio", "anos", "existe"]):
+            data["about_company"] = user_message.strip()
         
-        # Produtos/serviços
-        if any(word in message_lower for word in ["vendemos", "oferecemos", "fazemos", "produto"]):
+        # products_services (obrigatório) - produtos/serviços oferecidos  
+        if any(word in message_lower for word in ["vendemos", "oferecemos", "fazemos", "produto", "serviço", "vendo", "café", "comida"]):
             data["products_services"] = user_message.strip()
+        
+        # diferencial (opcional) - principal diferencial
+        if any(word in message_lower for word in ["diferencial", "especial", "único", "destaque", "atendimento", "conexão"]):
+            data["diferencial"] = user_message.strip()
+        
+        # Se não conseguiu categorizar mas tem informação da empresa
+        if not data and len(user_message) > 10:
+            # Tentar detectar se é sobre a empresa em geral
+            if any(word in message_lower for word in ["trabalhamos", "fazemos", "oferecemos", "vendemos", "empresa"]):
+                data["about_company"] = user_message.strip()
+            else:
+                data["products_services"] = user_message.strip()
+    
+    elif current_section == SectionId.POSICIONAMENTO:
+        # positioning (obrigatório)
+        data["positioning"] = user_message.strip()
+        
+        # keywords (obrigatório) - detectar palavras-chave
+        if len(user_message.strip()) > 5:
+            data["keywords"] = user_message.strip()
+    
+    elif current_section == SectionId.CONCORRENTES:
+        # competitors (obrigatório)
+        data["competitors"] = user_message.strip()
     
     elif current_section == SectionId.VISUAIS:
-        # Cores
-        color_words = ["azul", "verde", "vermelho", "amarelo", "preto", "branco", "rosa", "roxo", "laranja", "cinza", "dourado", "prata"]
+        # preferred_colors (obrigatório)
+        color_words = ["azul", "verde", "vermelho", "amarelo", "preto", "branco", "rosa", "roxo", "laranja", "cinza", "dourado", "prata", "marrom", "bege"]
         mentioned_colors = [color for color in color_words if color in message_lower]
+        
         if mentioned_colors:
             data["preferred_colors"] = ", ".join(mentioned_colors)
+        elif len(user_message.strip()) > 3:
+            # Se não detectou cores específicas, salvar a resposta como preferência
+            data["preferred_colors"] = user_message.strip()
+        
+        # excluded_colors (opcional)
+        if any(word in message_lower for word in ["não", "evitar", "nunca", "odeio"]):
+            data["excluded_colors"] = user_message.strip()
     
-    # Se não conseguiu extrair nada específico, guardar a resposta completa
-    if not data and len(user_message.strip()) > 10:
-        data["user_response"] = user_message.strip()
+    elif current_section == SectionId.FINAL:
+        # additional_info (opcional)
+        if len(user_message.strip()) > 5:
+            data["additional_info"] = user_message.strip()
+    
+    # Se não conseguiu extrair nada específico, guardar como resposta genérica
+    if not data and len(user_message.strip()) > 5:
+        # Evitar salvar saudações e confirmações simples
+        if not any(simple in message_lower for simple in ["ok", "sim", "não", "oi", "olá", "obrigad", "tudo bem"]):
+            data["user_response"] = user_message.strip()
     
     return data
 

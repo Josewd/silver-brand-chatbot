@@ -104,6 +104,42 @@ io.on('connection', (socket) => {
         }))
       });
       
+      // Se não há mensagens, enviar mensagem de boas-vindas e primeira pergunta
+      if (!messages || messages.length === 0) {
+        console.log('📨 Enviando mensagem de boas-vindas para nova sessão');
+        
+        // Mensagem de boas-vindas personalizada
+        const welcomeMessage = `Olá! 👋 Sou a assistente da Silver Brand House e vou te ajudar a criar um briefing completo para seu projeto de identidade visual.
+
+Vamos começar com as informações básicas de contato. Qual é o seu nome completo?`;
+        
+        // Chamar IA para primeira pergunta se não tiver nome
+        let firstMessage = welcomeMessage;
+        if (!formState.nome) {
+          try {
+            const aiResponse = await extractFields(
+              [], // Conversa vazia
+              formState,
+              formSchema
+            );
+            if (aiResponse.message && aiResponse.message.trim()) {
+              firstMessage = aiResponse.message;
+            }
+          } catch (error) {
+            console.error('❌ Erro ao gerar primeira pergunta via IA:', error);
+            // Usar mensagem padrão como fallback
+          }
+        }
+        
+        // Salvar mensagem de boas-vindas
+        await saveMessage(sessionId, 'assistant', firstMessage);
+        
+        // Enviar mensagem para o cliente
+        socket.emit('assistant_message', {
+          text: firstMessage
+        });
+      }
+      
       console.log('📡 Cliente entrou na sessão:', sessionId);
       
     } catch (error) {
@@ -135,15 +171,29 @@ io.on('connection', (socket) => {
       // Salvar mensagem do usuário
       await saveMessage(sessionId, 'user', text);
       
+      // Adicionar mensagem do usuário ao histórico para contexto da IA
+      const updatedHistory = [
+        ...conversationHistory.map(msg => ({ role: msg.role, content: msg.content })),
+        { role: 'user', content: text }
+      ];
+      
       // Chamar IA para processar mensagem
       const aiResponse = await extractFields(
-        conversationHistory.map(msg => ({ role: msg.role, content: msg.content })),
+        updatedHistory,
         currentFormState,
         formSchema
       );
       
+      // Verificar se a IA retornou uma mensagem válida
+      let aiMessage = aiResponse.message;
+      if (!aiMessage || aiMessage.trim() === '') {
+        // Se não há resposta da IA, gerar uma pergunta de continuação
+        aiMessage = 'Obrigado pela informação. Poderia me contar mais sobre sua empresa?';
+        console.log('⚠️ IA não retornou mensagem, usando fallback');
+      }
+      
       // Salvar resposta da IA
-      await saveMessage(sessionId, 'assistant', aiResponse.message);
+      await saveMessage(sessionId, 'assistant', aiMessage);
       
       // Aplicar atualizações do formulário se houver
       let updatedFormState = currentFormState;
@@ -157,7 +207,7 @@ io.on('connection', (socket) => {
       
       // Emitir resposta para o cliente
       socket.emit('assistant_message', {
-        text: aiResponse.message
+        text: aiMessage
       });
       
       // Emitir atualizações do formulário se houver mudanças
@@ -165,6 +215,11 @@ io.on('connection', (socket) => {
         socket.emit('form_update', {
           fields: aiResponse.fieldUpdates,
           progress: updatedProgress
+        });
+        
+        console.log('📊 Formulário atualizado:', {
+          fieldsUpdated: Object.keys(aiResponse.fieldUpdates),
+          newProgress: updatedProgress.overall
         });
       }
       
@@ -296,11 +351,17 @@ app.get('/api/admin/sessions', async (req, res) => {
       const progress = calculateProgress(formState, formSchema);
       
       return {
-        id: session.id,
+        session_id: session.id,
         client_name: formState.nome || 'Cliente Sem Nome',
         progress: progress.overall || 0,
         is_completed: progress.overall >= 95,
-        created_at: session.created_at
+        created_at: session.created_at,
+        data: {
+          client_name: formState.nome || 'Cliente Sem Nome',
+          client_email: formState.email || '',
+          client_phone: formState.telefone || '',
+          ...formState // Incluir todos os campos do formulário
+        }
       };
     });
     
@@ -326,11 +387,23 @@ app.get('/sessions/:sessionId', async (req, res) => {
       return res.status(404).json({ error: 'Sessão não encontrada' });
     }
     
+    // Carregar também os dados do formulário
+    const formState = session.form_state?.data || {};
+    const progress = calculateProgress(formState, formSchema);
+    
     res.json({
-      id: session.id,
+      session_id: session.id,
       created_at: session.created_at,
-      client_name: session.client_name || 'Cliente',
-      exists: true
+      client_name: formState.nome || 'Cliente',
+      progress: progress.overall || 0,
+      is_completed: progress.overall >= 95,
+      exists: true,
+      data: {
+        client_name: formState.nome || 'Cliente',
+        client_email: formState.email || '',
+        client_phone: formState.telefone || '',
+        ...formState // Incluir todos os campos do formulário
+      }
     });
     
   } catch (error) {
