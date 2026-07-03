@@ -339,8 +339,36 @@ Vamos começar com as informações básicas de contato. Qual é o seu nome comp
       
       // Adicionar opções interativas se houver
       if (extractionResponse.options) {
-        responseData.options = extractionResponse.options;
-        console.log(`🎛️ Enviando opções interativas:`, extractionResponse.options);
+        if (extractionResponse.options.type === 'auto_fill') {
+          // Auto-preenchimento: salvar campo e enviar mensagem
+          console.log('📦 Auto-preenchendo campo:', extractionResponse.options.fieldId);
+          
+          const autoFillData = {
+            [extractionResponse.options.fieldId]: extractionResponse.options.value
+          };
+          
+          updatedFormState = { ...updatedFormState, ...autoFillData };
+          await updateFormState(sessionId, updatedFormState);
+          
+          // Recalcular progresso
+          const newProgress = calculateProgress(updatedFormState, formSchema);
+          
+          // Enviar atualização do formulário
+          socket.emit('form_update', {
+            fields: autoFillData,
+            progress: newProgress
+          });
+          
+          // Usar mensagem do auto-fill
+          responseData.text = extractionResponse.options.message;
+          
+          console.log('📦 Item auto-preenchido e progresso atualizado:', newProgress.overall + '%');
+          
+        } else {
+          // Opções interativas normais
+          responseData.options = extractionResponse.options;
+          console.log(`🎛️ Enviando opções interativas:`, extractionResponse.options);
+        }
       }
       
       socket.emit('assistant_message', responseData);

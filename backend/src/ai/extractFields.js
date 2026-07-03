@@ -714,6 +714,21 @@ function detectInteractiveOptions(formSchema, currentFormState) {
     for (const field of section.fields) {
       if (!currentFormState[field.id] || currentFormState[field.id].toString().trim() === '') {
         
+        // LÓGICA ESPECIAL: itens_padrao são inclusos, não mostrar como opção
+        if (field.id === 'itens_padrao') {
+          // Auto-preencher itens padrão e pular para próximo campo
+          console.log('📦 Auto-preenchendo itens_padrao (já inclusos no pacote)');
+          return {
+            type: 'auto_fill',
+            fieldId: 'itens_padrao',
+            value: 'Logo Principal, Logo Reduzida, Paleta de Cores, Tipografia, Manual de Marca, Registro de Direito Autoral',
+            message: 'Perfeito! Seu pacote de identidade visual já inclui estes itens essenciais: **Logo Principal, Logo Reduzida, Paleta de Cores, Tipografia, Manual de Marca e Registro de Direito Autoral**. Estes são os elementos fundamentais que toda marca precisa.'
+          };
+        }
+        
+        // Pular para o próximo campo (itens_extra)
+        continue;
+        
         // Se o campo tem opções (select ou multiselect), enviar como interativo
         if (field.options && (field.type === 'select' || field.type === 'multiselect')) {
           return {
@@ -920,8 +935,8 @@ function getQuestionForField(field) {
     'cidade_estado': 'Em que cidade e estado você está?',
     'tipo_projeto': 'Este é um projeto de identidade visual novo ou um redesenho de algo que já existe?',
     'prazo': 'Para quando você precisa do projeto finalizado?',
-    'itens_padrao': 'Agora vamos definir quais itens de identidade visual são essenciais para sua marca. Selecione os que considera importantes:',
-    'itens_extra': 'Além dos itens principais, há algo adicional que gostaria? Por exemplo, materiais específicos ou templates:',
+    'itens_padrao': 'Perfeito! Estes itens de identidade visual já estão inclusos no seu pacote: Logo Principal, Logo Reduzida, Paleta de Cores, Tipografia, Manual de Marca e Registro de Direito Autoral. Vou confirmar isso para você.',
+    'itens_extra': 'Além dos itens já inclusos no pacote, gostaria de adicionar algum item extra? Vou mostrar as opções disponíveis:',,
     'info_extra_itens': 'Tem alguma informação extra sobre os itens que mencionou?',
     'sobre_empresa': 'Para criar uma identidade visual que comunique bem o posicionamento, me conte: o que sua empresa faz e há quanto tempo existe?',
     'missao_visao_valores': 'Sua empresa já tem missão, visão e valores definidos? Quais são?',
