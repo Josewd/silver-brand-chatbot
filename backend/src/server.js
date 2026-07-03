@@ -77,7 +77,10 @@ io.on('connection', (socket) => {
       // Se não tem sessionId, criar nova sessão
       if (!sessionId) {
         sessionId = uuidv4();
-        await createSession(sessionId);
+        await createSession({
+          id: sessionId,
+          client_name: null
+        });
         console.log('✅ Nova sessão criada:', sessionId);
       }
       
@@ -250,7 +253,10 @@ app.post('/api/session/create', async (req, res) => {
     
     // Criar nova sessão
     const sessionId = uuidv4();
-    await createSession(sessionId);
+    await createSession({
+      id: sessionId,
+      client_name: client_name
+    });
     
     // Criar estado inicial do formulário com dados fornecidos
     const initialFormData = {};
