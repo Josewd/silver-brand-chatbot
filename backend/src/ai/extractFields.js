@@ -159,7 +159,6 @@ async function extractFieldsWithGroq(conversationHistory, currentFormState, form
     }
   };
 }
-}
 
 function buildSystemPrompt(formSchema, currentFormState) {
   const filledFields = Object.keys(currentFormState).length;
