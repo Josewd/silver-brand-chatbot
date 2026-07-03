@@ -357,7 +357,7 @@ app.get('/api/admin/sessions', async (req, res) => {
       const progress = calculateProgress(formState, formSchema);
       
       return {
-        session_id: session.id,
+        id: session.id,
         client_name: formState.nome || 'Cliente Sem Nome',
         progress: progress.overall || 0,
         is_completed: progress.overall >= 95,
@@ -398,7 +398,7 @@ app.get('/sessions/:sessionId', async (req, res) => {
     const progress = calculateProgress(formState, formSchema);
     
     res.json({
-      session_id: session.id,
+      id: session.id,
       created_at: session.created_at,
       client_name: formState.nome || 'Cliente',
       progress: progress.overall || 0,
