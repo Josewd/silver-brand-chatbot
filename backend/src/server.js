@@ -209,8 +209,8 @@ Vamos começar com as informações básicas de contato. Qual é o seu nome comp
       
       console.log(`📤 FASE 1 - Resultado:`, {
         fieldUpdates: extractionResponse.fieldUpdates,
-        hasMessage: !!extractionResponse.message,
-        metadata: extractionResponse.metadata
+        extractionSuccess: extractionResponse.metadata?.extractionSuccess,
+        twoPhaseCall: extractionResponse.metadata?.twoPhaseCall
       });
       
       // Aplicar atualizações do formulário se houver (ATUALIZAR ESTADO)
@@ -220,26 +220,11 @@ Vamos começar com as informações básicas de contato. Qual é o seu nome comp
         await updateFormState(sessionId, updatedFormState);
         console.log(`✅ Estado do formulário atualizado:`, JSON.stringify(updatedFormState, null, 2));
       }
-      
-      console.log(`🤖 Chamando IA - FASE 2: Próxima pergunta`);
-      
-      // FASE 2: Gerar próxima pergunta com estado atualizado
-      const nextQuestionResponse = await extractFields(
-        updatedHistory,
-        updatedFormState, // Estado JÁ atualizado com os campos extraídos
-        formSchema
-      );
-      
-      console.log(`📤 FASE 2 - Resultado:`, {
-        hasMessage: !!nextQuestionResponse.message,
-        messageLength: nextQuestionResponse.message?.length || 0,
-        metadata: nextQuestionResponse.metadata
-      });
-      
-      // Verificar se a IA retornou uma mensagem válida
-      let aiMessage = nextQuestionResponse.message;
+
+      // A resposta já vem da FASE 2 da nova implementação
+      let aiMessage = extractionResponse.message;
       if (!aiMessage || aiMessage.trim() === '') {
-        // Se não há resposta da IA, gerar uma pergunta de continuação
+        // Se ainda não há resposta, gerar uma pergunta de continuação
         aiMessage = 'Obrigado pela informação. Poderia me contar mais sobre sua empresa?';
         console.log('⚠️ IA não retornou mensagem, usando fallback');
       }

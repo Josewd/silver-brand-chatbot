@@ -16,23 +16,23 @@ async function extractFieldsWithGroq(conversationHistory, currentFormState, form
     };
   }
   
-  // Sistema de fallback com 3 modelos Groq (do mais capaz ao mais rápido)
+  // Sistema de fallback com modelos otimizados para tool use
   const groqModels = [
     { 
-      name: "llama-3.3-70b-versatile", 
-      description: "Modelo principal - mais capaz",
+      name: "llama-3-groq-70b-tool-use", 
+      description: "Modelo principal - especializado em tool use",
       maxTokens: 800,
       temperature: 0.5 
     },
     { 
-      name: "qwen/qwen3.6-27b", 
-      description: "Fallback 1 - multilíngue avançado",
+      name: "llama-3.3-70b-versatile", 
+      description: "Fallback 1 - modelo versátil",
       maxTokens: 600,
-      temperature: 0.7 
+      temperature: 0.5 
     },
     { 
-      name: "llama-3.1-8b-instant", 
-      description: "Fallback 2 - rápido",
+      name: "llama-3-groq-8b-tool-use", 
+      description: "Fallback 2 - rápido e otimizado para tools",
       maxTokens: 400,
       temperature: 0.3 
     }
@@ -136,8 +136,40 @@ async function extractFieldsWithGroq(conversationHistory, currentFormState, form
 }
 
 async function callGroqAPI(conversationHistory, currentFormState, formSchema, model, apiKey, attempt, modelIndex) {
-  const systemPrompt = buildSystemPrompt(formSchema, currentFormState);
+  console.log(`🔄 Chamada Groq API - Modelo: ${model.name}, Tentativa: ${attempt}, Índice: ${modelIndex}`);
   
+  // === CHAMADA 1: EXTRAÇÃO DE DADOS (apenas tool calls, sem texto) ===
+  const extractionResult = await callGroqExtraction(conversationHistory, currentFormState, model, apiKey);
+  
+  // Aplicar atualizações extraídas no estado
+  const updatedFormState = { ...currentFormState, ...extractionResult.fieldUpdates };
+  
+  // === CHAMADA 2: GERAÇÃO DE RESPOSTA (apenas texto, sem tools) ===  
+  const replyResult = await callGroqReply(conversationHistory, updatedFormState, formSchema, model, apiKey);
+  
+  // Validar se a resposta tem function calls malformatados
+  let cleanMessage = replyResult.message;
+  if (containsMalformedFunctionCalls(cleanMessage)) {
+    console.warn('⚠️ Detectada function call malformatada no texto, removendo...');
+    cleanMessage = removeMalformedFunctionCalls(cleanMessage);
+  }
+  
+  return {
+    message: cleanMessage,
+    fieldUpdates: extractionResult.fieldUpdates,
+    metadata: {
+      provider: 'groq',
+      model: model.name,
+      toolCallsCount: Object.keys(extractionResult.fieldUpdates).length,
+      extractionSuccess: extractionResult.success,
+      replySuccess: replyResult.success,
+      twoPhaseCall: true
+    }
+  };
+}
+
+// Chamada 1: Apenas extração de dados
+async function callGroqExtraction(conversationHistory, currentFormState, model, apiKey) {
   const tools = [{
     type: "function",
     function: {
@@ -148,7 +180,7 @@ async function callGroqAPI(conversationHistory, currentFormState, formSchema, mo
         properties: {
           field_id: {
             type: "string",
-            description: "ID do campo no schema, ex: contato.nome, perfil.sobre_empresa"
+            description: "ID do campo no schema, ex: nome, email, sobre_empresa"
           },
           value: {
             type: "string",
@@ -159,189 +191,248 @@ async function callGroqAPI(conversationHistory, currentFormState, formSchema, mo
       }
     }
   }];
-  
+
+  const extractionSystemPrompt = `Você é um extrator de dados especializado. Sua ÚNICA responsabilidade é identificar informações na última mensagem do usuário e extrair usando a função update_form_field.
+
+INSTRUÇÕES CRÍTICAS:
+- Use APENAS a função update_form_field quando identificar dados
+- NUNCA escreva texto de resposta
+- NUNCA simule function calls como texto
+- Se não há dados para extrair, não chame nenhuma função
+- Extraia apenas informações explícitas na última mensagem
+
+CAMPOS DISPONÍVEIS: nome, email, telefone, empresa_slogan, website, cidade_estado, tipo_projeto, prazo, sobre_empresa, etc.
+
+ESTADO ATUAL DO FORMULÁRIO:
+${JSON.stringify(currentFormState, null, 2)}
+
+Extraia APENAS novos dados da última mensagem do usuário.`;
+
   const messages = [
-    { role: "system", content: systemPrompt },
+    { role: "system", content: extractionSystemPrompt },
     ...conversationHistory
   ];
-  
-  console.log(`🔄 Chamada Groq API - Modelo: ${model.name}, Tentativa: ${attempt}, Índice: ${modelIndex}`);
-  
-  const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      "Authorization": `Bearer ${apiKey}`,
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify({
-      model: model.name,
-      messages,
-      tools,
-      tool_choice: "auto",
-      temperature: model.temperature,
-      max_tokens: model.maxTokens,
-      // Forçar que sempre tenha content junto com tool_calls
-      parallel_tool_calls: false
-    })
-  });
-  
-  if (!response.ok) {
-    // Tentar capturar erro detalhado para 400 Bad Request
-    let errorDetails = `${response.status} ${response.statusText}`;
-    try {
-      const errorBody = await response.text();
-      if (errorBody) {
-        errorDetails += ` - ${errorBody}`;
-      }
-    } catch (e) {
-      // Ignorar se não conseguir ler o body
-    }
-    throw new Error(`Groq API error: ${errorDetails}`);
-  }
-  
-  const result = await response.json();
-  const assistantMessage = result.choices[0].message;
-  
-  console.log(`🤖 ${model.name} respondeu:`, {
-    content: assistantMessage.content?.substring(0, 80) + '...',
-    content_length: assistantMessage.content?.length || 0,
-    tool_calls: assistantMessage.tool_calls?.length || 0,
-    finish_reason: result.choices[0].finish_reason
-  });
-  
-  // Debug: Log completo da resposta se content estiver vazio
-  if (!assistantMessage.content) {
-    console.log('⚠️ IA retornou content vazio! Resposta completa:', JSON.stringify(assistantMessage, null, 2));
-  }
-  
-  // Extrair tool calls se houver
-  const fieldUpdates = {};
-  
-  if (assistantMessage.tool_calls) {
-    assistantMessage.tool_calls.forEach(toolCall => {
-      if (toolCall.function.name === "update_form_field") {
-        try {
-          const args = JSON.parse(toolCall.function.arguments);
-          fieldUpdates[args.field_id] = args.value;
-        } catch (e) {
-          console.error('❌ Erro ao parsear tool call:', e);
-        }
-      }
+
+  console.log('🔍 FASE 1: Extração de dados...');
+
+  try {
+    const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${apiKey}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        model: model.name,
+        messages,
+        tools,
+        tool_choice: "auto", // Nunca "required" - deixa o modelo decidir
+        temperature: 0, // Determinístico para extração
+        max_tokens: 200, // Limitado - só para function calls
+        parallel_tool_calls: true
+      })
     });
-  }
-  
-  // Melhorar fallback baseado no contexto atual
-  let fallbackMessage = "Entendi! Continue...";
-  if (!assistantMessage.content) {
-    const nextFieldInfo = getCurrentFieldToWork(formSchema, currentFormState);
-    
-    // Debug: verificar qual campo estamos tentando preencher
-    console.log(`🔍 Campo atual para trabalhar:`, nextFieldInfo);
-    console.log(`📋 Estado atual do form:`, JSON.stringify(currentFormState, null, 2));
-    
-    if (nextFieldInfo.includes('nome') && !currentFormState.nome) {
-      fallbackMessage = "Qual é o seu nome completo?";
-    } else if (nextFieldInfo.includes('email') && !currentFormState.email) {
-      fallbackMessage = "Perfeito! Agora preciso do seu e-mail para contato. Qual é?";  
-    } else if (nextFieldInfo.includes('telefone') && !currentFormState.telefone) {
-      fallbackMessage = "Ótimo! E qual é o seu telefone para contato?";
-    } else if (nextFieldInfo.includes('empresa_slogan') && !currentFormState.empresa_slogan) {
-      fallbackMessage = "Perfeito! Agora me conte: qual é o nome da sua empresa? Ela tem algum slogan?";
-    } else if (nextFieldInfo.includes('website') && !currentFormState.website) {
-      fallbackMessage = "Você tem website ou Instagram da empresa que possa compartilhar?";
-    } else if (nextFieldInfo.includes('cidade_estado') && !currentFormState.cidade_estado) {
-      fallbackMessage = "Em que cidade e estado você está localizado?";
-    } else if (nextFieldInfo.includes('sobre_empresa') && !currentFormState.sobre_empresa) {
-      fallbackMessage = "Agora vamos falar sobre sua empresa. Me conta: o que vocês fazem e há quanto tempo existe?";
-    } else {
-      // Para qualquer outro campo, tentar uma continuação inteligente
-      fallbackMessage = "Pode me dar mais informações sobre isso?";
+
+    if (!response.ok) {
+      throw new Error(`Extraction API error: ${response.status} ${response.statusText}`);
     }
-  }
-  
-  return {
-    message: assistantMessage.content || fallbackMessage,
-    fieldUpdates,
-    metadata: {
-      provider: 'groq',
-      model: model.name,
-      toolCallsCount: assistantMessage.tool_calls?.length || 0,
-      contentEmpty: !assistantMessage.content
+
+    const result = await response.json();
+    const assistantMessage = result.choices[0].message;
+    
+    // Extrair tool calls
+    const fieldUpdates = {};
+    if (assistantMessage.tool_calls) {
+      assistantMessage.tool_calls.forEach(toolCall => {
+        if (toolCall.function.name === "update_form_field") {
+          try {
+            const args = JSON.parse(toolCall.function.arguments);
+            fieldUpdates[args.field_id] = args.value;
+          } catch (e) {
+            console.error('❌ Erro ao parsear tool call:', e);
+          }
+        }
+      });
     }
-  };
+
+    console.log(`✅ FASE 1 concluída: ${Object.keys(fieldUpdates).length} campos extraídos`, fieldUpdates);
+    
+    return {
+      fieldUpdates,
+      success: true
+    };
+
+  } catch (error) {
+    console.error('❌ Erro na extração:', error);
+    return {
+      fieldUpdates: {},
+      success: false,
+      error: error.message
+    };
+  }
 }
 
-function buildSystemPrompt(formSchema, currentFormState) {
+// Chamada 2: Apenas geração de texto de resposta
+async function callGroqReply(conversationHistory, updatedFormState, formSchema, model, apiKey) {
+  const replySystemPrompt = buildReplySystemPrompt(formSchema, updatedFormState);
+
+  const messages = [
+    { role: "system", content: replySystemPrompt },
+    ...conversationHistory
+  ];
+
+  console.log('💬 FASE 2: Geração de resposta...');
+
+  try {
+    const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${apiKey}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        model: model.name,
+        messages,
+        // SEM tools aqui - evita confusão
+        temperature: 0.7, // Mais criativo para texto
+        max_tokens: 300 // Suficiente para uma pergunta
+      })
+    });
+
+    if (!response.ok) {
+      throw new Error(`Reply API error: ${response.status} ${response.statusText}`);
+    }
+
+    const result = await response.json();
+    const message = result.choices[0].message.content || "";
+    
+    console.log(`✅ FASE 2 concluída: resposta gerada (${message.length} chars)`);
+
+    // Fallback se não há resposta
+    if (!message.trim()) {
+      const fallbackMessage = generateContextualFallback(formSchema, updatedFormState);
+      console.log('⚠️ IA não retornou texto, usando fallback contextual:', fallbackMessage);
+      return {
+        message: fallbackMessage,
+        success: false
+      };
+    }
+    
+    return {
+      message: message.trim(),
+      success: true
+    };
+
+  } catch (error) {
+    console.error('❌ Erro na geração de resposta:', error);
+    const fallbackMessage = generateContextualFallback(formSchema, updatedFormState);
+    return {
+      message: fallbackMessage,
+      success: false,
+      error: error.message
+    };
+  }
+}
+
+function buildReplySystemPrompt(formSchema, currentFormState) {
   const filledFields = Object.keys(currentFormState).length;
   const totalFields = formSchema.sections.reduce((sum, section) => sum + section.fields.length, 0);
   
   // Encontrar o próximo campo a ser preenchido
   const nextField = getCurrentFieldToWork(formSchema, currentFormState);
   
-  return `Você é um assistente especializado em coleta de briefing para projetos de identidade visual da Silver Brand House.
+  return `Você é um assistente conversacional especializado em briefing para projetos de identidade visual da Silver Brand House.
 
 CONTEXTO ATUAL:
 - Campos já preenchidos: ${filledFields}/${totalFields}
 - Estado atual do formulário: ${JSON.stringify(currentFormState, null, 2)}
 
-CAMPO ATUAL PARA TRABALHAR:
+PRÓXIMO CAMPO PARA TRABALHAR:
 ${nextField}
 
-SCHEMA DO FORMULÁRIO:
-${JSON.stringify(formSchema, null, 2)}
-
 INSTRUÇÕES CRÍTICAS:
-1. 🎯 SEMPRE faça UMA pergunta específica por vez
-2. 🔄 AUTOMATICAMENTE pergunte o próximo campo assim que receber uma resposta
-3. 📝 Use a função update_form_field SEMPRE que extrair informação do usuário
-4. 🎯 Siga RIGOROSAMENTE a ordem das seções: ${formSchema.sections.map(s => s.label).join(' → ')}
-5. ⚠️ Para campos já preenchidos, NÃO pergunte novamente
-6. 🇧🇷 Use linguagem brasileira informal e acolhedora
-7. 🔄 Quando uma seção estiver completa, avance AUTOMATICAMENTE para a próxima
-8. ⚠️ OBRIGATÓRIO: SEMPRE responda com texto + função (nunca só função!)
+1. 🎯 SEMPRE faça UMA pergunta específica por vez sobre o próximo campo
+2. 🇧🇷 Use linguagem brasileira informal e acolhedora  
+3. 📝 Seja direto e específico sobre o que quer saber
+4. ⚠️ Para campos já preenchidos, NÃO pergunte novamente
+5. 🔄 Avance automaticamente para a próxima seção quando necessário
 
-FORMATO DA RESPOSTA - CRÍTICO:
-- JAMAIS inclua text functions calls, JSON ou códigos na sua resposta de texto
-- NUNCA escreva "update_form_field" ou qualquer código na resposta
+FORMATO DA RESPOSTA:
 - Use APENAS linguagem natural e conversacional
-- As funções são chamadas separadamente do texto
-- SEMPRE forneça uma resposta de texto, mesmo quando usar funções
-- NUNCA responda apenas com tool_calls sem content
-
-FORMATO DA PERGUNTA:
-- Seja direto e específico sobre o que quer saber
-- Adicione um exemplo ou contexto quando necessário
+- NUNCA inclua códigos, JSON, ou function calls no texto
 - Termine sempre com uma pergunta clara
-- SEMPRE inclua uma resposta de texto junto com a função
+- Adicione contexto quando necessário
 
-FORMATO DA FUNÇÃO:
-- Use EXATAMENTE os IDs dos campos do schema (ex: "nome", "email", "sobre_empresa")
-- Extraia TODA a informação relevante da resposta do usuário
-- Não peça confirmação, apenas extraia e continue
+EXEMPLO DE BOA RESPOSTA:
+"Perfeito! Agora me conte: qual é o nome da sua empresa? Ela tem algum slogan?"
 
-COMPORTAMENTO AUTOMÁTICO:
-- Se o usuário responder qualquer coisa, extraia a informação E imediatamente faça a próxima pergunta
-- Não espere o usuário pedir para continuar
-- Mantenha o fluxo sempre em movimento
-- SEMPRE combine função + mensagem de texto
+REGRAS ABSOLUTAS:
+- JAMAIS escreva function calls ou códigos na resposta
+- Responda APENAS com texto conversacional
+- Mantenha o tom acolhedor e profissional
+- Faça uma pergunta específica sobre o próximo campo necessário`;
+}
 
-EXEMPLO DE FLUXO CORRETO:
-Usuário: "Me chamo João Silva"
-Assistente: 
-1. Chama update_form_field("nome", "João Silva") [INVISÍVEL AO USUÁRIO]
-2. Responde APENAS: "Ótimo, João! Agora preciso do seu e-mail para contato. Qual é o seu e-mail?"
+// Função para detectar function calls malformatados no texto
+function containsMalformedFunctionCalls(text) {
+  if (!text) return false;
+  
+  // Padrões comuns de function calls malformatados
+  const patterns = [
+    /<function=/i,
+    /update_form_field\s*\{/i,
+    /\{"field_id":/i,
+    /function\s*\(/i,
+    /tool_call/i
+  ];
+  
+  return patterns.some(pattern => pattern.test(text));
+}
 
-EXEMPLO ERRADO (NUNCA FAZER):
-❌ "update_form_field{"field_id": "nome", "value": "João Silva"}; Ótimo, João! Qual é o seu e-mail?"
-✅ "Ótimo, João! Agora preciso do seu e-mail para contato. Qual é o seu e-mail?"
+// Função para remover function calls malformatados do texto
+function removeMalformedFunctionCalls(text) {
+  if (!text) return "";
+  
+  // Remover padrões comuns de function calls malformatados
+  let cleaned = text
+    .replace(/<function=.*?>/gi, '')
+    .replace(/update_form_field\s*\{[^}]*\}/gi, '')
+    .replace(/\{"field_id":.*?\}/gi, '')
+    .replace(/function\s*\([^)]*\)/gi, '')
+    .replace(/tool_call.*?;/gi, '')
+    .replace(/;\s*$/g, '') // Remove ; no final
+    .trim();
+  
+  return cleaned;
+}
 
-REGRA ABSOLUTA: 
-- Use as funções adequadamente (são invisíveis ao usuário!)
-- Sempre responda com texto conversacional separado da função
-- NUNCA inclua códigos, JSON, function calls no texto da resposta
-- PROIBIDO responder "Entendi! Continue..." ou respostas genéricas
-- SEMPRE faça uma pergunta específica e útil sobre o próximo campo
-- O texto deve ser 100% conversacional e natural`;
+// Função para gerar fallback contextual
+function generateContextualFallback(formSchema, currentFormState) {
+  const nextFieldInfo = getCurrentFieldToWork(formSchema, currentFormState);
+  
+  if (nextFieldInfo.includes('nome') && !currentFormState.nome) {
+    return "Qual é o seu nome completo?";
+  } else if (nextFieldInfo.includes('email') && !currentFormState.email) {
+    return "Perfeito! Qual é o seu e-mail para contato?";  
+  } else if (nextFieldInfo.includes('telefone') && !currentFormState.telefone) {
+    return "Ótimo! E qual é o seu telefone para contato?";
+  } else if (nextFieldInfo.includes('empresa_slogan') && !currentFormState.empresa_slogan) {
+    return "Perfeito! Agora me conte: qual é o nome da sua empresa? Ela tem algum slogan?";
+  } else if (nextFieldInfo.includes('website') && !currentFormState.website) {
+    return "Você tem website ou Instagram da empresa que possa compartilhar?";
+  } else if (nextFieldInfo.includes('cidade_estado') && !currentFormState.cidade_estado) {
+    return "Em que cidade e estado você está localizado?";
+  } else if (nextFieldInfo.includes('tipo_projeto') && !currentFormState.tipo_projeto) {
+    return "Este é um projeto de identidade visual novo ou um redesenho?";
+  } else if (nextFieldInfo.includes('sobre_empresa') && !currentFormState.sobre_empresa) {
+    return "Agora vamos conhecer melhor sua empresa. Me conte: o que vocês fazem e há quanto tempo existe?";
+  } else {
+    return "Pode me contar mais detalhes sobre isso?";
+  }
+}
+function buildSystemPrompt(formSchema, currentFormState) {
+  // Função mantida para compatibilidade, mas não mais usada na nova implementação
+  return buildReplySystemPrompt(formSchema, currentFormState);
 }
 
 function getCurrentFieldToWork(formSchema, currentFormState) {
