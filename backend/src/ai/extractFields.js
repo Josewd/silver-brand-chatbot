@@ -936,7 +936,7 @@ function getQuestionForField(field) {
     'tipo_projeto': 'Este é um projeto de identidade visual novo ou um redesenho de algo que já existe?',
     'prazo': 'Para quando você precisa do projeto finalizado?',
     'itens_padrao': 'Perfeito! Estes itens de identidade visual já estão inclusos no seu pacote: Logo Principal, Logo Reduzida, Paleta de Cores, Tipografia, Manual de Marca e Registro de Direito Autoral. Vou confirmar isso para você.',
-    'itens_extra': 'Além dos itens já inclusos no pacote, gostaria de adicionar algum item extra? Vou mostrar as opções disponíveis:',,
+    'itens_extra': 'Além dos itens já inclusos no pacote, gostaria de adicionar algum item extra? Vou mostrar as opções disponíveis:',
     'info_extra_itens': 'Tem alguma informação extra sobre os itens que mencionou?',
     'sobre_empresa': 'Para criar uma identidade visual que comunique bem o posicionamento, me conte: o que sua empresa faz e há quanto tempo existe?',
     'missao_visao_valores': 'Sua empresa já tem missão, visão e valores definidos? Quais são?',
