@@ -1,9 +1,8 @@
 import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { getBackendURL } from '../lib/backendConfig'
 import './LoginPage.css'
 
-const BACKEND_URL = getBackendURL()
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3002'
 
 function LoginPage() {
   const [password, setPassword] = useState('')
