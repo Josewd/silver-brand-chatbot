@@ -329,25 +329,25 @@ export function useBriefingSync(sessionId) {
   // Calcula se tem campos obrigatórios preenchidos
   const hasRequiredFields = useCallback(() => {
     return !!(
-      briefingData.nome &&
+      briefingData.name &&
       briefingData.email &&
-      briefingData.sobre_empresa &&
-      briefingData.cores_quer
+      briefingData.about_company &&
+      briefingData.colors_want
     )
   }, [briefingData])
 
   // Calcular progresso por seção
   const getSectionProgress = useCallback((sectionName) => {
     const sectionFields = {
-      contato: ['nome', 'email', 'empresa_slogan', 'website', 'telefone', 'cidade_estado'],
-      info_basicas: ['tipo_projeto', 'prazo'],
-      entrega: ['itens_padrao', 'itens_extra', 'info_extra_itens'],
-      perfil: ['sobre_empresa', 'missao_visao_valores', 'produtos_servicos', 'objetivos_hoje', 'diferencial'],
-      posicionamento: ['como_ser_percebida', 'diferencial_concorrencia', 'por_que_escolher'],
-      personalidade: ['escala_sofisticada_descontraida', 'escala_tecnica_emocional', 'escala_formal_informal', 'escala_tradicional_moderna', 'escala_exclusiva_popular', 'tres_palavras'],
-      concorrentes: ['concorrentes_locais', 'gosta_nessas_marcas', 'marcas_admira', 'info_extra_concorrentes'],
-      visual: ['cores_nao_quer', 'cores_quer', 'fontes_gosta', 'tipos_logo', 'referencias_visuais'],
-      final: ['algo_a_dizer']
+      contact: ['name', 'email', 'company_slogan', 'website', 'phone', 'city_state'],
+      basic_info: ['project_type', 'deadline'],
+      deliverables: ['standard_items', 'extra_items', 'extra_items_info'],
+      company_profile: ['about_company', 'mission_vision_values', 'products_services', 'current_objectives', 'differentiator'],
+      positioning: ['how_to_be_perceived', 'competitive_differentiator', 'why_choose_you'],
+      personality: ['sophisticated_relaxed_scale', 'technical_emotional_scale', 'formal_informal_scale', 'traditional_modern_scale', 'exclusive_popular_scale', 'three_words'],
+      competitors: ['local_competitors', 'likes_in_brands', 'admired_brands', 'extra_competitors_info'],
+      visual: ['colors_not_want', 'colors_want', 'fonts_like', 'logo_types', 'visual_references'],
+      final: ['anything_to_say']
     }
 
     const fields = sectionFields[sectionName] || []

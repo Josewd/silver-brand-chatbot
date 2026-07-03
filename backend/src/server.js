@@ -41,6 +41,30 @@ const io = new Server(server, {
 
 const PORT = process.env.PORT || 3001;
 
+// Função para gerar pergunta específica baseada no próximo campo necessário
+function generateSpecificQuestion(currentFormState, formSchema) {
+  const nextFieldInfo = getCurrentFieldToWork(formSchema, currentFormState);
+  const companyName = currentFormState.company_slogan || 'sua empresa';
+  
+  console.log('🎯 Gerando pergunta específica para:', nextFieldInfo);
+  
+  if (nextFieldInfo.includes('mission_vision_values')) {
+    return `Vamos trabalhar na missão da ${companyName}. Com base no que você me contou, posso sugerir: "A ${companyName} tem como missão proporcionar a melhor experiência de café takeaway, oferecendo produtos de qualidade com atendimento sofisticado." O que acha?`;
+  } else if (nextFieldInfo.includes('current_objectives')) {
+    return `Quais são os principais objetivos da ${companyName} hoje? Por exemplo: crescer no bairro, fidelizar clientes, ser reconhecida pela qualidade?`;
+  } else if (nextFieldInfo.includes('competitive_differentiator')) {
+    return `Você mencionou que o diferencial é o atendimento. Especificamente, o que no atendimento de vocês é diferente dos concorrentes?`;
+  } else if (nextFieldInfo.includes('why_choose_you')) {
+    return `Por que um cliente deveria escolher a ${companyName} em vez de outras opções de café? O que vocês oferecem de único?`;
+  } else if (nextFieldInfo.includes('sophisticated_relaxed_scale')) {
+    return `Agora vamos definir a personalidade da ${companyName}. Vou mostrar escalas para você avaliar de 1 a 5.`;
+  } else if (nextFieldInfo.includes('three_words')) {
+    return `Para finalizar a personalidade, me diga 3 palavras que definem a ${companyName}. Por exemplo: sofisticada, acolhedora, qualidade.`;
+  } else {
+    return `Vamos continuar com as informações da ${empresaNome}. Que outras informações você gostaria de compartilhar?`;
+  }
+}
+
 // Função para tentar recuperar dados perdidos do histórico da conversa
 async function tryRecoveryExtraction(conversationHistory, currentFormState) {
   const recoveredData = {};
@@ -51,32 +75,32 @@ async function tryRecoveryExtraction(conversationHistory, currentFormState) {
   for (const msg of userMessages) {
     const content = msg.content.toLowerCase();
     
-    // Recuperar sobre_empresa se não foi extraído
-    if (!currentFormState.sobre_empresa) {
+    // Recuperar about_company se não foi extraído
+    if (!currentFormState.about_company) {
       if (content.includes('vendemos') || content.includes('fazemos') || 
           content.includes('cafe') || content.includes('takeaway') ||
           content.includes('empresa')) {
-        recoveredData.sobre_empresa = msg.content;
-        console.log('🔄 Recuperado sobre_empresa:', msg.content);
+        recoveredData.about_company = msg.content;
+        console.log('🔄 Recuperado about_company:', msg.content);
       }
     }
     
-    // Recuperar produtos_servicos se não foi extraído
-    if (!currentFormState.produtos_servicos) {
+    // Recuperar products_services se não foi extraído
+    if (!currentFormState.products_services) {
       if (content.includes('latte') || content.includes('cappuccino') || 
           content.includes('cafe') || content.includes('produtos') ||
           content.includes('variados')) {
-        recoveredData.produtos_servicos = msg.content;
-        console.log('🔄 Recuperado produtos_servicos:', msg.content);
+        recoveredData.products_services = msg.content;
+        console.log('🔄 Recuperado products_services:', msg.content);
       }
     }
     
-    // Recuperar diferencial se não foi extraído
-    if (!currentFormState.diferencial) {
+    // Recuperar differentiator se não foi extraído
+    if (!currentFormState.differentiator) {
       if (content.includes('atendimento') || content.includes('diferencial') || 
           content.includes('especial') || content.includes('sem duvida')) {
-        recoveredData.diferencial = msg.content;
-        console.log('🔄 Recuperado diferencial:', msg.content);
+        recoveredData.differentiator = msg.content;
+        console.log('🔄 Recuperado differentiator:', msg.content);
       }
     }
   }
@@ -88,14 +112,14 @@ async function tryRecoveryExtraction(conversationHistory, currentFormState) {
     const content = msg.content;
     
     // Recuperar missão construída se não foi extraída
-    if (!currentFormState.missao_visao_valores && content.includes('missão')) {
+    if (!currentFormState.mission_vision_values && content.includes('missão')) {
       if (content.includes('Pradella Food tem como missão') || 
           content.includes('missão:')) {
         // Extrair a parte da missão
         const missaoMatch = content.match(/["""]([^"""]*missão[^"""]*)["""]/i) || 
                            content.match(/missão[^.]*\./i);
         if (missaoMatch) {
-          recoveredData.missao_visao_valores = `MISSÃO: ${missaoMatch[0]}`;
+          recoveredData.mission_vision_values = `MISSÃO: ${missaoMatch[0]}`;
           console.log('🔄 Recuperado missão construída:', missaoMatch[0]);
         }
       }
@@ -114,13 +138,13 @@ function cleanLegacyFields(formState) {
   const cleaned = { ...formState };
   
   // Remover campos duplicados em inglês se existirem em português
-  if (cleaned.nome && cleaned.client_name) {
+  if (cleaned.name && cleaned.client_name) {
     delete cleaned.client_name;
   }
   if (cleaned.email && cleaned.client_email) {
     delete cleaned.client_email;
   }
-  if (cleaned.telefone && cleaned.client_phone) {
+  if (cleaned.phone && cleaned.client_phone) {
     delete cleaned.client_phone;
   }
   
@@ -142,7 +166,7 @@ app.get('/health', (req, res) => {
   res.json({ 
     status: 'ok',
     database: 'connected',
-    ai_provider: process.env.GROQ_API_KEY ? 'groq' : 'none'
+    ai_provider: process.env.OPENAI_API_KEY ? 'openai' : 'none'
   });
 });
 
@@ -201,7 +225,7 @@ io.on('connection', (socket) => {
         console.log('📨 Enviando mensagem de boas-vindas para nova sessão');
         
         // Verificar se já tem dados no formulário para decidir a primeira pergunta
-        const hasBasicInfo = formState.nome || formState.email;
+        const hasBasicInfo = formState.name || formState.email;
         
         let firstMessage;
         if (hasBasicInfo) {
@@ -216,7 +240,8 @@ io.on('connection', (socket) => {
             firstMessage = aiResponse.message || 'Vamos continuar com seu briefing. Me conte mais sobre sua empresa.';
           } catch (error) {
             console.error('❌ Erro ao gerar pergunta contextual:', error);
-            firstMessage = 'Olá! Vamos continuar com seu briefing. Me conte mais sobre sua empresa.';
+            // Sem fallback - re-emitir erro para o cliente
+            throw error;
           }
         } else {
           // Mensagem de boas-vindas padrão para novos usuários
@@ -314,12 +339,17 @@ Vamos começar com as informações básicas de contato. Qual é o seu nome comp
         }
       }
 
-      // A resposta já vem da FASE 2 da nova implementação
+      // OpenAI sempre retorna uma mensagem - sem fallbacks
       let aiMessage = extractionResponse.message;
       if (!aiMessage || aiMessage.trim() === '') {
-        // Se ainda não há resposta, gerar uma pergunta de continuação
-        aiMessage = 'Obrigado pela informação. Poderia me contar mais sobre sua empresa?';
-        console.log('⚠️ IA não retornou mensagem, usando fallback');
+        throw new Error('OpenAI não retornou mensagem válida');
+      }
+      
+      // Detectar mensagem repetitiva genérica e corrigir
+      if (aiMessage.includes('Para desenvolver uma identidade visual forte') && 
+          aiMessage.includes('preciso entender melhor')) {
+        console.log('🔄 Detectada resposta genérica, gerando pergunta específica...');
+        aiMessage = generateSpecificQuestion(updatedFormState, formSchema);
       }
 
       console.log(`📨 Mensagem final da IA: "${aiMessage}"`);
@@ -425,9 +455,9 @@ app.post('/api/session/create', async (req, res) => {
   const initialFormData = {};
   
   // Mapear campos de inglês para português (compatibilidade com API antiga)
-  if (client_name) initialFormData.nome = client_name;
+  if (client_name) initialFormData.name = client_name;
   if (client_email) initialFormData.email = client_email;
-  if (client_phone) initialFormData.telefone = client_phone;
+  if (client_phone) initialFormData.phone = client_phone;
   if (initial_context) initialFormData.initial_context = initial_context;
   
   console.log('🔄 Mapeamento de campos:', {
@@ -581,7 +611,7 @@ app.get('/api/admin/sessions', async (req, res) => {
       
       return {
         id: session.id,
-        client_name: formState.nome || 'Cliente Sem Nome',
+        client_name: formState.name || 'Cliente Sem Nome',
         progress: progress.overall || 0,
         is_completed: progress.overall >= 95,
         created_at: session.created_at,
@@ -621,7 +651,7 @@ app.get('/sessions/:sessionId', async (req, res) => {
     res.json({
       id: session.id,
       created_at: session.created_at,
-      client_name: formState.nome || 'Cliente',
+      client_name: formState.name || 'Cliente',
       progress: progress.overall || 0,
       is_completed: progress.overall >= 95,
       exists: true,
@@ -651,9 +681,9 @@ app.post('/api/admin/migrate-legacy-fields', async (req, res) => {
       
       // Verificar se tem campos duplicados
       const hasDuplicates = (
-        (formState.nome && formState.client_name) ||
+        (formState.name && formState.client_name) ||
         (formState.email && formState.client_email) ||
-        (formState.telefone && formState.client_phone)
+        (formState.phone && formState.client_phone)
       );
       
       if (hasDuplicates) {
@@ -701,7 +731,7 @@ app.use((err, req, res, next) => {
 server.listen(PORT, () => {
   console.log(`🚀 Servidor rodando na porta ${PORT}`);
   console.log(`🌐 CORS configurado para: ${corsOptions.origin.join(', ')}`);
-  console.log(`🔑 Groq API: ${process.env.GROQ_API_KEY ? 'Configurada' : 'NÃO configurada'}`);
+  console.log(`🔑 OpenAI API: ${process.env.OPENAI_API_KEY ? 'Configurada' : 'NÃO configurada'}`);
   console.log(`🗄️  Database: ${process.env.SUPABASE_URL ? 'Supabase configurado' : 'DB não configurado'}`);
 });
 

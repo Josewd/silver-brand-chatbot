@@ -1,92 +1,92 @@
 {
   "sections": [
     {
-      "id": "contato",
-      "label": "Detalhes de Contato",
+      "id": "contact",
+      "label": "Contact Details",
       "fields": [
-        { "id": "nome", "label": "Seu nome", "type": "text", "required": true },
-        { "id": "email", "label": "Seu e-mail", "type": "text", "required": true },
-        { "id": "empresa_slogan", "label": "Nome da empresa e slogan", "type": "text" },
+        { "id": "name", "label": "Your name", "type": "text", "required": true },
+        { "id": "email", "label": "Your email", "type": "text", "required": true },
+        { "id": "company_slogan", "label": "Company name and slogan", "type": "text" },
         { "id": "website", "label": "Website/Instagram", "type": "text" },
-        { "id": "telefone", "label": "Telefone", "type": "text" },
-        { "id": "cidade_estado", "label": "Cidade/Estado", "type": "text" }
+        { "id": "phone", "label": "Phone", "type": "text" },
+        { "id": "city_state", "label": "City/State", "type": "text" }
       ]
     },
     {
-      "id": "info_basicas",
-      "label": "Informações Básicas",
+      "id": "basic_info",
+      "label": "Basic Information",
       "fields": [
-        { "id": "tipo_projeto", "label": "Projeto novo ou redesenho?", "type": "select", "options": ["Projeto novo", "Redesenho"] },
-        { "id": "prazo", "label": "Quando precisa do projeto pronto?", "type": "select", "options": ["Em 1 mês", "Em 2 meses", "Indefinido", "Urgente"] }
+        { "id": "project_type", "label": "New project or redesign?", "type": "select", "options": ["New Project", "Redesign"] },
+        { "id": "deadline", "label": "When do you need the project ready?", "type": "select", "options": ["In 1 month", "In 2 months", "Indefinite", "Urgent"] }
       ]
     },
     {
-      "id": "entrega",
-      "label": "Lista de Entrega",
+      "id": "deliverables",
+      "label": "Delivery List",
       "fields": [
-        { "id": "itens_padrao", "label": "Itens de identidade visual", "type": "multiselect", "options": ["Logo Principal", "Logo Reduzida", "Paleta de Cores", "Tipografia", "Manual de Marca", "Registro de Direito Autoral"] },
-        { "id": "itens_extra", "label": "Itens adicionais", "type": "multiselect", "options": ["Template PowerPoint", "Capa Destaques Instagram", "Arte para Cartão de Visitas", "Arte para Impresso"] },
-        { "id": "info_extra_itens", "label": "Informações extras sobre os itens", "type": "textarea" }
+        { "id": "standard_items", "label": "Visual identity items", "type": "multiselect", "options": ["Main Logo", "Reduced Logo", "Color Palette", "Typography", "Brand Manual", "Copyright Registration"] },
+        { "id": "extra_items", "label": "Additional items", "type": "multiselect", "options": ["PowerPoint Template", "Instagram Highlights Cover", "Business Card Design", "Print Design"] },
+        { "id": "extra_items_info", "label": "Extra information about items", "type": "textarea" }
       ]
     },
     {
-      "id": "perfil",
-      "label": "Perfil da Empresa",
+      "id": "company_profile",
+      "label": "Company Profile",
       "fields": [
-        { "id": "sobre_empresa", "label": "Sobre a empresa (o que é, há quanto tempo existe)", "type": "textarea" },
-        { "id": "missao_visao_valores", "label": "Missão, visão e valores", "type": "textarea" },
-        { "id": "produtos_servicos", "label": "Produtos/serviços oferecidos", "type": "textarea" },
-        { "id": "objetivos_hoje", "label": "Principais objetivos hoje", "type": "textarea" },
-        { "id": "diferencial", "label": "Principal diferencial do negócio", "type": "textarea" }
+        { "id": "about_company", "label": "About the company (what it is, how long it has existed)", "type": "textarea" },
+        { "id": "mission_vision_values", "label": "Mission, vision and values", "type": "textarea" },
+        { "id": "products_services", "label": "Products/services offered", "type": "textarea" },
+        { "id": "current_objectives", "label": "Main objectives today", "type": "textarea" },
+        { "id": "differentiator", "label": "Main business differentiator", "type": "textarea" }
       ]
     },
     {
-      "id": "posicionamento",
-      "label": "Posicionamento",
+      "id": "positioning",
+      "label": "Positioning",
       "fields": [
-        { "id": "como_ser_percebida", "label": "Como quer ser percebida", "type": "textarea" },
-        { "id": "diferencial_concorrencia", "label": "O que diferencia da concorrência", "type": "textarea" },
-        { "id": "por_que_escolher", "label": "Por que alguém deveria escolher você", "type": "textarea" }
+        { "id": "how_to_be_perceived", "label": "How you want to be perceived", "type": "textarea" },
+        { "id": "competitive_differentiator", "label": "What differentiates from competition", "type": "textarea" },
+        { "id": "why_choose_you", "label": "Why someone should choose you", "type": "textarea" }
       ]
     },
     {
-      "id": "personalidade",
-      "label": "Personalidade da Marca",
+      "id": "personality",
+      "label": "Brand Personality",
       "fields": [
-        { "id": "escala_sofisticada_descontraida", "label": "Sofisticada — Descontraída", "type": "scale", "min": 1, "max": 5 },
-        { "id": "escala_tecnica_emocional", "label": "Técnica — Emocional", "type": "scale", "min": 1, "max": 5 },
-        { "id": "escala_formal_informal", "label": "Formal — Informal", "type": "scale", "min": 1, "max": 5 },
-        { "id": "escala_tradicional_moderna", "label": "Tradicional — Moderna", "type": "scale", "min": 1, "max": 5 },
-        { "id": "escala_exclusiva_popular", "label": "Exclusiva — Popular", "type": "scale", "min": 1, "max": 5 },
-        { "id": "tres_palavras", "label": "3 palavras que definem a marca", "type": "text" }
+        { "id": "sophisticated_relaxed_scale", "label": "Sophisticated — Relaxed", "type": "scale", "min": 1, "max": 5 },
+        { "id": "technical_emotional_scale", "label": "Technical — Emotional", "type": "scale", "min": 1, "max": 5 },
+        { "id": "formal_informal_scale", "label": "Formal — Informal", "type": "scale", "min": 1, "max": 5 },
+        { "id": "traditional_modern_scale", "label": "Traditional — Modern", "type": "scale", "min": 1, "max": 5 },
+        { "id": "exclusive_popular_scale", "label": "Exclusive — Popular", "type": "scale", "min": 1, "max": 5 },
+        { "id": "three_words", "label": "3 words that define the brand", "type": "text" }
       ]
     },
     {
-      "id": "concorrentes",
-      "label": "Concorrentes e Referências",
+      "id": "competitors",
+      "label": "Competitors and References",
       "fields": [
-        { "id": "concorrentes_locais", "label": "Concorrentes locais/regionais/mundiais", "type": "textarea" },
-        { "id": "gosta_nessas_marcas", "label": "O que gosta nessas marcas", "type": "textarea" },
-        { "id": "marcas_admira", "label": "Marcas que admira (mesmo fora do nicho)", "type": "textarea" },
-        { "id": "info_extra_concorrentes", "label": "Outras informações", "type": "textarea" }
+        { "id": "local_competitors", "label": "Local/regional/global competitors", "type": "textarea" },
+        { "id": "likes_in_brands", "label": "What you like in those brands", "type": "textarea" },
+        { "id": "admired_brands", "label": "Brands you admire (even outside your niche)", "type": "textarea" },
+        { "id": "extra_competitors_info", "label": "Other information", "type": "textarea" }
       ]
     },
     {
       "id": "visual",
-      "label": "Preferências Visuais",
+      "label": "Visual Preferences",
       "fields": [
-        { "id": "cores_nao_quer", "label": "Cores que NÃO quer", "type": "text" },
-        { "id": "cores_quer", "label": "Cores que gosta e quer explorar", "type": "text" },
-        { "id": "fontes_gosta", "label": "Tipos de fontes que gosta (links)", "type": "text" },
-        { "id": "tipos_logo", "label": "Tipos de logo que prefere", "type": "multiselect", "options": ["Com símbolo", "Só a tipografia", "Minimalista", "Clássico", "Moderno"] },
-        { "id": "referencias_visuais", "label": "Referências visuais (links)", "type": "textarea" }
+        { "id": "colors_not_want", "label": "Colors you DON'T want", "type": "text" },
+        { "id": "colors_want", "label": "Colors you like and want to explore", "type": "text" },
+        { "id": "fonts_like", "label": "Types of fonts you like (links)", "type": "text" },
+        { "id": "logo_types", "label": "Types of logo you prefer", "type": "multiselect", "options": ["With symbol", "Typography only", "Minimalist", "Classic", "Modern"] },
+        { "id": "visual_references", "label": "Visual references (links)", "type": "textarea" }
       ]
     },
     {
       "id": "final",
       "label": "Final",
       "fields": [
-        { "id": "algo_a_dizer", "label": "Algo mais a dizer", "type": "textarea" }
+        { "id": "anything_to_say", "label": "Anything else to say", "type": "textarea" }
       ]
     }
   ]

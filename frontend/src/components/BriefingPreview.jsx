@@ -239,33 +239,33 @@ function BriefingPreview({
   }
 
   // Verificar quais seções têm dados (usando novos nomes de campos)
-  const hasContactData = editedData.nome || editedData.email || 
-                         editedData.telefone || editedData.cidade_estado || 
-                         editedData.website || editedData.empresa_slogan
+  const hasContactData = editedData.name || editedData.email || 
+                         editedData.phone || editedData.city_state || 
+                         editedData.website || editedData.company_slogan
 
-  const hasBasicInfo = editedData.tipo_projeto || editedData.prazo
+  const hasBasicInfo = editedData.project_type || editedData.deadline
 
-  const hasDeliverables = editedData.itens_padrao || editedData.itens_extra || editedData.info_extra_itens
+  const hasDeliverables = editedData.standard_items || editedData.extra_items || editedData.extra_items_info
 
-  const hasCompanyProfile = editedData.sobre_empresa || 
-                           editedData.produtos_servicos || 
-                           editedData.missao_visao_valores || editedData.diferencial || 
-                           editedData.objetivos_hoje
+  const hasCompanyProfile = editedData.about_company || 
+                           editedData.products_services || 
+                           editedData.mission_vision_values || editedData.differentiator || 
+                           editedData.current_objectives
 
-  const hasPositioning = editedData.como_ser_percebida || editedData.diferencial_concorrencia || 
-                        editedData.por_que_escolher
+  const hasPositioning = editedData.how_to_be_perceived || editedData.competitive_differentiator || 
+                        editedData.why_choose_you
 
-  const hasPersonality = editedData.escala_sofisticada_descontraida || editedData.escala_tecnica_emocional ||
-                        editedData.escala_formal_informal || editedData.escala_tradicional_moderna ||
-                        editedData.escala_exclusiva_popular || editedData.tres_palavras
+  const hasPersonality = editedData.sophisticated_relaxed_scale || editedData.technical_emotional_scale ||
+                        editedData.formal_informal_scale || editedData.traditional_modern_scale ||
+                        editedData.exclusive_popular_scale || editedData.three_words
 
-  const hasCompetitors = editedData.concorrentes_locais || editedData.gosta_nessas_marcas || 
-                        editedData.marcas_admira || editedData.info_extra_concorrentes
+  const hasCompetitors = editedData.local_competitors || editedData.likes_in_brands || 
+                        editedData.admired_brands || editedData.extra_competitors_info
 
-  const hasVisualPrefs = editedData.cores_quer || editedData.cores_nao_quer || 
-                        editedData.tipos_logo || editedData.fontes_gosta || editedData.referencias_visuais
+  const hasVisualPrefs = editedData.colors_want || editedData.colors_not_want || 
+                        editedData.logo_types || editedData.fonts_like || editedData.visual_references
 
-  const hasFinalInfo = editedData.algo_a_dizer
+  const hasFinalInfo = editedData.anything_to_say
 
   const isComplete = isCompleted || progress >= 95
   
@@ -308,7 +308,7 @@ function BriefingPreview({
         )}
         <h1 className="preview-title">BRIEFING DE IDENTIDADE VISUAL</h1>
         <div className="preview-client">
-          <strong>Cliente:</strong> {briefingData.nome || safeSessionData.client_name || 'Cliente'}
+          <strong>Cliente:</strong> {briefingData.name || safeSessionData.client_name || 'Cliente'}
         </div>
         
         {/* Switch para modo manual */}
@@ -335,7 +335,7 @@ function BriefingPreview({
         {/* Progresso detalhado das seções */}
         {getSectionProgress && (
           <SectionProgressIndicator
-            currentSection={safeSessionData.current_section || 'contato'}
+            currentSection={safeSessionData.current_section || 'contact'}
             overallProgress={progress || 0}
             getSectionProgress={getSectionProgress}
             showDetailed={true}
@@ -364,12 +364,12 @@ function BriefingPreview({
         {renderSection(
           "1. DETALHES DE CONTATO",
           <>
-            {renderEditableField("Nome completo", "nome", briefingData.nome || safeSessionData.client_name)}
+            {renderEditableField("Nome completo", "name", briefingData.name || safeSessionData.client_name)}
             {renderEditableField("E-mail", "email", briefingData.email || safeSessionData.client_email)}
-            {renderEditableField("Nome da empresa e slogan", "empresa_slogan", briefingData.empresa_slogan)}
+            {renderEditableField("Nome da empresa e slogan", "company_slogan", briefingData.company_slogan)}
             {renderEditableField("Website/Instagram", "website", briefingData.website)}
-            {renderEditableField("Telefone", "telefone", briefingData.telefone || safeSessionData.client_phone)}
-            {renderEditableField("Cidade/Estado", "cidade_estado", briefingData.cidade_estado)}
+            {renderEditableField("Telefone", "phone", briefingData.phone || safeSessionData.client_phone)}
+            {renderEditableField("Cidade/Estado", "city_state", briefingData.city_state)}
           </>,
           hasContactData || safeSessionData.client_name
         )}
@@ -378,8 +378,8 @@ function BriefingPreview({
         {renderSection(
           "2. INFORMAÇÕES BÁSICAS",
           <>
-            {renderEditableField("Projeto novo ou redesenho?", "tipo_projeto", briefingData.tipo_projeto)}
-            {renderEditableField("Quando precisa do projeto pronto?", "prazo", briefingData.prazo)}
+            {renderEditableField("Projeto novo ou redesenho?", "project_type", briefingData.project_type)}
+            {renderEditableField("Quando precisa do projeto pronto?", "deadline", briefingData.deadline)}
           </>,
           hasBasicInfo
         )}
@@ -388,9 +388,9 @@ function BriefingPreview({
         {renderSection(
           "3. LISTA DE ENTREGA",
           <>
-            {renderEditableField("Itens de identidade visual", "itens_padrao", briefingData.itens_padrao, true)}
-            {renderEditableField("Itens adicionais", "itens_extra", briefingData.itens_extra, true)}
-            {renderEditableField("Informações extras sobre os itens", "info_extra_itens", briefingData.info_extra_itens, true)}
+            {renderEditableField("Itens de identidade visual", "standard_items", briefingData.standard_items, true)}
+            {renderEditableField("Itens adicionais", "extra_items", briefingData.extra_items, true)}
+            {renderEditableField("Informações extras sobre os itens", "extra_items_info", briefingData.extra_items_info, true)}
           </>,
           hasDeliverables
         )}
@@ -399,11 +399,11 @@ function BriefingPreview({
         {renderSection(
           "4. PERFIL DA EMPRESA",
           <>
-            {renderEditableField("Sobre a empresa (o que é, há quanto tempo existe)", "sobre_empresa", briefingData.sobre_empresa, true)}
-            {renderEditableField("Missão, visão e valores", "missao_visao_valores", briefingData.missao_visao_valores, true)}
-            {renderEditableField("Produtos/serviços oferecidos", "produtos_servicos", briefingData.produtos_servicos, true)}
-            {renderEditableField("Principais objetivos hoje", "objetivos_hoje", briefingData.objetivos_hoje, true)}
-            {renderEditableField("Principal diferencial do negócio", "diferencial", briefingData.diferencial, true)}
+            {renderEditableField("Sobre a empresa (o que é, há quanto tempo existe)", "about_company", briefingData.about_company, true)}
+            {renderEditableField("Missão, visão e valores", "mission_vision_values", briefingData.mission_vision_values, true)}
+            {renderEditableField("Produtos/serviços oferecidos", "products_services", briefingData.products_services, true)}
+            {renderEditableField("Principais objetivos hoje", "current_objectives", briefingData.current_objectives, true)}
+            {renderEditableField("Principal diferencial do negócio", "differentiator", briefingData.differentiator, true)}
           </>,
           hasCompanyProfile
         )}
@@ -412,9 +412,9 @@ function BriefingPreview({
         {renderSection(
           "5. POSICIONAMENTO",
           <>
-            {renderEditableField("Como quer ser percebida", "como_ser_percebida", briefingData.como_ser_percebida, true)}
-            {renderEditableField("O que diferencia da concorrência", "diferencial_concorrencia", briefingData.diferencial_concorrencia, true)}
-            {renderEditableField("Por que alguém deveria escolher você", "por_que_escolher", briefingData.por_que_escolher, true)}
+            {renderEditableField("Como quer ser percebida", "how_to_be_perceived", briefingData.how_to_be_perceived, true)}
+            {renderEditableField("O que diferencia da concorrência", "competitive_differentiator", briefingData.competitive_differentiator, true)}
+            {renderEditableField("Por que alguém deveria escolher você", "why_choose_you", briefingData.why_choose_you, true)}
           </>,
           hasPositioning
         )}
@@ -423,12 +423,12 @@ function BriefingPreview({
         {renderSection(
           "6. PERSONALIDADE DA MARCA",
           <>
-            {renderEditableField("Sofisticada — Descontraída (1-5)", "escala_sofisticada_descontraida", briefingData.escala_sofisticada_descontraida)}
-            {renderEditableField("Técnica — Emocional (1-5)", "escala_tecnica_emocional", briefingData.escala_tecnica_emocional)}
-            {renderEditableField("Formal — Informal (1-5)", "escala_formal_informal", briefingData.escala_formal_informal)}
-            {renderEditableField("Tradicional — Moderna (1-5)", "escala_tradicional_moderna", briefingData.escala_tradicional_moderna)}
-            {renderEditableField("Exclusiva — Popular (1-5)", "escala_exclusiva_popular", briefingData.escala_exclusiva_popular)}
-            {renderEditableField("3 palavras que definem a marca", "tres_palavras", briefingData.tres_palavras)}
+            {renderEditableField("Sofisticada — Descontraída (1-5)", "sophisticated_relaxed_scale", briefingData.sophisticated_relaxed_scale)}
+            {renderEditableField("Técnica — Emocional (1-5)", "technical_emotional_scale", briefingData.technical_emotional_scale)}
+            {renderEditableField("Formal — Informal (1-5)", "formal_informal_scale", briefingData.formal_informal_scale)}
+            {renderEditableField("Tradicional — Moderna (1-5)", "traditional_modern_scale", briefingData.traditional_modern_scale)}
+            {renderEditableField("Exclusiva — Popular (1-5)", "exclusive_popular_scale", briefingData.exclusive_popular_scale)}
+            {renderEditableField("3 palavras que definem a marca", "three_words", briefingData.three_words)}
           </>,
           hasPersonality
         )}
@@ -437,10 +437,10 @@ function BriefingPreview({
         {renderSection(
           "7. CONCORRENTES E REFERÊNCIAS",
           <>
-            {renderEditableField("Concorrentes locais/regionais/mundiais", "concorrentes_locais", briefingData.concorrentes_locais, true)}
-            {renderEditableField("O que gosta nessas marcas", "gosta_nessas_marcas", briefingData.gosta_nessas_marcas, true)}
-            {renderEditableField("Marcas que admira (mesmo fora do nicho)", "marcas_admira", briefingData.marcas_admira, true)}
-            {renderEditableField("Outras informações", "info_extra_concorrentes", briefingData.info_extra_concorrentes, true)}
+            {renderEditableField("Concorrentes locais/regionais/mundiais", "local_competitors", briefingData.local_competitors, true)}
+            {renderEditableField("O que gosta nessas marcas", "likes_in_brands", briefingData.likes_in_brands, true)}
+            {renderEditableField("Marcas que admira (mesmo fora do nicho)", "admired_brands", briefingData.admired_brands, true)}
+            {renderEditableField("Outras informações", "extra_competitors_info", briefingData.extra_competitors_info, true)}
           </>,
           hasCompetitors
         )}
@@ -449,11 +449,11 @@ function BriefingPreview({
         {renderSection(
           "8. PREFERÊNCIAS VISUAIS",
           <>
-            {renderEditableField("Cores que NÃO quer", "cores_nao_quer", briefingData.cores_nao_quer)}
-            {renderEditableField("Cores que gosta e quer explorar", "cores_quer", briefingData.cores_quer)}
-            {renderEditableField("Tipos de fontes que gosta (links)", "fontes_gosta", briefingData.fontes_gosta)}
-            {renderEditableField("Tipos de logo que prefere", "tipos_logo", briefingData.tipos_logo, true)}
-            {renderEditableField("Referências visuais (links)", "referencias_visuais", briefingData.referencias_visuais, true)}
+            {renderEditableField("Cores que NÃO quer", "colors_not_want", briefingData.colors_not_want)}
+            {renderEditableField("Cores que gosta e quer explorar", "colors_want", briefingData.colors_want)}
+            {renderEditableField("Tipos de fontes que gosta (links)", "fonts_like", briefingData.fonts_like)}
+            {renderEditableField("Tipos de logo que prefere", "logo_types", briefingData.logo_types, true)}
+            {renderEditableField("Referências visuais (links)", "visual_references", briefingData.visual_references, true)}
           </>,
           hasVisualPrefs
         )}
@@ -462,7 +462,7 @@ function BriefingPreview({
         {renderSection(
           "9. FINAL",
           <>
-            {renderEditableField("Algo mais a dizer", "algo_a_dizer", briefingData.algo_a_dizer, true)}
+            {renderEditableField("Algo mais a dizer", "anything_to_say", briefingData.anything_to_say, true)}
           </>,
           hasFinalInfo
         )}
