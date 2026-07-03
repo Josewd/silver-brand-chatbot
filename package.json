@@ -1,17 +1,17 @@
 {
   "name": "silver-brand-chatbot",
   "version": "1.0.0",
-  "description": "Sistema de briefing interativo com IA para identidade visual",
+  "description": "Silver Brand Chatbot - Node.js Backend",
+  "main": "backend/src/server.js",
   "scripts": {
-    "start": "./start.sh",
-    "dev": "uvicorn app.main:app --reload --host 0.0.0.0 --port 8000",
-    "build:frontend": "cd frontend && npm install && npm run build",
-    "deploy": "git push origin main"
+    "start": "cd backend && npm start",
+    "build": "cd backend && npm install",
+    "dev": "cd backend && npm run dev"
   },
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/Josewd/silver-brand-chatbot.git"
-  },
+  "keywords": ["chatbot", "nodejs", "express", "websocket"],
   "author": "Silver Brand House",
-  "license": "PROPRIETARY"
+  "license": "ISC",
+  "engines": {
+    "node": ">=18.0.0"
+  }
 }

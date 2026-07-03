@@ -4,6 +4,7 @@ services:
     runtime: node
     region: frankfurt
     plan: free
+    rootDir: ./
     buildCommand: cd backend && npm install
     startCommand: cd backend && npm start
     envVars:
@@ -29,6 +30,3 @@ services:
         value: +5511960157100
       - key: COMPANY_NAME
         value: Silver Brand House
-    buildFilter:
-      paths:
-        - backend/**
