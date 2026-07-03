@@ -172,6 +172,37 @@ SUA MISSÃO COMO ESPECIALISTA:
 4. 💡 FAZER perguntas específicas e direcionadas, nunca genéricas
 5. 🏆 ELEVAR o nível da conversa, transformando ideias básicas em conceitos sólidos
 
+⚠️ CRÍTICO - SEMPRE EXTRAIR DADOS:
+Mesmo durante conversas consultivas, você DEVE extrair informações para os campos:
+- sobre_empresa: qualquer descrição do negócio
+- missao_visao_valores: missão, visão ou valores mencionados
+- produtos_servicos: produtos/serviços oferecidos
+- objetivos_hoje: objetivos ou metas mencionados
+- diferencial: diferenciais competitivos mencionados
+- como_ser_percebida: como querem ser percebidos
+- E TODOS os outros campos quando informações relevantes aparecerem
+
+EXEMPLO DE EXTRAÇÃO CORRETA:
+Usuário: "vendemos cafe take away"
+Ação: update_form_fields([{field_id: "sobre_empresa", value: "Vendemos café takeaway"}])
+
+Usuário: "o atendimento sem duvidas" (sobre diferencial)
+Ação: update_form_fields([{field_id: "diferencial", value: "O atendimento excepcional é nosso principal diferencial"}])
+
+Usuário: "cafes variados, latte, capuccino etc..."
+Ação: update_form_fields([{field_id: "produtos_servicos", value: "Oferecemos cafés variados incluindo latte, cappuccino e outras bebidas especiais"}])
+
+QUANDO VOCÊ REFORMULA/CONSTRÓI CONCEITOS:
+Se você ajudou a construir missão, visão, valores ou qualquer conceito durante a conversa,
+você DEVE salvar a versão final construída nos campos apropriados:
+
+Exemplo: Você construiu uma missão com o cliente:
+"A Pradella Food tem como missão oferecer café de alta qualidade..."
+Ação: update_form_fields([{field_id: "missao_visao_valores", value: "MISSÃO: A Pradella Food tem como missão..."}])
+
+CRÍTICO: NÃO DEIXE INFORMAÇÕES VALIOSAS SE PERDEREM!
+Toda informação coletada durante a consultoria deve ser extraída para os campos apropriados.
+
 CAMPOS DISPONÍVEIS: nome, email, telefone, empresa_slogan, website, cidade_estado, tipo_projeto, prazo, sobre_empresa, missao_visao_valores, produtos_servicos, objetivos_hoje, diferencial, como_ser_percebida, diferencial_concorrencia, por_que_escolher, etc.
 
 COMO AGIR COM CLIENTES LEIGOS:
@@ -770,31 +801,72 @@ function manualFieldExtraction(userMessage, currentFormState) {
     return {}; // Não extrair nada de respostas vagas
   }
   
-  // Detectar informações específicas por contexto
+  // Detectar informações específicas por contexto e conteúdo
   if (!currentFormState.empresa_slogan && message.length > 2 && !message.includes('nao')) {
-    // Primeira resposta substancial provavelmente é sobre a empresa
     fieldUpdates.empresa_slogan = userMessage;
-  } else if (!currentFormState.website && (message.includes('www.') || message.includes('http') || message.includes('instagram'))) {
+  } 
+  
+  if (!currentFormState.sobre_empresa && (
+    message.includes('vendemos') || message.includes('fazemos') || 
+    message.includes('empresa') || message.includes('negocio') || 
+    message.includes('cafe') || message.includes('takeaway') ||
+    (message.length > 10 && !isVague)
+  )) {
+    fieldUpdates.sobre_empresa = userMessage;
+  }
+  
+  if (!currentFormState.produtos_servicos && (
+    message.includes('cafe') || message.includes('latte') || 
+    message.includes('cappuccino') || message.includes('produtos') ||
+    message.includes('servicos') || message.includes('oferecemos')
+  )) {
+    fieldUpdates.produtos_servicos = userMessage;
+  }
+  
+  if (!currentFormState.diferencial && (
+    message.includes('diferencial') || message.includes('atendimento') ||
+    message.includes('especial') || message.includes('unico') ||
+    message.includes('melhor') || message.includes('sem duvida')
+  )) {
+    fieldUpdates.diferencial = userMessage;
+  }
+  
+  if (!currentFormState.como_ser_percebida && (
+    message.includes('perceb') || message.includes('referencia') || 
+    message.includes('qualidade') || message.includes('reconheci')
+  )) {
+    fieldUpdates.como_ser_percebida = userMessage;
+  }
+  
+  if (!currentFormState.objetivos_hoje && (
+    message.includes('objetiv') || message.includes('meta') || 
+    message.includes('crescer') || message.includes('futuro') ||
+    message.includes('planos')
+  )) {
+    fieldUpdates.objetivos_hoje = userMessage;
+  }
+  
+  // Campos básicos (mantidos)
+  if (!currentFormState.website && (message.includes('www.') || message.includes('http') || message.includes('instagram'))) {
     fieldUpdates.website = userMessage;
-  } else if (!currentFormState.cidade_estado && message.includes('/') && message.length < 50) {
-    // Formato "São Paulo / SP"
+  } 
+  
+  if (!currentFormState.cidade_estado && message.includes('/') && message.length < 50) {
     fieldUpdates.cidade_estado = userMessage;
-  } else if (!currentFormState.tipo_projeto && (message.includes('novo') || message.includes('redesenho') || message.includes('redesign'))) {
+  } 
+  
+  if (!currentFormState.tipo_projeto && (message.includes('novo') || message.includes('redesenho') || message.includes('redesign'))) {
     fieldUpdates.tipo_projeto = message.includes('novo') ? 'Projeto novo' : 'Redesenho';
-  } else if (!currentFormState.prazo && (message.includes('mes') || message.includes('prazo') || message.includes('urgente') || message.includes('indefinido'))) {
+  } 
+  
+  if (!currentFormState.prazo && (message.includes('mes') || message.includes('prazo') || message.includes('urgente') || message.includes('indefinido'))) {
     if (message.includes('indefinido')) fieldUpdates.prazo = 'Indefinido';
     else if (message.includes('urgente')) fieldUpdates.prazo = 'Urgente';
     else if (message.includes('1') || message.includes('um')) fieldUpdates.prazo = 'Em 1 mês';
     else if (message.includes('2') || message.includes('dois')) fieldUpdates.prazo = 'Em 2 meses';
-  } else if (!currentFormState.sobre_empresa && message.length > 10 && !isVague) {
-    // Respostas longas e substantivas sobre a empresa
-    fieldUpdates.sobre_empresa = userMessage;
-  } else if (!currentFormState.objetivos_hoje && (message.includes('objetiv') || message.includes('meta') || message.includes('crescer'))) {
-    fieldUpdates.objetivos_hoje = userMessage;
-  } else if (!currentFormState.como_ser_percebida && (message.includes('perceb') || message.includes('referencia') || message.includes('qualidade'))) {
-    fieldUpdates.como_ser_percebida = userMessage;
   }
   
+  console.log('🔧 Extração manual detectou:', Object.keys(fieldUpdates));
   return fieldUpdates;
 }
 function buildSystemPrompt(formSchema, currentFormState) {
