@@ -5,11 +5,11 @@ services:
     region: frankfurt
     plan: free
     rootDir: ./
-    buildCommand: cd backend && rm -rf node_modules package-lock.json && npm install
+    buildCommand: cd backend && npm ci --production --prefer-offline
     startCommand: cd backend && npm start
     envVars:
       - key: NODE_VERSION
-        value: "18.20.4"
+        value: "18.19.0"
       - key: PORT
         value: "3002"
       - key: FRONTEND_URL

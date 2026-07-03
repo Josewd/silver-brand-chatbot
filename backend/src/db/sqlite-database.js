@@ -1,4 +1,4 @@
-const Database = require('@libsql/sqlite3').Database;
+const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
 const fs = require('fs');
 
@@ -11,19 +11,22 @@ class LocalDatabase {
   async initialize() {
     const dbPath = path.join(__dirname, '../../database.sqlite');
     
-    try {
-      this.db = new Database(dbPath);
-      console.log('🗄️ Usando SQLite como banco de dados local');
-      await this.createTables();
-      this.initialized = true;
-    } catch (err) {
-      console.error('❌ Erro ao conectar SQLite:', err);
-      throw err;
-    }
+    return new Promise((resolve, reject) => {
+      this.db = new sqlite3.Database(dbPath, async (err) => {
+        if (err) {
+          reject(err);
+        } else {
+          console.log('🗄️ Usando SQLite como banco de dados local');
+          await this.createTables();
+          this.initialized = true;
+          resolve();
+        }
+      });
+    });
   }
 
   async createTables() {
-    try {
+    return new Promise((resolve, reject) => {
       const tables = [
         `CREATE TABLE IF NOT EXISTS sessions (
           id TEXT PRIMARY KEY DEFAULT (lower(hex(randomblob(4))) || '-' || lower(hex(randomblob(2))) || '-4' || substr(lower(hex(randomblob(2))),2) || '-' || substr('89ab',abs(random()) % 4 + 1, 1) || substr(lower(hex(randomblob(2))),2) || '-' || lower(hex(randomblob(6)))),
@@ -48,122 +51,158 @@ class LocalDatabase {
         )`
       ];
 
+      let completed = 0;
       tables.forEach((sql, index) => {
-        this.db.exec(sql);
+        this.db.run(sql, (err) => {
+          if (err) {
+            console.error(`❌ Erro ao criar tabela ${index}:`, err);
+            reject(err);
+          } else {
+            completed++;
+            if (completed === tables.length) {
+              console.log('✅ Tabelas SQLite criadas com sucesso');
+              this.insertTestData().then(resolve).catch(reject);
+            }
+          }
+        });
       });
-      
-      console.log('✅ Tabelas SQLite criadas com sucesso');
-      await this.insertTestData();
-    } catch (err) {
-      console.error('❌ Erro ao criar tabelas:', err);
-      throw err;
-    }
+    });
   }
 
   async insertTestData() {
-    try {
+    return new Promise((resolve) => {
       const testSessionId = '550e8400-e29b-41d4-a716-446655440001';
       
-      this.db.run('INSERT OR IGNORE INTO sessions (id, client_name) VALUES (?, ?)', 
-                  testSessionId, 'Cliente Teste');
-      this.db.run('INSERT OR REPLACE INTO form_states (session_id, data, progress) VALUES (?, ?, ?)', 
-                  testSessionId, JSON.stringify({nome: 'João Teste', email: 'joao@teste.com'}), JSON.stringify({}));
-      
-      console.log('✅ Dados de teste inseridos');
-    } catch (err) {
-      console.error('❌ Erro ao inserir dados de teste:', err);
-    }
+      this.db.run(
+        'INSERT OR IGNORE INTO sessions (id, client_name) VALUES (?, ?)',
+        [testSessionId, 'Cliente Teste'],
+        () => {
+          this.db.run(
+            'INSERT OR REPLACE INTO form_states (session_id, data, progress) VALUES (?, ?, ?)',
+            [testSessionId, JSON.stringify({nome: 'João Teste', email: 'joao@teste.com'}), JSON.stringify({})],
+            () => {
+              console.log('✅ Dados de teste inseridos');
+              resolve();
+            }
+          );
+        }
+      );
+    });
   }
 
   // Wrappers para manter compatibilidade com as queries existentes
   async createSession(sessionData) {
     const sessionId = sessionData.id || this.generateUUID();
-    try {
-      this.db.run('INSERT INTO sessions (id, client_name) VALUES (?, ?)', 
-                  sessionId, sessionData.client_name || null);
-      return { id: sessionId, client_name: sessionData.client_name };
-    } catch (err) {
-      throw err;
-    }
+    return new Promise((resolve, reject) => {
+      this.db.run(
+        'INSERT INTO sessions (id, client_name) VALUES (?, ?)',
+        [sessionId, sessionData.client_name || null],
+        function(err) {
+          if (err) reject(err);
+          else resolve({ id: sessionId, client_name: sessionData.client_name });
+        }
+      );
+    });
   }
 
   async getSession(sessionId) {
-    try {
-      const row = this.db.prepare('SELECT * FROM sessions WHERE id = ?').get(sessionId);
-      
-      if (row) {
-        // Buscar form_state se existir
-        const formState = this.db.prepare('SELECT * FROM form_states WHERE session_id = ?').get(sessionId);
-        
-        if (formState) {
-          row.form_state = {
-            data: JSON.parse(formState.data || '{}'),
-            progress: JSON.parse(formState.progress || '{}')
-          };
+    return new Promise((resolve, reject) => {
+      this.db.get(
+        'SELECT * FROM sessions WHERE id = ?',
+        [sessionId],
+        (err, row) => {
+          if (err) {
+            reject(err);
+          } else if (row) {
+            // Buscar form_state se existir
+            this.db.get(
+              'SELECT * FROM form_states WHERE session_id = ?',
+              [sessionId],
+              (err2, formState) => {
+                if (!err2 && formState) {
+                  row.form_state = {
+                    data: JSON.parse(formState.data || '{}'),
+                    progress: JSON.parse(formState.progress || '{}')
+                  };
+                }
+                resolve(row);
+              }
+            );
+          } else {
+            resolve(row);
+          }
         }
-      }
-      
-      return row;
-    } catch (err) {
-      throw err;
-    }
+      );
+    });
   }
 
   async updateFormState(sessionId, data, progress = {}) {
-    try {
-      this.db.run('INSERT OR REPLACE INTO form_states (session_id, data, progress, updated_at) VALUES (?, ?, ?, datetime("now"))', 
-                  sessionId, JSON.stringify(data), JSON.stringify(progress));
-      return { session_id: sessionId };
-    } catch (err) {
-      throw err;
-    }
+    return new Promise((resolve, reject) => {
+      this.db.run(
+        'INSERT OR REPLACE INTO form_states (session_id, data, progress, updated_at) VALUES (?, ?, ?, datetime("now"))',
+        [sessionId, JSON.stringify(data), JSON.stringify(progress)],
+        function(err) {
+          if (err) reject(err);
+          else resolve({ session_id: sessionId });
+        }
+      );
+    });
   }
 
   async saveMessage(sessionId, role, content) {
-    try {
-      const stmt = this.db.prepare('INSERT INTO messages (session_id, role, content) VALUES (?, ?, ?)');
-      const result = stmt.run(sessionId, role, content);
-      return { id: result.lastInsertRowid };
-    } catch (err) {
-      throw err;
-    }
+    return new Promise((resolve, reject) => {
+      this.db.run(
+        'INSERT INTO messages (session_id, role, content) VALUES (?, ?, ?)',
+        [sessionId, role, content],
+        function(err) {
+          if (err) reject(err);
+          else resolve({ id: this.lastID });
+        }
+      );
+    });
   }
 
   async getMessages(sessionId) {
-    try {
-      const rows = this.db.prepare('SELECT * FROM messages WHERE session_id = ? ORDER BY created_at').all(sessionId);
-      return rows || [];
-    } catch (err) {
-      throw err;
-    }
+    return new Promise((resolve, reject) => {
+      this.db.all(
+        'SELECT * FROM messages WHERE session_id = ? ORDER BY created_at',
+        [sessionId],
+        (err, rows) => {
+          if (err) reject(err);
+          else resolve(rows || []);
+        }
+      );
+    });
   }
 
   async getAllSessions(limit = 50) {
-    try {
-      const rows = this.db.prepare(`
-        SELECT s.*, f.data, f.progress 
-        FROM sessions s 
-        LEFT JOIN form_states f ON s.id = f.session_id 
-        ORDER BY s.created_at DESC 
-        LIMIT ?
-      `).all(limit);
-      
-      // Formatear para compatibilidade com Supabase
-      const formatted = rows.map(row => ({
-        id: row.id,
-        client_name: row.client_name,
-        created_at: row.created_at,
-        updated_at: row.updated_at,
-        form_states: row.data ? [{
-          data: JSON.parse(row.data || '{}'),
-          progress: JSON.parse(row.progress || '{}')
-        }] : []
-      }));
-      
-      return formatted;
-    } catch (err) {
-      throw err;
-    }
+    return new Promise((resolve, reject) => {
+      this.db.all(
+        `SELECT s.*, f.data, f.progress 
+         FROM sessions s 
+         LEFT JOIN form_states f ON s.id = f.session_id 
+         ORDER BY s.created_at DESC 
+         LIMIT ?`,
+        [limit],
+        (err, rows) => {
+          if (err) reject(err);
+          else {
+            // Formatear para compatibilidade com Supabase
+            const formatted = rows.map(row => ({
+              id: row.id,
+              client_name: row.client_name,
+              created_at: row.created_at,
+              updated_at: row.updated_at,
+              form_states: row.data ? [{
+                data: JSON.parse(row.data || '{}'),
+                progress: JSON.parse(row.progress || '{}')
+              }] : []
+            }));
+            resolve(formatted);
+          }
+        }
+      );
+    });
   }
 
   generateUUID() {

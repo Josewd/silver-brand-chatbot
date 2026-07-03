@@ -12,6 +12,6 @@
   "author": "Silver Brand House",
   "license": "ISC",
   "engines": {
-    "node": "18.x"
+    "node": "18.19.0"
   }
 }
