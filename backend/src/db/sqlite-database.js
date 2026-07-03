@@ -1,4 +1,4 @@
-const Database = require('better-sqlite3');
+const Database = require('@libsql/sqlite3').Database;
 const path = require('path');
 const fs = require('fs');
 
@@ -64,11 +64,10 @@ class LocalDatabase {
     try {
       const testSessionId = '550e8400-e29b-41d4-a716-446655440001';
       
-      const insertSession = this.db.prepare('INSERT OR IGNORE INTO sessions (id, client_name) VALUES (?, ?)');
-      const insertFormState = this.db.prepare('INSERT OR REPLACE INTO form_states (session_id, data, progress) VALUES (?, ?, ?)');
-      
-      insertSession.run(testSessionId, 'Cliente Teste');
-      insertFormState.run(testSessionId, JSON.stringify({nome: 'João Teste', email: 'joao@teste.com'}), JSON.stringify({}));
+      this.db.run('INSERT OR IGNORE INTO sessions (id, client_name) VALUES (?, ?)', 
+                  testSessionId, 'Cliente Teste');
+      this.db.run('INSERT OR REPLACE INTO form_states (session_id, data, progress) VALUES (?, ?, ?)', 
+                  testSessionId, JSON.stringify({nome: 'João Teste', email: 'joao@teste.com'}), JSON.stringify({}));
       
       console.log('✅ Dados de teste inseridos');
     } catch (err) {
@@ -80,8 +79,8 @@ class LocalDatabase {
   async createSession(sessionData) {
     const sessionId = sessionData.id || this.generateUUID();
     try {
-      const stmt = this.db.prepare('INSERT INTO sessions (id, client_name) VALUES (?, ?)');
-      stmt.run(sessionId, sessionData.client_name || null);
+      this.db.run('INSERT INTO sessions (id, client_name) VALUES (?, ?)', 
+                  sessionId, sessionData.client_name || null);
       return { id: sessionId, client_name: sessionData.client_name };
     } catch (err) {
       throw err;
@@ -90,13 +89,11 @@ class LocalDatabase {
 
   async getSession(sessionId) {
     try {
-      const stmt = this.db.prepare('SELECT * FROM sessions WHERE id = ?');
-      const row = stmt.get(sessionId);
+      const row = this.db.prepare('SELECT * FROM sessions WHERE id = ?').get(sessionId);
       
       if (row) {
         // Buscar form_state se existir
-        const formStmt = this.db.prepare('SELECT * FROM form_states WHERE session_id = ?');
-        const formState = formStmt.get(sessionId);
+        const formState = this.db.prepare('SELECT * FROM form_states WHERE session_id = ?').get(sessionId);
         
         if (formState) {
           row.form_state = {
@@ -114,8 +111,8 @@ class LocalDatabase {
 
   async updateFormState(sessionId, data, progress = {}) {
     try {
-      const stmt = this.db.prepare('INSERT OR REPLACE INTO form_states (session_id, data, progress, updated_at) VALUES (?, ?, ?, datetime("now"))');
-      stmt.run(sessionId, JSON.stringify(data), JSON.stringify(progress));
+      this.db.run('INSERT OR REPLACE INTO form_states (session_id, data, progress, updated_at) VALUES (?, ?, ?, datetime("now"))', 
+                  sessionId, JSON.stringify(data), JSON.stringify(progress));
       return { session_id: sessionId };
     } catch (err) {
       throw err;
@@ -134,8 +131,7 @@ class LocalDatabase {
 
   async getMessages(sessionId) {
     try {
-      const stmt = this.db.prepare('SELECT * FROM messages WHERE session_id = ? ORDER BY created_at');
-      const rows = stmt.all(sessionId);
+      const rows = this.db.prepare('SELECT * FROM messages WHERE session_id = ? ORDER BY created_at').all(sessionId);
       return rows || [];
     } catch (err) {
       throw err;
@@ -144,14 +140,13 @@ class LocalDatabase {
 
   async getAllSessions(limit = 50) {
     try {
-      const stmt = this.db.prepare(`
+      const rows = this.db.prepare(`
         SELECT s.*, f.data, f.progress 
         FROM sessions s 
         LEFT JOIN form_states f ON s.id = f.session_id 
         ORDER BY s.created_at DESC 
         LIMIT ?
-      `);
-      const rows = stmt.all(limit);
+      `).all(limit);
       
       // Formatear para compatibilidade com Supabase
       const formatted = rows.map(row => ({
