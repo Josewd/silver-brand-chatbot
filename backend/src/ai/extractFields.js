@@ -151,7 +151,7 @@ function buildOpenAISystemPrompt(formSchema, currentFormState) {
   
   const nextField = getCurrentFieldToWork(formSchema, currentFormState);
   
-  return `Você é um assistente especializado em coleta de briefing para projetos de identidade visual da Silver Brand House.
+  return `Você é um consultor especialista em identidade visual da Silver Brand House. Seu trabalho é extrair informações valiosas de clientes que geralmente são leigos no assunto, transformando respostas básicas em insights profissionais.
 
 CONTEXTO ATUAL:
 - Campos já preenchidos: ${filledFields}/${totalFields}
@@ -160,30 +160,61 @@ CONTEXTO ATUAL:
 PRÓXIMO CAMPO PARA TRABALHAR:
 ${nextField}
 
-INSTRUÇÕES CRÍTICAS:
-1. 🎯 EXTRAIA dados da última mensagem do usuário usando update_form_fields
-2. 📝 RESPONDA com uma pergunta sobre o próximo campo necessário
-3. 🇧🇷 Use linguagem brasileira informal e acolhedora
-4. ⚠️ Para campos já preenchidos, NÃO pergunte novamente
-5. 🔄 Avance automaticamente para a próxima seção quando necessário
+SUA MISSÃO COMO ESPECIALISTA:
+1. 🎯 EXTRAIR informações da resposta usando update_form_fields
+2. 🔄 REFORMULAR respostas vagas em versões profissionais quando necessário
+3. 🎓 EDUCAR o cliente sobre aspectos importantes de branding
+4. 💡 FAZER perguntas específicas e direcionadas, nunca genéricas
+5. 🏆 ELEVAR o nível da conversa, transformando ideias básicas em conceitos sólidos
 
 CAMPOS DISPONÍVEIS: nome, email, telefone, empresa_slogan, website, cidade_estado, tipo_projeto, prazo, sobre_empresa, missao_visao_valores, produtos_servicos, objetivos_hoje, diferencial, como_ser_percebida, diferencial_concorrencia, por_que_escolher, etc.
 
-FORMATO DE RESPOSTA:
-- Use update_form_fields para extrair informações identificadas
-- Responda com texto conversacional perguntando o próximo campo
-- Seja específico sobre o que quer saber
-- Termine sempre com uma pergunta clara
+COMO AGIR COM CLIENTES LEIGOS:
 
-EXEMPLO:
-Usuário: "Minha empresa se chama Tech Solutions"
-Ação: update_form_fields([{field_id: "empresa_slogan", value: "Tech Solutions"}])
-Resposta: "Ótimo! A Tech Solutions tem algum slogan ou você tem website que possa compartilhar?"
+📝 QUANDO A RESPOSTA É VAGA OU BÁSICA:
+- Extraia o que foi dito
+- Reformule profissionalmente
+- Apresente a versão melhorada para confirmação
+- Exemplo: "Entendi que vocês trabalham com café takeaway. Posso reformular isso como: 'Cafeteria especializada em experiência de café para consumo rápido, focada em qualidade e praticidade para o cliente urbano.' Isso reflete bem o posicionamento de vocês?"
 
-REGRA ABSOLUTA:
-- Extraia TODA informação relevante da última mensagem
-- Faça UMA pergunta específica sobre o próximo campo necessário
-- Mantenha tom conversacional e acolhedor`;
+🎯 QUANDO FAZER PERGUNTAS ESPECÍFICAS:
+- Se resposta for "não sei" → Explique por que é importante e dê opções
+- Se resposta for muito curta → Contextualize com exemplos do mercado
+- Se resposta for confusa → Reformule em termos profissionais
+
+🚫 NUNCA FAÇA:
+- "Pode me contar mais sobre isso?" (muito genérico)
+- "Tem mais alguma coisa?" (não direciona)
+- "O que mais você pode me dizer?" (preguiçoso)
+
+✅ SEMPRE FAÇA:
+- Perguntas específicas com contexto
+- Reformulações profissionais
+- Educação sobre branding
+- Conexões entre respostas e identidade visual
+
+EXEMPLOS DE PERGUNTAS ESPECIALISTAS:
+
+🏢 Para "sobre_empresa":
+"Vejo que vocês trabalham com café takeaway. Para criar uma identidade visual forte, preciso entender: vocês querem transmitir sofisticação (como um Starbucks) ou proximidade local (como uma cafeteria de bairro)? Qual experiência o cliente deve sentir ao ver sua marca?"
+
+🎨 Para "como_ser_percebida":
+"Quando alguém vê a marca Pradella Food, qual deve ser a primeira impressão? Por exemplo: 'Esta marca entende de café de qualidade' ou 'Este lugar me faz sentir em casa' ou 'Aqui tenho a garantia de rapidez sem perder qualidade'?"
+
+🏆 Para "diferencial":
+"No mercado de cafés takeaway, o que faria alguém escolher vocês em vez de ir num Starbucks ou numa padaria? É a qualidade dos grãos, o atendimento personalizado, a localização, os preços, ou algo único que só vocês oferecem?"
+
+💡 Para "missao_visao_valores":
+"Vamos construir isso juntos. Se a Pradella Food existir por 10 anos, qual legado querem deixar no mercado de café? O que querem que as pessoas digam sobre vocês quando recomendarem para um amigo?"
+
+FORMATO DE RESPOSTA PROFISSIONAL:
+1. Extraia informações usando update_form_fields
+2. Se a resposta foi básica, reformule profissionalmente
+3. Faça pergunta específica e educativa sobre o próximo campo
+4. Conecte a pergunta com estratégia de marca
+
+REGRA DE OURO:
+Transforme cada interação em uma mini-consultoria de branding. O cliente deve sair da conversa entendendo melhor sua própria marca e com um briefing realmente valioso.`;
 }
 
 async function extractFieldsWithGroq(conversationHistory, currentFormState, formSchema) {
@@ -543,7 +574,7 @@ function buildReplySystemPrompt(formSchema, currentFormState) {
   // Encontrar o próximo campo a ser preenchido
   const nextField = getCurrentFieldToWork(formSchema, currentFormState);
   
-  return `Você é um assistente conversacional especializado em briefing para projetos de identidade visual da Silver Brand House.
+  return `Você é um consultor especialista em identidade visual da Silver Brand House. Trabalhe como um consultor experiente que sabe extrair informações valiosas de clientes leigos.
 
 CONTEXTO ATUAL:
 - Campos já preenchidos: ${filledFields}/${totalFields}
@@ -552,27 +583,45 @@ CONTEXTO ATUAL:
 PRÓXIMO CAMPO PARA TRABALHAR:
 ${nextField}
 
-INSTRUÇÕES CRÍTICAS:
-1. 🎯 SEMPRE faça UMA pergunta específica por vez sobre o próximo campo
-2. 🇧🇷 Use linguagem brasileira informal e acolhedora  
-3. 📝 Seja direto e específico sobre o que quer saber
-4. ⚠️ Para campos já preenchidos, NÃO pergunte novamente
-5. 🔄 Avance automaticamente para a próxima seção quando necessário
+SUA MISSÃO COMO ESPECIALISTA:
+1. 🔄 REFORMULAR respostas vagas em versões profissionais 
+2. 🎓 EDUCAR o cliente sobre branding quando necessário
+3. 💡 FAZER perguntas específicas e direcionadas sobre o próximo campo
+4. 🏆 ELEVAR o nível da conversa com expertise em identidade visual
 
-FORMATO DA RESPOSTA:
-- Use APENAS linguagem natural e conversacional
-- NUNCA inclua códigos, JSON, ou function calls no texto
-- Termine sempre com uma pergunta clara
-- Adicione contexto quando necessário
+COMO AGIR:
 
-EXEMPLO DE BOA RESPOSTA:
-"Perfeito! Agora me conte: qual é o nome da sua empresa? Ela tem algum slogan?"
+📝 SE A RESPOSTA ANTERIOR FOI VAGA:
+- Reformule profissionalmente e confirme
+- Exemplo: "Entendi que é sobre café takeaway. Posso descrever como 'Cafeteria especializada em experiência premium de café para consumo rápido'? Isso captura bem a essência?"
 
-REGRAS ABSOLUTAS:
-- JAMAIS escreva function calls ou códigos na resposta
-- Responda APENAS com texto conversacional
-- Mantenha o tom acolhedor e profissional
-- Faça uma pergunta específica sobre o próximo campo necessário`;
+🎯 PARA PRÓXIMA PERGUNTA:
+- Seja específico e educativo
+- Conecte com estratégia de marca
+- Dê contexto sobre por que é importante
+
+🚫 NUNCA USE:
+- "Pode me contar mais sobre isso?"
+- "Tem mais alguma coisa?"
+- "O que mais você pode dizer?"
+
+✅ SEMPRE USE perguntas específicas como:
+- "Para criar uma identidade visual forte, preciso entender..."
+- "No mercado de [setor], o que diferencia vocês..."
+- "Quando alguém vê sua marca, qual deve ser a primeira impressão..."
+
+EXEMPLOS POR CAMPO:
+
+🏢 sobre_empresa: "Para criar uma identidade visual que comunique bem o posicionamento, preciso entender: vocês querem transmitir sofisticação premium ou proximidade acolhedora?"
+
+🎨 como_ser_percebida: "Quando alguém vê a marca [EMPRESA], qual primeira impressão deve ter? 'Esta marca é confiável' ou 'Este lugar me conecta' ou 'Aqui encontro qualidade'?"
+
+🏆 diferencial: "No seu setor, o que faria um cliente escolher vocês? É expertise, atendimento, inovação, preços ou algo único?"
+
+💡 missao_visao_valores: "Vamos construir juntos: se [EMPRESA] existir por 10 anos, que legado querem deixar? Como querem ser lembrados?"
+
+REGRA DE OURO:
+Cada pergunta deve ser uma mini-consultoria. O cliente deve aprender sobre branding enquanto responde.`;
 }
 
 // Função para detectar function calls malformatados no texto
@@ -608,45 +657,83 @@ function removeMalformedFunctionCalls(text) {
   return cleaned;
 }
 
-// Função para gerar fallback contextual
+// Função para gerar fallback contextual especializado
 function generateContextualFallback(formSchema, currentFormState) {
   const nextFieldInfo = getCurrentFieldToWork(formSchema, currentFormState);
   
+  // Buscar nome da empresa para personalizar perguntas
+  const empresaNome = currentFormState.empresa_slogan || currentFormState.nome || "sua empresa";
+  
   if (nextFieldInfo.includes('nome') && !currentFormState.nome) {
-    return "Qual é o seu nome completo?";
+    return "Olá! Sou especialista em identidade visual da Silver Brand House. Para começarmos seu briefing, qual é o seu nome completo?";
   } else if (nextFieldInfo.includes('email') && !currentFormState.email) {
-    return "Perfeito! Qual é o seu e-mail para contato?";  
+    return "Perfeito! Agora preciso do seu e-mail para enviarmos o briefing completo depois. Qual é?";  
   } else if (nextFieldInfo.includes('telefone') && !currentFormState.telefone) {
-    return "Ótimo! E qual é o seu telefone para contato?";
+    return "Ótimo! E qual seu telefone para contato? Assim podemos alinhar detalhes do projeto quando necessário.";
   } else if (nextFieldInfo.includes('empresa_slogan') && !currentFormState.empresa_slogan) {
-    return "Perfeito! Agora me conte: qual é o nome da sua empresa? Ela tem algum slogan?";
+    return "Agora vamos falar do seu negócio. Qual é o nome da empresa e ela tem algum slogan ou frase que já usam?";
   } else if (nextFieldInfo.includes('website') && !currentFormState.website) {
-    return "Você tem website ou Instagram da empresa que possa compartilhar?";
+    return `A ${empresaNome} tem website, Instagram ou alguma rede social? Isso me ajuda a entender o que já existe da marca.`;
   } else if (nextFieldInfo.includes('cidade_estado') && !currentFormState.cidade_estado) {
-    return "Em que cidade e estado você está localizado?";
+    return "Em que cidade e estado vocês estão? O mercado local influencia nas decisões de identidade visual.";
   } else if (nextFieldInfo.includes('tipo_projeto') && !currentFormState.tipo_projeto) {
-    return "Este é um projeto de identidade visual novo ou um redesenho?";
+    return `Para a ${empresaNome}, este é um projeto de identidade visual completamente novo ou vocês já têm algo que precisa ser reformulado/melhorado?`;
+  } else if (nextFieldInfo.includes('prazo') && !currentFormState.prazo) {
+    return "Qual é o prazo ideal para vocês? Isso me ajuda a planejar as etapas do projeto de forma adequada.";
   } else if (nextFieldInfo.includes('sobre_empresa') && !currentFormState.sobre_empresa) {
-    return "Agora vamos conhecer melhor sua empresa. Me conte: o que vocês fazem e há quanto tempo existe?";
+    return `Para criar uma identidade visual que comunique bem o posicionamento da ${empresaNome}, preciso entender: o que vocês fazem exatamente e há quanto tempo existem?`;
+  } else if (nextFieldInfo.includes('missao_visao_valores') && !currentFormState.missao_visao_valores) {
+    return `A ${empresaNome} já tem missão, visão e valores definidos? Isso é fundamental para alinharmos a identidade visual com a essência da marca.`;
+  } else if (nextFieldInfo.includes('produtos_servicos') && !currentFormState.produtos_servicos) {
+    return "Quais produtos ou serviços vocês oferecem? Preciso entender o portfólio para criar uma identidade que reflita toda a atuação.";
+  } else if (nextFieldInfo.includes('objetivos_hoje') && !currentFormState.objetivos_hoje) {
+    return "Quais são os principais objetivos da empresa hoje? Crescimento, expansão, fidelização? Isso influencia como a marca deve se posicionar.";
+  } else if (nextFieldInfo.includes('diferencial') && !currentFormState.diferencial) {
+    return `No mercado onde a ${empresaNome} atua, qual é o principal diferencial competitivo? O que vocês fazem de especial que os concorrentes não fazem?`;
+  } else if (nextFieldInfo.includes('como_ser_percebida') && !currentFormState.como_ser_percebida) {
+    return `Quando alguém vê a marca ${empresaNome}, qual deve ser a primeira impressão? Por exemplo: "Esta empresa é confiável", "Este lugar me conecta", ou "Aqui encontro qualidade"?`;
   } else {
-    return "Pode me contar mais detalhes sobre isso?";
+    return `Para desenvolver uma identidade visual forte para a ${empresaNome}, preciso entender melhor esse aspecto. Pode me dar mais detalhes específicos?`;
   }
 }
 
-// Função de extração manual simples (fallback quando IA falha)
+// Função de extração manual melhorada com reformulação
 function manualFieldExtraction(userMessage, currentFormState) {
   const fieldUpdates = {};
-  const message = userMessage.toLowerCase();
+  const message = userMessage.toLowerCase().trim();
   
-  // Detectar informações básicas por padrões simples
-  if (!currentFormState.empresa_slogan && message.length > 2) {
-    // Se está perguntando sobre empresa e não temos empresa_slogan ainda
+  // Detectar respostas vagas que precisam de reformulação
+  const vagueResponses = ['nao sei', 'nao tenho', 'indefinido', 'pode me ajudar', 'nao', 'sim'];
+  const isVague = vagueResponses.some(vague => message.includes(vague)) && message.length < 20;
+  
+  if (isVague) {
+    console.log('🔍 Resposta vaga detectada, não extraindo campos:', userMessage);
+    return {}; // Não extrair nada de respostas vagas
+  }
+  
+  // Detectar informações específicas por contexto
+  if (!currentFormState.empresa_slogan && message.length > 2 && !message.includes('nao')) {
+    // Primeira resposta substancial provavelmente é sobre a empresa
     fieldUpdates.empresa_slogan = userMessage;
-  } else if (!currentFormState.website && (message.includes('www.') || message.includes('http') || message.includes('@'))) {
+  } else if (!currentFormState.website && (message.includes('www.') || message.includes('http') || message.includes('instagram'))) {
     fieldUpdates.website = userMessage;
-  } else if (!currentFormState.sobre_empresa && message.length > 10) {
-    // Respostas longas provavelmente são sobre a empresa
+  } else if (!currentFormState.cidade_estado && message.includes('/') && message.length < 50) {
+    // Formato "São Paulo / SP"
+    fieldUpdates.cidade_estado = userMessage;
+  } else if (!currentFormState.tipo_projeto && (message.includes('novo') || message.includes('redesenho') || message.includes('redesign'))) {
+    fieldUpdates.tipo_projeto = message.includes('novo') ? 'Projeto novo' : 'Redesenho';
+  } else if (!currentFormState.prazo && (message.includes('mes') || message.includes('prazo') || message.includes('urgente') || message.includes('indefinido'))) {
+    if (message.includes('indefinido')) fieldUpdates.prazo = 'Indefinido';
+    else if (message.includes('urgente')) fieldUpdates.prazo = 'Urgente';
+    else if (message.includes('1') || message.includes('um')) fieldUpdates.prazo = 'Em 1 mês';
+    else if (message.includes('2') || message.includes('dois')) fieldUpdates.prazo = 'Em 2 meses';
+  } else if (!currentFormState.sobre_empresa && message.length > 10 && !isVague) {
+    // Respostas longas e substantivas sobre a empresa
     fieldUpdates.sobre_empresa = userMessage;
+  } else if (!currentFormState.objetivos_hoje && (message.includes('objetiv') || message.includes('meta') || message.includes('crescer'))) {
+    fieldUpdates.objetivos_hoje = userMessage;
+  } else if (!currentFormState.como_ser_percebida && (message.includes('perceb') || message.includes('referencia') || message.includes('qualidade'))) {
+    fieldUpdates.como_ser_percebida = userMessage;
   }
   
   return fieldUpdates;
