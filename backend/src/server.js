@@ -187,15 +187,29 @@ Vamos começar com as informações básicas de contato. Qual é o seu nome comp
         { role: 'user', content: text }
       ];
       
-      // Chamar IA para processar mensagem
-      const aiResponse = await extractFields(
+      // Chamar IA para processar mensagem (FASE 1: Extração)
+      const extractionResponse = await extractFields(
         updatedHistory,
         currentFormState,
         formSchema
       );
       
+      // Aplicar atualizações do formulário se houver (ATUALIZAR ESTADO)
+      let updatedFormState = currentFormState;
+      if (extractionResponse.fieldUpdates && Object.keys(extractionResponse.fieldUpdates).length > 0) {
+        updatedFormState = { ...currentFormState, ...extractionResponse.fieldUpdates };
+        await updateFormState(sessionId, updatedFormState);
+      }
+      
+      // FASE 2: Gerar próxima pergunta com estado atualizado
+      const nextQuestionResponse = await extractFields(
+        updatedHistory,
+        updatedFormState, // Estado JÁ atualizado com os campos extraídos
+        formSchema
+      );
+      
       // Verificar se a IA retornou uma mensagem válida
-      let aiMessage = aiResponse.message;
+      let aiMessage = nextQuestionResponse.message;
       if (!aiMessage || aiMessage.trim() === '') {
         // Se não há resposta da IA, gerar uma pergunta de continuação
         aiMessage = 'Obrigado pela informação. Poderia me contar mais sobre sua empresa?';
@@ -205,14 +219,7 @@ Vamos começar com as informações básicas de contato. Qual é o seu nome comp
       // Salvar resposta da IA
       await saveMessage(sessionId, 'assistant', aiMessage);
       
-      // Aplicar atualizações do formulário se houver
-      let updatedFormState = currentFormState;
-      if (aiResponse.fieldUpdates && Object.keys(aiResponse.fieldUpdates).length > 0) {
-        updatedFormState = { ...currentFormState, ...aiResponse.fieldUpdates };
-        await updateFormState(sessionId, updatedFormState);
-      }
-      
-      // Calcular progresso atualizado
+      // Calcular progresso atualizado (usar estado já atualizado)
       const updatedProgress = calculateProgress(updatedFormState, formSchema);
       
       // Emitir resposta para o cliente
@@ -220,15 +227,15 @@ Vamos começar com as informações básicas de contato. Qual é o seu nome comp
         text: aiMessage
       });
       
-      // Emitir atualizações do formulário se houver mudanças
-      if (aiResponse.fieldUpdates && Object.keys(aiResponse.fieldUpdates).length > 0) {
+      // Emitir atualizações do formulário se houver mudanças na FASE 1
+      if (extractionResponse.fieldUpdates && Object.keys(extractionResponse.fieldUpdates).length > 0) {
         socket.emit('form_update', {
-          fields: aiResponse.fieldUpdates,
+          fields: extractionResponse.fieldUpdates,
           progress: updatedProgress
         });
         
         console.log('📊 Formulário atualizado:', {
-          fieldsUpdated: Object.keys(aiResponse.fieldUpdates),
+          fieldsUpdated: Object.keys(extractionResponse.fieldUpdates),
           newProgress: updatedProgress.overall
         });
       }
