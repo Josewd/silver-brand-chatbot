@@ -11,9 +11,15 @@ const dirname = typeof __dirname !== 'undefined' ? __dirname : path.dirname(file
 export default defineConfig({
   plugins: [react()],
   server: {
-    port: 5173
-    // Proxy removido - API Python (porta 8000) desabilitada
-    // Sistema usando apenas WebSocket + SQLite (porta 3002)
+    port: 5173,
+    proxy: {
+      // Proxy para API REST do backend Node.js
+      '/api': {
+        target: 'http://localhost:3001',
+        changeOrigin: true,
+        secure: false
+      }
+    }
   },
   test: {
     projects: [{

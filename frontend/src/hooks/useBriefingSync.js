@@ -25,6 +25,7 @@ export function useBriefingSync(sessionId) {
   const [sessionReady, setSessionReady] = useState(false)
   const [wsSessionId, setWsSessionId] = useState(null)
   const [fallbackMode, setFallbackMode] = useState(false)
+  const [chatError, setChatError] = useState(null)
 
   // =================== WEBSOCKET LOGIC ===================
   
@@ -164,20 +165,43 @@ export function useBriefingSync(sessionId) {
     if (!targetSessionId) return false
 
     try {
-      // Atualizar estado local imediatamente
+      // Atualizar estado local imediatamente (UX responsiva)
       setBriefingData(prev => ({
         ...prev,
         [fieldName]: value
       }))
 
-      // Modo SQLite: dados salvos via WebSocket, não via REST
-      console.log('⚠️ updateField: usando apenas WebSocket + SQLite')
+      console.log(`💾 Salvando campo "${fieldName}" = "${value}" na sessão ${targetSessionId}`)
+      
+      // Salvar no backend via novo endpoint
+      const response = await fetch(`/api/session/${targetSessionId}/form`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          fieldName,
+          fieldValue: value
+        })
+      })
+      
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+      }
+      
+      const result = await response.json()
+      console.log('✅ Campo salvo com sucesso:', result)
+      
+      // Atualizar progresso se retornado pelo backend
+      if (result.progress !== undefined) {
+        setProgress(result.progress)
+      }
       
       setLastUpdated(new Date().toISOString())
       return true
       
     } catch (error) {
-      console.error('Erro ao atualizar campo:', error)
+      console.error('❌ Erro ao salvar campo:', error)
       
       // Reverter mudança local em caso de erro
       setBriefingData(prev => {
@@ -186,29 +210,56 @@ export function useBriefingSync(sessionId) {
         return reverted
       })
       
+      // Mostrar feedback de erro
+      alert(`Erro ao salvar campo "${fieldName}": ${error.message}`)
+      
       return false
     }
   }, [wsSessionId, sessionId])
 
-  // Salva todos os dados via REST (modo batch) - DESABILITADO (usando apenas WebSocket + SQLite)
+  // Salva todos os dados via REST (modo batch)
   const saveBriefingData = useCallback(async (data) => {
     const targetSessionId = wsSessionId || sessionId
     if (!targetSessionId) return false
 
     try {
-      // Modo SQLite: salvamento via WebSocket, não via REST
-      console.log('⚠️ saveBriefingData: usando apenas WebSocket + SQLite')
+      console.log(`💾 Salvando formulário completo na sessão ${targetSessionId}`, data)
       
+      // Salvar no backend via novo endpoint
+      const response = await fetch(`/api/session/${targetSessionId}/form`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          formData: data
+        })
+      })
+      
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+      }
+      
+      const result = await response.json()
+      console.log('✅ Formulário completo salvo:', result)
+      
+      // Atualizar estado local com dados confirmados
       setBriefingData(data)
-      setLastUpdated(new Date().toISOString())
-      return true
-      setIsCompleted(responseData.is_completed || false)
-      setLastUpdated(new Date().toISOString())
       
+      // Atualizar progresso se retornado pelo backend
+      if (result.progress !== undefined) {
+        setProgress(result.progress)
+      }
+      
+      // Verificar se está completo
+      setIsCompleted(result.progress >= 95)
+      
+      setLastUpdated(new Date().toISOString())
       return true
       
     } catch (error) {
-      console.error('Erro ao salvar briefing:', error)
+      console.error('❌ Erro ao salvar formulário completo:', error)
+      alert(`Erro ao salvar formulário: ${error.message}`)
       return false
     }
   }, [wsSessionId, sessionId])
@@ -335,6 +386,9 @@ export function useBriefingSync(sessionId) {
     sessionReady,
     sendMessage,
     wsSessionId: wsSessionId || sessionId,
-    fallbackMode
+    fallbackMode,
+    chatError,
+    setChatError,
+    setFallbackMode
   }
 }

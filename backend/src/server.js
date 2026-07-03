@@ -118,28 +118,32 @@ io.on('connection', (socket) => {
       if (!messages || messages.length === 0) {
         console.log('📨 Enviando mensagem de boas-vindas para nova sessão');
         
-        // Mensagem de boas-vindas personalizada
-        const welcomeMessage = `Olá! 👋 Sou a assistente da Silver Brand House e vou te ajudar a criar um briefing completo para seu projeto de identidade visual.
-
-Vamos começar com as informações básicas de contato. Qual é o seu nome completo?`;
+        // Verificar se já tem dados no formulário para decidir a primeira pergunta
+        const hasBasicInfo = formState.nome || formState.email;
         
-        // Chamar IA para primeira pergunta se não tiver nome
-        let firstMessage = welcomeMessage;
-        if (!formState.nome) {
+        let firstMessage;
+        if (hasBasicInfo) {
+          // Se já tem dados básicos, continuar do ponto onde parou
+          console.log('📋 Sessão tem dados básicos, continuando do ponto atual...');
           try {
             const aiResponse = await extractFields(
-              [], // Conversa vazia
+              [], // Conversa vazia mas com estado do formulário
               formState,
               formSchema
             );
-            if (aiResponse.message && aiResponse.message.trim()) {
-              firstMessage = aiResponse.message;
-            }
+            firstMessage = aiResponse.message || 'Vamos continuar com seu briefing. Me conte mais sobre sua empresa.';
           } catch (error) {
-            console.error('❌ Erro ao gerar primeira pergunta via IA:', error);
-            // Usar mensagem padrão como fallback
+            console.error('❌ Erro ao gerar pergunta contextual:', error);
+            firstMessage = 'Olá! Vamos continuar com seu briefing. Me conte mais sobre sua empresa.';
           }
+        } else {
+          // Mensagem de boas-vindas padrão para novos usuários
+          firstMessage = `Olá! 👋 Sou a assistente da Silver Brand House e vou te ajudar a criar um briefing completo para seu projeto de identidade visual.
+
+Vamos começar com as informações básicas de contato. Qual é o seu nome completo?`;
         }
+        
+        console.log(`📨 Primeira mensagem: "${firstMessage}"`);
         
         // Salvar mensagem de boas-vindas
         await saveMessage(sessionId, 'assistant', firstMessage);
@@ -163,6 +167,10 @@ Vamos começar com as informações básicas de contato. Qual é o seu nome comp
     try {
       const { sessionId, text } = data;
       
+      console.log(`\n🔄 === PROCESSANDO MENSAGEM ===`);
+      console.log(`📝 Sessão: ${sessionId}`);
+      console.log(`💬 Mensagem: "${text}"`);
+      
       if (!sessionId || !text) {
         socket.emit('error', { message: 'SessionId e text são obrigatórios' });
         return;
@@ -178,6 +186,9 @@ Vamos começar com as informações básicas de contato. Qual é o seu nome comp
       const currentFormState = session.form_state?.data || {};
       const conversationHistory = await getMessages(sessionId);
       
+      console.log(`📊 Estado atual do formulário:`, JSON.stringify(currentFormState, null, 2));
+      console.log(`📜 Histórico: ${conversationHistory.length} mensagens`);
+      
       // Salvar mensagem do usuário
       await saveMessage(sessionId, 'user', text);
       
@@ -187,6 +198,8 @@ Vamos começar com as informações básicas de contato. Qual é o seu nome comp
         { role: 'user', content: text }
       ];
       
+      console.log(`🤖 Chamando IA - FASE 1: Extração de campos`);
+      
       // Chamar IA para processar mensagem (FASE 1: Extração)
       const extractionResponse = await extractFields(
         updatedHistory,
@@ -194,12 +207,21 @@ Vamos começar com as informações básicas de contato. Qual é o seu nome comp
         formSchema
       );
       
+      console.log(`📤 FASE 1 - Resultado:`, {
+        fieldUpdates: extractionResponse.fieldUpdates,
+        hasMessage: !!extractionResponse.message,
+        metadata: extractionResponse.metadata
+      });
+      
       // Aplicar atualizações do formulário se houver (ATUALIZAR ESTADO)
       let updatedFormState = currentFormState;
       if (extractionResponse.fieldUpdates && Object.keys(extractionResponse.fieldUpdates).length > 0) {
         updatedFormState = { ...currentFormState, ...extractionResponse.fieldUpdates };
         await updateFormState(sessionId, updatedFormState);
+        console.log(`✅ Estado do formulário atualizado:`, JSON.stringify(updatedFormState, null, 2));
       }
+      
+      console.log(`🤖 Chamando IA - FASE 2: Próxima pergunta`);
       
       // FASE 2: Gerar próxima pergunta com estado atualizado
       const nextQuestionResponse = await extractFields(
@@ -207,6 +229,12 @@ Vamos começar com as informações básicas de contato. Qual é o seu nome comp
         updatedFormState, // Estado JÁ atualizado com os campos extraídos
         formSchema
       );
+      
+      console.log(`📤 FASE 2 - Resultado:`, {
+        hasMessage: !!nextQuestionResponse.message,
+        messageLength: nextQuestionResponse.message?.length || 0,
+        metadata: nextQuestionResponse.metadata
+      });
       
       // Verificar se a IA retornou uma mensagem válida
       let aiMessage = nextQuestionResponse.message;
@@ -216,11 +244,15 @@ Vamos começar com as informações básicas de contato. Qual é o seu nome comp
         console.log('⚠️ IA não retornou mensagem, usando fallback');
       }
       
+      console.log(`📨 Mensagem final da IA: "${aiMessage}"`);
+      
       // Salvar resposta da IA
       await saveMessage(sessionId, 'assistant', aiMessage);
       
       // Calcular progresso atualizado (usar estado já atualizado)
       const updatedProgress = calculateProgress(updatedFormState, formSchema);
+      
+      console.log(`📊 Progresso atualizado: ${updatedProgress.overall}%`);
       
       // Emitir resposta para o cliente
       socket.emit('assistant_message', {
@@ -240,7 +272,7 @@ Vamos começar com as informações básicas de contato. Qual é o seu nome comp
         });
       }
       
-      console.log('💬 Mensagem processada para sessão:', sessionId);
+      console.log('✅ Mensagem processada com sucesso!\n');
       
     } catch (error) {
       console.error('❌ Erro ao processar mensagem:', error);
@@ -296,6 +328,59 @@ app.post('/api/session/create', async (req, res) => {
   } catch (error) {
     console.error('❌ Erro ao criar sessão:', error);
     res.status(500).json({ error: 'Erro interno do servidor' });
+  }
+});
+
+// Endpoint para salvar formulário manualmente
+app.post('/api/session/:sessionId/form', async (req, res) => {
+  try {
+    const { sessionId } = req.params;
+    const { formData, fieldName, fieldValue } = req.body;
+    
+    console.log(`📝 === SALVAMENTO MANUAL ===`);
+    console.log(`📋 Sessão: ${sessionId}`);
+    console.log(`📊 Dados recebidos:`, { formData, fieldName, fieldValue });
+    
+    // Verificar se a sessão existe
+    const session = await getSession(sessionId);
+    if (!session) {
+      return res.status(404).json({ error: 'Sessão não encontrada' });
+    }
+    
+    let updatedData;
+    
+    if (formData) {
+      // Salvamento completo (modo batch)
+      updatedData = formData;
+      console.log(`💾 Salvamento completo: ${Object.keys(formData).length} campos`);
+    } else if (fieldName && fieldValue !== undefined) {
+      // Salvamento de campo individual
+      const currentFormState = session.form_state?.data || {};
+      updatedData = { ...currentFormState, [fieldName]: fieldValue };
+      console.log(`💾 Salvamento individual: ${fieldName} = "${fieldValue}"`);
+    } else {
+      return res.status(400).json({ error: 'É necessário enviar formData ou fieldName+fieldValue' });
+    }
+    
+    // Salvar no banco
+    await updateFormState(sessionId, updatedData);
+    
+    // Calcular progresso atualizado
+    const progress = calculateProgress(updatedData, formSchema);
+    
+    console.log(`✅ Formulário salvo com sucesso!`);
+    console.log(`📊 Progresso: ${progress.overall}%`);
+    
+    res.json({
+      success: true,
+      progress: progress.overall,
+      formState: updatedData,
+      message: 'Formulário salvo com sucesso'
+    });
+    
+  } catch (error) {
+    console.error('❌ Erro ao salvar formulário:', error);
+    res.status(500).json({ error: 'Erro ao salvar formulário' });
   }
 });
 

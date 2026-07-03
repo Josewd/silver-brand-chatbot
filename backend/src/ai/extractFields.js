@@ -91,15 +91,45 @@ async function extractFieldsWithGroq(conversationHistory, currentFormState, form
     }
   }
   
-  // Se todos os modelos falharam, retornar fallback
+  // Se todos os modelos falharam, retornar fallback contextual
   console.error('❌ Todos os modelos Groq falharam:', lastError?.message);
+  
+  // Criar fallback contextual baseado no estado atual do formulário
+  const nextFieldInfo = getCurrentFieldToWork(formSchema, currentFormState);
+  let contextualFallback = "Desculpe, houve um problema técnico. Vamos continuar: ";
+  
+  // Debug
+  console.log(`🔍 Estado atual do formulário:`, JSON.stringify(currentFormState, null, 2));
+  console.log(`📋 Próximo campo:`, nextFieldInfo);
+  
+  if (nextFieldInfo.includes('nome') && !currentFormState.nome) {
+    contextualFallback += "qual é o seu nome completo?";
+  } else if (nextFieldInfo.includes('email') && !currentFormState.email) {
+    contextualFallback += "qual é o seu e-mail para contato?";
+  } else if (nextFieldInfo.includes('telefone') && !currentFormState.telefone) {
+    contextualFallback += "qual é o seu telefone?";
+  } else if (nextFieldInfo.includes('empresa_slogan') && !currentFormState.empresa_slogan) {
+    contextualFallback += "qual é o nome da sua empresa?";
+  } else if (nextFieldInfo.includes('website') && !currentFormState.website) {
+    contextualFallback += "você tem website ou Instagram da empresa?";
+  } else if (nextFieldInfo.includes('cidade_estado') && !currentFormState.cidade_estado) {
+    contextualFallback += "em que cidade e estado você está?";
+  } else if (nextFieldInfo.includes('tipo_projeto') && !currentFormState.tipo_projeto) {
+    contextualFallback += "este é um projeto novo ou um redesenho?";
+  } else if (nextFieldInfo.includes('sobre_empresa') && !currentFormState.sobre_empresa) {
+    contextualFallback += "me conte sobre sua empresa - o que vocês fazem?";
+  } else {
+    contextualFallback += "pode me contar mais sobre sua empresa?";
+  }
+  
   return {
-    message: "Desculpe, houve um problema técnico com o sistema de IA. Pode repetir sua resposta?",
+    message: contextualFallback,
     fieldUpdates: {},
     metadata: { 
       provider: 'groq', 
       error: lastError?.message || 'All models failed',
       fallback: true,
+      contextualFallback: true,
       modelsAttempted: groqModels.length
     }
   };
@@ -149,7 +179,9 @@ async function callGroqAPI(conversationHistory, currentFormState, formSchema, mo
       tools,
       tool_choice: "auto",
       temperature: model.temperature,
-      max_tokens: model.maxTokens
+      max_tokens: model.maxTokens,
+      // Forçar que sempre tenha content junto com tool_calls
+      parallel_tool_calls: false
     })
   });
   
@@ -202,13 +234,27 @@ async function callGroqAPI(conversationHistory, currentFormState, formSchema, mo
   let fallbackMessage = "Entendi! Continue...";
   if (!assistantMessage.content) {
     const nextFieldInfo = getCurrentFieldToWork(formSchema, currentFormState);
-    if (nextFieldInfo.includes('nome')) {
+    
+    // Debug: verificar qual campo estamos tentando preencher
+    console.log(`🔍 Campo atual para trabalhar:`, nextFieldInfo);
+    console.log(`📋 Estado atual do form:`, JSON.stringify(currentFormState, null, 2));
+    
+    if (nextFieldInfo.includes('nome') && !currentFormState.nome) {
       fallbackMessage = "Qual é o seu nome completo?";
-    } else if (nextFieldInfo.includes('email')) {
-      fallbackMessage = "Qual é o seu e-mail para contato?";  
-    } else if (nextFieldInfo.includes('telefone')) {
-      fallbackMessage = "Qual é o seu telefone para contato?";
+    } else if (nextFieldInfo.includes('email') && !currentFormState.email) {
+      fallbackMessage = "Perfeito! Agora preciso do seu e-mail para contato. Qual é?";  
+    } else if (nextFieldInfo.includes('telefone') && !currentFormState.telefone) {
+      fallbackMessage = "Ótimo! E qual é o seu telefone para contato?";
+    } else if (nextFieldInfo.includes('empresa_slogan') && !currentFormState.empresa_slogan) {
+      fallbackMessage = "Perfeito! Agora me conte: qual é o nome da sua empresa? Ela tem algum slogan?";
+    } else if (nextFieldInfo.includes('website') && !currentFormState.website) {
+      fallbackMessage = "Você tem website ou Instagram da empresa que possa compartilhar?";
+    } else if (nextFieldInfo.includes('cidade_estado') && !currentFormState.cidade_estado) {
+      fallbackMessage = "Em que cidade e estado você está localizado?";
+    } else if (nextFieldInfo.includes('sobre_empresa') && !currentFormState.sobre_empresa) {
+      fallbackMessage = "Agora vamos falar sobre sua empresa. Me conta: o que vocês fazem e há quanto tempo existe?";
     } else {
+      // Para qualquer outro campo, tentar uma continuação inteligente
       fallbackMessage = "Pode me dar mais informações sobre isso?";
     }
   }
@@ -254,6 +300,14 @@ INSTRUÇÕES CRÍTICAS:
 7. 🔄 Quando uma seção estiver completa, avance AUTOMATICAMENTE para a próxima
 8. ⚠️ OBRIGATÓRIO: SEMPRE responda com texto + função (nunca só função!)
 
+FORMATO DA RESPOSTA - CRÍTICO:
+- JAMAIS inclua text functions calls, JSON ou códigos na sua resposta de texto
+- NUNCA escreva "update_form_field" ou qualquer código na resposta
+- Use APENAS linguagem natural e conversacional
+- As funções são chamadas separadamente do texto
+- SEMPRE forneça uma resposta de texto, mesmo quando usar funções
+- NUNCA responda apenas com tool_calls sem content
+
 FORMATO DA PERGUNTA:
 - Seja direto e específico sobre o que quer saber
 - Adicione um exemplo ou contexto quando necessário
@@ -271,18 +325,23 @@ COMPORTAMENTO AUTOMÁTICO:
 - Mantenha o fluxo sempre em movimento
 - SEMPRE combine função + mensagem de texto
 
-EXEMPLO DE FLUXO:
+EXEMPLO DE FLUXO CORRETO:
 Usuário: "Me chamo João Silva"
 Assistente: 
-1. Chama update_form_field("nome", "João Silva") 
-2. Responde: "Ótimo, João! Agora preciso do seu e-mail para contato. Qual é o seu e-mail?"
+1. Chama update_form_field("nome", "João Silva") [INVISÍVEL AO USUÁRIO]
+2. Responde APENAS: "Ótimo, João! Agora preciso do seu e-mail para contato. Qual é o seu e-mail?"
+
+EXEMPLO ERRADO (NUNCA FAZER):
+❌ "update_form_field{"field_id": "nome", "value": "João Silva"}; Ótimo, João! Qual é o seu e-mail?"
+✅ "Ótimo, João! Agora preciso do seu e-mail para contato. Qual é o seu e-mail?"
 
 REGRA ABSOLUTA: 
-- Use as funções adequadamente (não coloque no texto!)
+- Use as funções adequadamente (são invisíveis ao usuário!)
 - Sempre responda com texto conversacional separado da função
-- NUNCA inclua <function=...> no texto da resposta
+- NUNCA inclua códigos, JSON, function calls no texto da resposta
 - PROIBIDO responder "Entendi! Continue..." ou respostas genéricas
-- SEMPRE faça uma pergunta específica e útil sobre o próximo campo`;
+- SEMPRE faça uma pergunta específica e útil sobre o próximo campo
+- O texto deve ser 100% conversacional e natural`;
 }
 
 function getCurrentFieldToWork(formSchema, currentFormState) {
