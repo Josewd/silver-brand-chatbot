@@ -25,8 +25,8 @@ async function extractFieldsWithGroq(conversationHistory, currentFormState, form
       temperature: 0.5 
     },
     { 
-      name: "mixtral-8x7b-32768", 
-      description: "Fallback 1 - multilíngue estável",
+      name: "qwen/qwen3.6-27b", 
+      description: "Fallback 1 - multilíngue avançado",
       maxTokens: 600,
       temperature: 0.7 
     },
@@ -148,14 +148,23 @@ async function callGroqAPI(conversationHistory, currentFormState, formSchema, mo
       messages,
       tools,
       tool_choice: "auto",
-      parallel_tool_calls: false,
       temperature: model.temperature,
       max_tokens: model.maxTokens
     })
   });
   
   if (!response.ok) {
-    throw new Error(`Groq API error: ${response.status} ${response.statusText}`);
+    // Tentar capturar erro detalhado para 400 Bad Request
+    let errorDetails = `${response.status} ${response.statusText}`;
+    try {
+      const errorBody = await response.text();
+      if (errorBody) {
+        errorDetails += ` - ${errorBody}`;
+      }
+    } catch (e) {
+      // Ignorar se não conseguir ler o body
+    }
+    throw new Error(`Groq API error: ${errorDetails}`);
   }
   
   const result = await response.json();
