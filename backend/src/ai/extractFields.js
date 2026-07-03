@@ -25,8 +25,8 @@ async function extractFieldsWithGroq(conversationHistory, currentFormState, form
       temperature: 0.5 
     },
     { 
-      name: "llama-3.1-70b-versatile", 
-      description: "Fallback 1 - estável",
+      name: "mixtral-8x7b-32768", 
+      description: "Fallback 1 - multilíngue estável",
       maxTokens: 600,
       temperature: 0.7 
     },
