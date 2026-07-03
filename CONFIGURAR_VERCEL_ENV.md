@@ -18,7 +18,7 @@ Configurar a variável `VITE_BACKEND_URL` no Vercel.
 Adicione a seguinte variável:
 
 **Nome:** `VITE_BACKEND_URL`
-**Valor:** `https://silver-brand-backend.onrender.com`
+**Valor:** `https://silver-brand-chatbot.onrender.com`
 **Ambientes:** Production, Preview, Development
 
 ### 3. Redeploy
@@ -31,19 +31,19 @@ Após adicionar a variável:
 Após o redeploy, acesse:
 - https://silver-brand-chatbot.vercel.app
 - O console não deve mais mostrar erros de `localhost:3002`
-- As requisições devem ir para `https://silver-brand-backend.onrender.com`
+- As requisições devem ir para `https://silver-brand-chatbot.onrender.com`
 
 ## 📋 Verificação
 No console do navegador, você deve ver:
 ```
-🔌 Conectando ao WebSocket: https://silver-brand-backend.onrender.com
+🔌 Conectando ao WebSocket: https://silver-brand-chatbot.onrender.com
 ```
 
 ## ⚡ Alternativa Rápida
 Se você tem acesso via CLI do Vercel:
 ```bash
 vercel env add VITE_BACKEND_URL production
-# Cole: https://silver-brand-backend.onrender.com
+# Cole: https://silver-brand-chatbot.onrender.com
 
 vercel --prod
 ```
