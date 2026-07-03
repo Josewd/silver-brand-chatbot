@@ -727,7 +727,7 @@ function detectInteractiveOptions(formSchema, currentFormState) {
           };
         }
         
-        // Se o campo é scale, enviar como scale interativo
+        // Se o campo é scale, enviar como scale interativo  
         if (field.type === 'scale') {
           return {
             type: 'scale',
@@ -736,6 +736,25 @@ function detectInteractiveOptions(formSchema, currentFormState) {
             min: field.min || 1,
             max: field.max || 5
           };
+        }
+        
+        // Para campos de personalidade que são escalas, criar interface múltipla
+        if (section.id === 'personalidade' && !currentFormState.escala_sofisticada_descontraida) {
+          // Se estamos na seção personalidade e não preenchemos ainda, enviar todas as escalas
+          const personalityScales = section.fields.filter(f => f.type === 'scale');
+          if (personalityScales.length > 0) {
+            return {
+              type: 'multiple_scales',
+              fieldId: 'personality_scales',
+              question: 'Agora vamos definir a personalidade da marca. Avalie cada aspecto de 1 a 5:',
+              scales: personalityScales.map(scale => ({
+                id: scale.id,
+                label: scale.label,
+                min: scale.min || 1,
+                max: scale.max || 5
+              }))
+            };
+          }
         }
         
         // Se chegou aqui, não precisa de opções interativas

@@ -110,6 +110,14 @@ export function useBriefingSync(sessionId) {
             value: data.options.fieldId,
             text: data.options.question
           }]);
+        } else if (data.options.type === 'multiple_scales') {
+          setCurrentOptions(data.options.scales.map(scale => ({
+            type: 'scale',
+            value: scale.id,
+            text: scale.label,
+            min: scale.min,
+            max: scale.max
+          })));
         }
       }
       

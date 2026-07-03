@@ -41,6 +41,70 @@ const io = new Server(server, {
 
 const PORT = process.env.PORT || 3001;
 
+// Função para tentar recuperar dados perdidos do histórico da conversa
+async function tryRecoveryExtraction(conversationHistory, currentFormState) {
+  const recoveredData = {};
+  
+  // Analisar mensagens do usuário em busca de informações não extraídas
+  const userMessages = conversationHistory.filter(msg => msg.role === 'user');
+  
+  for (const msg of userMessages) {
+    const content = msg.content.toLowerCase();
+    
+    // Recuperar sobre_empresa se não foi extraído
+    if (!currentFormState.sobre_empresa) {
+      if (content.includes('vendemos') || content.includes('fazemos') || 
+          content.includes('cafe') || content.includes('takeaway') ||
+          content.includes('empresa')) {
+        recoveredData.sobre_empresa = msg.content;
+        console.log('🔄 Recuperado sobre_empresa:', msg.content);
+      }
+    }
+    
+    // Recuperar produtos_servicos se não foi extraído
+    if (!currentFormState.produtos_servicos) {
+      if (content.includes('latte') || content.includes('cappuccino') || 
+          content.includes('cafe') || content.includes('produtos') ||
+          content.includes('variados')) {
+        recoveredData.produtos_servicos = msg.content;
+        console.log('🔄 Recuperado produtos_servicos:', msg.content);
+      }
+    }
+    
+    // Recuperar diferencial se não foi extraído
+    if (!currentFormState.diferencial) {
+      if (content.includes('atendimento') || content.includes('diferencial') || 
+          content.includes('especial') || content.includes('sem duvida')) {
+        recoveredData.diferencial = msg.content;
+        console.log('🔄 Recuperado diferencial:', msg.content);
+      }
+    }
+  }
+  
+  // Analisar mensagens do assistente em busca de conceitos construídos
+  const assistantMessages = conversationHistory.filter(msg => msg.role === 'assistant');
+  
+  for (const msg of assistantMessages) {
+    const content = msg.content;
+    
+    // Recuperar missão construída se não foi extraída
+    if (!currentFormState.missao_visao_valores && content.includes('missão')) {
+      if (content.includes('Pradella Food tem como missão') || 
+          content.includes('missão:')) {
+        // Extrair a parte da missão
+        const missaoMatch = content.match(/["""]([^"""]*missão[^"""]*)["""]/i) || 
+                           content.match(/missão[^.]*\./i);
+        if (missaoMatch) {
+          recoveredData.missao_visao_valores = `MISSÃO: ${missaoMatch[0]}`;
+          console.log('🔄 Recuperado missão construída:', missaoMatch[0]);
+        }
+      }
+    }
+  }
+  
+  return recoveredData;
+}
+
 // Inicializar banco de dados
 // Inicialização do banco SQLite
 initDatabase().catch(console.error);
@@ -237,6 +301,17 @@ Vamos começar com as informações básicas de contato. Qual é o seu nome comp
         updatedFormState = { ...currentFormState, ...extractionResponse.fieldUpdates };
         await updateFormState(sessionId, updatedFormState);
         console.log(`✅ Estado do formulário atualizado:`, JSON.stringify(updatedFormState, null, 2));
+      } else {
+        // Se não houve extração mas há muitas mensagens, tentar extração de recuperação
+        if (conversationHistory.length > 5) {
+          console.log('🔍 Tentando extração de recuperação do histórico...');
+          const recoveredData = await tryRecoveryExtraction(conversationHistory, currentFormState);
+          if (Object.keys(recoveredData).length > 0) {
+            updatedFormState = { ...currentFormState, ...recoveredData };
+            await updateFormState(sessionId, updatedFormState);
+            console.log(`🔄 Dados recuperados do histórico:`, recoveredData);
+          }
+        }
       }
 
       // A resposta já vem da FASE 2 da nova implementação
@@ -281,6 +356,9 @@ Vamos começar com as informações básicas de contato. Qual é o seu nome comp
           fieldsUpdated: Object.keys(extractionResponse.fieldUpdates),
           newProgress: updatedProgress.overall
         });
+      } else {
+        // Mesmo sem fieldUpdates, enviar progresso para manter UI atualizada
+        console.log('📊 Enviando progresso sem fieldUpdates:', updatedProgress.overall + '%');
       }
       
       console.log('✅ Mensagem processada com sucesso!\n');
