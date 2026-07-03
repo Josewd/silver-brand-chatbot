@@ -59,9 +59,9 @@ async function extractFieldsWithGroq(conversationHistory, currentFormState, form
         messages,
         tools,
         tool_choice: "auto",
-        parallel_tool_calls: true,
-        temperature: 0.3,
-        max_tokens: 2000
+        parallel_tool_calls: false,
+        temperature: 0.7,
+        max_tokens: 1000
       })
     });
     
@@ -71,6 +71,12 @@ async function extractFieldsWithGroq(conversationHistory, currentFormState, form
     
     const result = await response.json();
     const assistantMessage = result.choices[0].message;
+    
+    console.log('🤖 Groq resposta completa:', {
+      content: assistantMessage.content,
+      tool_calls: assistantMessage.tool_calls?.length || 0,
+      finish_reason: result.choices[0].finish_reason
+    });
     
     // Extrair tool calls se houver
     const fieldUpdates = {};
@@ -146,11 +152,13 @@ INSTRUÇÕES CRÍTICAS:
 5. ⚠️ Para campos já preenchidos, NÃO pergunte novamente
 6. 🇧🇷 Use linguagem brasileira informal e acolhedora
 7. 🔄 Quando uma seção estiver completa, avance AUTOMATICAMENTE para a próxima
+8. ⚠️ OBRIGATÓRIO: SEMPRE responda com texto + função (nunca só função!)
 
 FORMATO DA PERGUNTA:
 - Seja direto e específico sobre o que quer saber
 - Adicione um exemplo ou contexto quando necessário
 - Termine sempre com uma pergunta clara
+- SEMPRE inclua uma resposta de texto junto com a função
 
 FORMATO DA FUNÇÃO:
 - Use EXATAMENTE os IDs dos campos do schema (ex: "nome", "email", "sobre_empresa")
@@ -161,12 +169,13 @@ COMPORTAMENTO AUTOMÁTICO:
 - Se o usuário responder qualquer coisa, extraia a informação E imediatamente faça a próxima pergunta
 - Não espere o usuário pedir para continuar
 - Mantenha o fluxo sempre em movimento
+- SEMPRE combine função + mensagem de texto
 
 EXEMPLO DE FLUXO:
 Usuário: "Me chamo João Silva"
-Assistente: [chama update_form_field("nome", "João Silva")] "Ótimo, João! Agora preciso do seu e-mail para contato. Qual é o seu e-mail?"
+Assistente: [chama update_form_field("nome", "João Silva")] + TEXTO: "Ótimo, João! Agora preciso do seu e-mail para contato. Qual é o seu e-mail?"
 
-Sua próxima ação deve ser fazer uma pergunta específica sobre o campo atual.`;
+REGRA ABSOLUTA: Toda resposta DEVE ter texto conversacional + função (quando aplicável).`;
 }
 
 function getCurrentFieldToWork(formSchema, currentFormState) {
