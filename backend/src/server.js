@@ -84,15 +84,22 @@ io.on('connection', (socket) => {
         console.log('✅ Nova sessão criada:', sessionId);
       }
       
+      // Verificar se a sessão existe ANTES de permitir entrada
+      const session = await getSession(sessionId);
+      if (!session) {
+        console.log('❌ Tentativa de entrar em sessão inexistente:', sessionId);
+        socket.emit('error', { message: 'Sessão não encontrada' });
+        return;
+      }
+      
       // Entrar na sala da sessão
       socket.join(sessionId);
       socket.sessionId = sessionId;
       
-      // Carregar estado atual da sessão
-      const session = await getSession(sessionId);
+      // Carregar mensagens da sessão
       const messages = await getMessages(sessionId);
       
-      const formState = session?.form_state?.data || {};
+      const formState = session.form_state?.data || {};
       const progress = calculateProgress(formState, formSchema);
       
       // Enviar estado atual para o cliente
