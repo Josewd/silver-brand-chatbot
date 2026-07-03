@@ -60,8 +60,8 @@ async function extractFieldsWithGroq(conversationHistory, currentFormState, form
         tools,
         tool_choice: "auto",
         parallel_tool_calls: false,
-        temperature: 0.7,
-        max_tokens: 1000
+        temperature: 0.5,
+        max_tokens: 800
       })
     });
     
@@ -173,9 +173,14 @@ COMPORTAMENTO AUTOMÁTICO:
 
 EXEMPLO DE FLUXO:
 Usuário: "Me chamo João Silva"
-Assistente: [chama update_form_field("nome", "João Silva")] + TEXTO: "Ótimo, João! Agora preciso do seu e-mail para contato. Qual é o seu e-mail?"
+Assistente: 
+1. Chama update_form_field("nome", "João Silva") 
+2. Responde: "Ótimo, João! Agora preciso do seu e-mail para contato. Qual é o seu e-mail?"
 
-REGRA ABSOLUTA: Toda resposta DEVE ter texto conversacional + função (quando aplicável).`;
+REGRA ABSOLUTA: 
+- Use as funções adequadamente (não coloque no texto!)
+- Sempre responda com texto conversacional separado da função
+- NUNCA inclua <function=...> no texto da resposta`;
 }
 
 function getCurrentFieldToWork(formSchema, currentFormState) {
