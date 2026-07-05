@@ -93,6 +93,17 @@ const AdminPage = () => {
     alert('Link copiado para clipboard!')
   }
 
+  const openChat = (clientToken) => {
+    if (!clientToken) {
+      alert('Token do cliente não encontrado!')
+      return
+    }
+    
+    // Abrir em nova aba a página do formulário com o token
+    const url = `${window.location.origin}/form/${clientToken}`
+    window.open(url, '_blank')
+  }
+
   const formatDate = (dateString) => {
     return new Date(dateString).toLocaleString('pt-BR')
   }
@@ -118,34 +129,45 @@ const AdminPage = () => {
   return (
     <div className="admin-page">
       <div className="admin-container">
-        {/* Header */}
+        {/* Header Silver Brand House */}
         <div className="admin-header">
+          <div className="brand-contact">
+            SILVER BRAND HOUSE<br/>
+            brandhousesilver@gmail.com<br/>
+            +55 11 96015 7100
+          </div>
+          
           <div className="header-content">
-            <img src="/logo-horizontal.png" alt="Silver Brand Design" className="admin-logo" />
-            <h1 className="admin-title">Painel Administrativo</h1>
-            <p className="admin-subtitle">Gerenciar sessões de briefing de marca</p>
+            <h1 className="admin-title">PAINEL ADMIN</h1>
+            <h2 className="admin-subtitle">GERENCIAMENTO DE<br/>SESSÕES DE BRIEFING</h2>
+            
+            <div className="admin-description">
+              Gerencie sessões de briefing de identidade visual. Crie novas sessões para clientes,
+              acompanhe o progresso dos formulários e tenha acesso aos links de acesso direto.
+            </div>
           </div>
         </div>
 
-        {/* Error Display */}
-        {error && (
-          <div className="error-banner">
-            <span className="error-icon">⚠️</span>
-            {error}
-            <button onClick={() => setError(null)} className="error-close">×</button>
-          </div>
-        )}
+        <div className="admin-content">
+          {/* Error Display */}
+          {error && (
+            <div className="error-banner">
+              <span className="error-icon">⚠️</span>
+              {error}
+              <button onClick={() => setError(null)} className="error-close">×</button>
+            </div>
+          )}
 
-        {/* Create Session Button */}
-        <div className="admin-actions">
-          <button 
-            className="btn-create-session"
-            onClick={() => setShowCreateForm(!showCreateForm)}
-            disabled={loading}
-          >
-            + Nova Sessão de Cliente
-          </button>
-        </div>
+          {/* Create Session Button */}
+          <div className="admin-actions">
+            <button 
+              className="btn-create-session"
+              onClick={() => setShowCreateForm(!showCreateForm)}
+              disabled={loading}
+            >
+              {showCreateForm ? 'Cancelar' : '+ Nova Sessão de Cliente'}
+            </button>
+          </div>
 
         {/* Create Session Form */}
         {showCreateForm && (
@@ -312,11 +334,19 @@ const AdminPage = () => {
                     >
                       📋 Copiar Link
                     </button>
+                    <button 
+                      className="btn-open-chat"
+                      onClick={() => openChat(session.clientToken)}
+                      disabled={!session.clientToken}
+                    >
+                      💬 Abrir Chat
+                    </button>
                   </div>
                 </div>
               ))}
             </div>
           )}
+        </div>
         </div>
       </div>
     </div>
