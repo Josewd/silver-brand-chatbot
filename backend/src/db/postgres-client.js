@@ -10,11 +10,28 @@ class DatabaseClient {
     console.log('🔗 Connection string configurada:', connectionString ? 'SIM' : 'NÃO')
     console.log('📊 Environment:', process.env.NODE_ENV)
     console.log('🌐 Connection string (mascarada):', connectionString ? connectionString.replace(/:\/\/.*@/, '://***@') : 'NONE')
+    console.log('🔍 SUPABASE_URL env:', process.env.SUPABASE_URL ? 'PRESENTE' : 'AUSENTE')
+    console.log('🔍 DATABASE_URL env:', process.env.DATABASE_URL ? 'PRESENTE' : 'AUSENTE')
+    console.log('📏 Tamanho da string:', connectionString ? connectionString.length : 0)
     
     if (!connectionString) {
       console.error('❌ ERRO: Nenhuma string de conexão encontrada!')
       console.error('💡 Configure SUPABASE_URL ou DATABASE_URL')
       throw new Error('Database connection string not found')
+    }
+
+    // Verificar se a string parece truncada
+    if (connectionString.length < 50 || !connectionString.includes('@')) {
+      console.error('❌ ERRO: String de conexão parece truncada ou inválida')
+      console.error('📏 Tamanho:', connectionString.length)
+      console.error('📄 Conteúdo:', connectionString)
+      
+      // Tentar reconstruir URL se parecer supabase truncado
+      if (connectionString.includes('base') && !connectionString.includes('.supabase.co')) {
+        console.log('🔄 Tentando reconstruir URL do Supabase...')
+        connectionString = `postgresql://postgres:ezivL8MIDMpHA6aQ@db.dkuhctiznnwalyptlkhu.supabase.co:6543/postgres`
+        console.log('🔧 URL reconstruída:', connectionString.replace(/:\/\/.*@/, '://***@'))
+      }
     }
 
     // Configurações específicas para Supabase
