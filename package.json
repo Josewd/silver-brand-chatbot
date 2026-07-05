@@ -8,10 +8,18 @@
     "build": "cd backend && npm install",
     "dev": "cd backend && npm run dev"
   },
-  "keywords": ["chatbot", "nodejs", "express", "websocket"],
+  "keywords": [
+    "chatbot",
+    "nodejs",
+    "express",
+    "websocket"
+  ],
   "author": "Silver Brand House",
   "license": "ISC",
   "engines": {
     "node": "24.x"
+  },
+  "dependencies": {
+    "pg": "^8.22.0"
   }
 }
