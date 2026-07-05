@@ -359,6 +359,8 @@
     .preview-toggle-button {
         display: none
     }
+        display: none
+    }
 
     .briefing-preview-panel {
         position: fixed;

@@ -324,6 +324,52 @@ export function useBriefingSync(sessionId) {
     
   }, [socket, wsSessionId, connected])
 
+  // Nova função: Gerar briefing completo via IA
+  const generateBriefingPreview = useCallback(async () => {
+    const targetSessionId = wsSessionId || sessionId
+    if (!targetSessionId) return { success: false, error: 'Sessão não encontrada' }
+
+    try {
+      console.log(`🎯 Gerando briefing completo para sessão ${targetSessionId}`)
+      
+      const response = await fetch(`/api/session/${targetSessionId}/generate-briefing`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      })
+      
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.message || `HTTP ${response.status}: ${response.statusText}`)
+      }
+      
+      const result = await response.json()
+      
+      console.log('✅ Briefing gerado com sucesso:', result)
+      
+      // Atualizar estado local com o briefing gerado
+      setBriefingData(result.briefingData)
+      setProgress(result.progress)
+      setLastUpdated(new Date().toISOString())
+      
+      return {
+        success: true,
+        briefingData: result.briefingData,
+        progress: result.progress,
+        newFieldsAdded: result.newFieldsAdded,
+        message: result.message
+      }
+      
+    } catch (error) {
+      console.error('❌ Erro ao gerar briefing:', error)
+      return {
+        success: false,
+        error: error.message
+      }
+    }
+  }, [wsSessionId, sessionId])
+
   // =================== HELPERS (mantidos do original) ===================
   
   // Calcula se tem campos obrigatórios preenchidos
@@ -387,6 +433,7 @@ export function useBriefingSync(sessionId) {
     connected,
     sessionReady,
     sendMessage,
+    generateBriefingPreview,
     wsSessionId: wsSessionId || sessionId,
     fallbackMode,
     chatError,

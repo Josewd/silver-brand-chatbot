@@ -21,6 +21,7 @@ const corsOptions = {
     "http://localhost:5173",
     "http://localhost:5174",
     "http://localhost:5175",
+    "http://localhost:5179",
     "https://silver-brand-chatbot.vercel.app"
   ],
   credentials: true,
@@ -716,6 +717,83 @@ app.post('/api/admin/migrate-legacy-fields', async (req, res) => {
   } catch (error) {
     console.error('❌ Erro na migração:', error);
     res.status(500).json({ error: 'Erro durante a migração' });
+  }
+});
+
+// Novo endpoint: Gerar preview completo do briefing
+app.post('/api/session/:sessionId/generate-briefing', async (req, res) => {
+  try {
+    const { sessionId } = req.params;
+    
+    console.log(`\n🎯 === GERANDO BRIEFING COMPLETO ===`);
+    console.log(`📝 Sessão: ${sessionId}`);
+    
+    // Verificar se a sessão existe
+    const session = await getSession(sessionId);
+    if (!session) {
+      return res.status(404).json({ error: 'Sessão não encontrada' });
+    }
+    
+    // Obter estado atual do formulário e histórico da conversa
+    const currentFormState = session.form_state?.data || {};
+    const conversationHistory = await getMessages(sessionId);
+    
+    console.log(`📊 Estado atual:`, {
+      filledFields: Object.keys(currentFormState).length,
+      messagesCount: conversationHistory.length
+    });
+    
+    // Verificar se há informação suficiente para gerar o briefing
+    if (conversationHistory.length === 0) {
+      return res.status(400).json({ 
+        error: 'Não há conversa suficiente para gerar o briefing',
+        message: 'Converse um pouco mais com o assistente antes de gerar a prévia.'
+      });
+    }
+    
+    // Importar função de geração
+    const { generateBriefingSummary } = require('./ai/extractFields');
+    
+    // Gerar briefing completo usando IA
+    const result = await generateBriefingSummary(
+      conversationHistory.map(msg => ({
+        role: msg.role,
+        content: msg.content
+      })),
+      currentFormState,
+      formSchema
+    );
+    
+    if (!result.success) {
+      throw new Error('Falha na geração do briefing');
+    }
+    
+    // Salvar o briefing gerado no banco de dados (opcional)
+    await updateFormState(sessionId, result.briefingData);
+    
+    // Calcular novo progresso
+    const progress = calculateProgress(result.briefingData, formSchema);
+    
+    console.log(`✅ Briefing gerado com sucesso:`, {
+      totalFields: Object.keys(result.briefingData).length,
+      newFields: result.newFieldsAdded.length,
+      progress: progress.overall
+    });
+    
+    res.json({
+      success: true,
+      briefingData: result.briefingData,
+      progress: progress.overall,
+      newFieldsAdded: result.newFieldsAdded,
+      message: `Briefing gerado com ${result.newFieldsAdded.length} novos campos preenchidos!`
+    });
+    
+  } catch (error) {
+    console.error('❌ Erro ao gerar briefing:', error);
+    res.status(500).json({ 
+      error: 'Erro ao gerar briefing',
+      message: error.message
+    });
   }
 });
 

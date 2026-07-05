@@ -405,6 +405,186 @@ function getQuestionForField(field) {
   return questions[field.id] || `Me conte sobre: ${field.label}`;
 }
 
+// Nova função: preencher campos vazios baseado no que já foi coletado
+async function generateBriefingSummary(conversationHistory, currentFormState, formSchema) {
+  console.log('🎯 === GERANDO BRIEFING COMPLETO ===');
+  console.log('📋 Campos já preenchidos:', Object.keys(currentFormState));
+
+  // Modo demonstração se OpenAI não estiver configurada
+  if (!process.env.OPENAI_API_KEY || process.env.OPENAI_API_KEY === 'sk-test-key-exemplo') {
+    console.log('⚠️ Modo demonstração - sem OpenAI configurada');
+    return generateDemoBriefing(conversationHistory, currentFormState, formSchema);
+  }
+
+  const OpenAI = require('openai');
+  const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+
+  // Construir schema com todos os campos possíveis
+  const allFields = formSchema.sections.flatMap(section => section.fields);
+  
+  const properties = {};
+  allFields.forEach(field => {
+    properties[field.id] = { 
+      type: "string",
+      description: field.label + (field.required ? " (obrigatório)" : " (opcional)")
+    };
+  });
+
+  const tools = [{
+    type: "function",
+    function: {
+      name: "complete_briefing_form",
+      description: "Preenche o formulário completo de briefing com as informações disponíveis",
+      strict: true,
+      parameters: {
+        type: "object",
+        properties,
+        required: [], // Não obrigatório - preenchemos o que conseguirmos
+        additionalProperties: false
+      }
+    }
+  }];
+
+  // Construir histórico da conversa para contexto
+  const conversationText = conversationHistory
+    .map(msg => `${msg.role === 'user' ? 'Cliente' : 'Assistente'}: ${msg.content}`)
+    .join('\n');
+
+  // Construir dados já preenchidos
+  const filledFields = Object.entries(currentFormState)
+    .map(([key, value]) => `${key}: ${value}`)
+    .join('\n');
+
+  const systemPrompt = `Você é um assistente especializado em briefings de identidade visual.
+
+CONTEXTO DA CONVERSA:
+${conversationText}
+
+CAMPOS JÁ PREENCHIDOS:
+${filledFields}
+
+TAREFA:
+Complete o formulário de briefing com as informações que conseguir extrair da conversa. 
+
+REGRAS IMPORTANTES:
+1. Use SOMENTE informações que estão explícitas ou claramente implícitas na conversa
+2. Para campos que não tem informação suficiente, deixe em branco (string vazia "")
+3. Mantenha os campos já preenchidos exatamente como estão
+4. Seja fiel às palavras e tom do cliente
+5. Para escalas de personalidade, use apenas números de 1 a 5
+6. Para campos de múltipla escolha, use apenas as opções válidas do schema
+
+O objetivo é gerar uma prévia útil do briefing baseado no que já foi conversado, não inventar informações.`;
+
+  const messages = [
+    { role: "system", content: systemPrompt },
+    { role: "user", content: "Preencha o formulário de briefing com as informações disponíveis na conversa." }
+  ];
+
+  try {
+    console.log('🤖 Enviando para OpenAI (modo briefing completo)...');
+    
+    const response = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      messages,
+      tools,
+      tool_choice: { type: "function", function: { name: "complete_briefing_form" } },
+      temperature: 0.3
+    });
+
+    const toolCall = response.choices[0]?.message?.tool_calls?.[0];
+    
+    if (!toolCall) {
+      throw new Error('OpenAI não retornou tool call válido');
+    }
+
+    const briefingData = JSON.parse(toolCall.function.arguments);
+    
+    console.log('✅ Briefing gerado com sucesso:', {
+      fieldsGenerated: Object.keys(briefingData).filter(key => briefingData[key]).length,
+      totalFields: Object.keys(briefingData).length
+    });
+
+    // Manter campos já preenchidos e adicionar apenas novos
+    const completedBriefing = { ...currentFormState };
+    
+    Object.entries(briefingData).forEach(([key, value]) => {
+      if (value && value.trim() !== '') {
+        // Só sobrescrever se o campo atual estiver vazio
+        if (!completedBriefing[key] || completedBriefing[key].toString().trim() === '') {
+          completedBriefing[key] = value;
+        }
+      }
+    });
+
+    return {
+      success: true,
+      briefingData: completedBriefing,
+      newFieldsAdded: Object.keys(briefingData).filter(key => 
+        briefingData[key] && 
+        briefingData[key].trim() !== '' && 
+        (!currentFormState[key] || currentFormState[key].toString().trim() === '')
+      )
+    };
+
+  } catch (error) {
+    console.error('❌ Erro ao gerar briefing completo:', error);
+    throw error;
+  }
+}
+
+// Função de demonstração para quando não há OpenAI configurada
+function generateDemoBriefing(conversationHistory, currentFormState, formSchema) {
+  console.log('🎯 Gerando briefing de demonstração...');
+  
+  // Analisar conversa para extrair informações básicas
+  const conversationText = conversationHistory
+    .filter(msg => msg.role === 'user')
+    .map(msg => msg.content.toLowerCase())
+    .join(' ');
+  
+  const demoData = { ...currentFormState };
+  const newFields = [];
+  
+  // Lógica simples de extração baseada em palavras-chave
+  if (!demoData.project_type && (conversationText.includes('novo') || conversationText.includes('primeira'))) {
+    demoData.project_type = 'Novo Projeto';
+    newFields.push('project_type');
+  }
+  
+  if (!demoData.about_company && conversationText.includes('cafe')) {
+    demoData.about_company = 'Empresa no ramo de cafeteria, focada em atendimento de qualidade.';
+    newFields.push('about_company');
+  }
+  
+  if (!demoData.colors_want && conversationText.includes('cor')) {
+    demoData.colors_want = 'Tons que remetam a qualidade e sofisticação';
+    newFields.push('colors_want');
+  }
+  
+  if (!demoData.differentiator && conversationText.includes('atendimento')) {
+    demoData.differentiator = 'Atendimento personalizado e ambiente acolhedor';
+    newFields.push('differentiator');
+  }
+  
+  if (!demoData.how_to_be_perceived) {
+    demoData.how_to_be_perceived = 'Como uma marca confiável e de qualidade no segmento';
+    newFields.push('how_to_be_perceived');
+  }
+  
+  console.log('✅ Briefing demonstração gerado:', {
+    fieldsAdded: newFields.length,
+    fields: newFields
+  });
+  
+  return {
+    success: true,
+    briefingData: demoData,
+    newFieldsAdded: newFields
+  };
+}
+
 module.exports = {
-  extractFields
+  extractFields,
+  generateBriefingSummary
 };

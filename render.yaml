@@ -4,6 +4,9 @@ services:
     runtime: node
     region: frankfurt
     plan: free
+    # Configurações para manter no plano gratuito
+    maxMemory: 512MB
+    healthCheckPath: /health
     rootDir: ./
     buildCommand: cd backend && npm ci --production --prefer-offline
     startCommand: cd backend && npm start

@@ -29,6 +29,7 @@ function ChatPage() {
   const [currentOptions, setCurrentOptions] = useState(null)
   const [selectedOptions, setSelectedOptions] = useState([])
   const [isPreviewOpen, setIsPreviewOpen] = useState(false)
+  const [isGeneratingPreview, setIsGeneratingPreview] = useState(false)
   const messagesEndRef = useRef(null)
   const inputRef = useRef(null)
 
@@ -49,6 +50,7 @@ function ChatPage() {
     connected,
     sessionReady,
     sendMessage,
+    generateBriefingPreview,
     sessionId: wsSessionId,
     fallbackMode,
     chatError,
@@ -126,6 +128,30 @@ function ChatPage() {
 
   const downloadPDF = () => {
     alert('⚠️ Funcionalidade de PDF temporariamente indisponível. Sistema migrado para SQLite + WebSocket.')
+  }
+
+  // Função para gerar e abrir o preview do briefing
+  const handleGeneratePreview = async () => {
+    setIsGeneratingPreview(true)
+
+    setIsPreviewOpen(true)
+    try {
+      const result = await generateBriefingPreview()
+      
+      if (result.success) {
+        // Mostrar sucesso e abrir preview
+        alert(`✅ ${result.message}\nNovos campos: ${result.newFieldsAdded.join(', ')}`)
+        setIsPreviewOpen(true)
+      } else {
+        // Mostrar erro
+        alert(`❌ ${result.error}`)
+      }
+    } catch (error) {
+      console.error('Erro ao gerar preview:', error)
+      alert('❌ Erro ao gerar preview. Tente novamente.')
+    } finally {
+      setIsGeneratingPreview(false)
+    }
   }
 
   const handleSendMessage = async (e) => {
@@ -226,13 +252,16 @@ function ChatPage() {
 
   return (
     <div className="chat-page-container">
-      {/* Botão flutuante para abrir preview */}
-      <button 
-        onClick={() => setIsPreviewOpen(true)}
-        className={`preview-toggle-button ${isPreviewOpen ? 'hidden' : ''}`}
-      >
-        Preview
-      </button>
+      {/* Botões flutuantes para preview */}
+      
+        <button 
+          onClick={handleGeneratePreview}
+          className={`preview-toggle-button ${isPreviewOpen ? 'hidden' : ''}`}
+          disabled={isGeneratingPreview || messages.length === 0}
+          title="Usar IA para preencher briefing baseado na conversa"
+        >
+          Preview
+        </button>
 
       {/* Chat Principal */}
       <div className="chat-page">
