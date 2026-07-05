@@ -4,16 +4,36 @@ const { Pool } = require('pg')
 class DatabaseClient {
   constructor() {
     // Priorizar SUPABASE_URL, fallback para DATABASE_URL, e depois localhost
-    const connectionString = process.env.SUPABASE_URL || process.env.DATABASE_URL
+    let connectionString = process.env.SUPABASE_URL || process.env.DATABASE_URL
     
     console.log('🔧 Configurando conexão PostgreSQL...')
     console.log('🔗 Connection string configurada:', connectionString ? 'SIM' : 'NÃO')
     console.log('📊 Environment:', process.env.NODE_ENV)
+    console.log('🌐 Connection string (mascarada):', connectionString ? connectionString.replace(/:\/\/.*@/, '://***@') : 'NONE')
     
     if (!connectionString) {
       console.error('❌ ERRO: Nenhuma string de conexão encontrada!')
       console.error('💡 Configure SUPABASE_URL ou DATABASE_URL')
       throw new Error('Database connection string not found')
+    }
+
+    // Configurações específicas para Supabase
+    if (connectionString.includes('.supabase.co')) {
+      console.log('🟣 Detectado Supabase, ajustando configurações...')
+      // Se usar porta 5432, sugerir porta de pooling 6543
+      if (connectionString.includes(':5432/')) {
+        console.warn('⚠️ Recomendado usar porta 6543 (pooling) ao invés de 5432 para Supabase')
+      }
+    }
+    
+    // Se o endereço contém IPv6 problemático, tentar fallback
+    if (connectionString.includes('2a05:d018:837')) {
+      console.warn('⚠️ Detectado endereço IPv6 problemático, tentando configuração alternativa...')
+      // Tentar usar localhost como fallback em desenvolvimento
+      if (process.env.NODE_ENV !== 'production') {
+        connectionString = 'postgresql://postgres:postgres123@localhost:5432/silver_brand'
+        console.log('🔄 Usando fallback localhost')
+      }
     }
     
     this.pool = new Pool({
@@ -21,7 +41,15 @@ class DatabaseClient {
       ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
       max: 20, // Máximo de conexões no pool
       idleTimeoutMillis: 30000,
-      connectionTimeoutMillis: 2000
+      connectionTimeoutMillis: 5000, // Aumentado para Supabase
+      // Forçar IPv4 para evitar problemas com IPv6
+      family: 4,
+      // Configurações específicas para Supabase
+      ...(connectionString.includes('.supabase.co') && {
+        statement_timeout: 30000,
+        query_timeout: 30000,
+        application_name: 'silver-brand-chatbot'
+      })
     })
 
     // Log de conexão
