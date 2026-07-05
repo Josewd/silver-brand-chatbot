@@ -7,6 +7,13 @@ class DatabaseClient {
     console.log('🔧 Configurando conexão PostgreSQL...')
     console.log('📊 Environment:', process.env.NODE_ENV)
     
+    // Verificar se temos uma URL específica do Render (fallback)
+    if (process.env.RENDER_DATABASE_URL) {
+      console.log('🎯 RENDER_DATABASE_URL detectada, usando configuração específica')
+      this.initializeRenderConnection()
+      return
+    }
+    
     // FORÇA CONFIGURAÇÃO DIRETA PARA SUPABASE EM PRODUÇÃO
     if (process.env.NODE_ENV === 'production') {
       this.initializeProductionConnection()
@@ -17,88 +24,133 @@ class DatabaseClient {
     this.initializeDevelopmentConnection()
   }
 
-  // Método específico para inicialização em produção com IPv6 gratuito
-  async initializeProductionConnection() {
-    console.log('🚀 PRODUÇÃO DETECTADA - Usando configuração Supabase IPv6 gratuita')
+  // Método específico para conexões via RENDER_DATABASE_URL
+  async initializeRenderConnection() {
+    console.log('🎯 Usando RENDER_DATABASE_URL específica')
     
-    // Configuração base para IPv6 (gratuito) com timeout mais longo
+    const poolConfig = {
+      connectionString: process.env.RENDER_DATABASE_URL,
+      ssl: { rejectUnauthorized: false },
+      max: 5,
+      idleTimeoutMillis: 30000,
+      connectionTimeoutMillis: 20000,
+      statement_timeout: 30000,
+      query_timeout: 30000,
+      application_name: 'silver-brand-chatbot'
+    }
+    
+    console.log('✅ Configuração RENDER_DATABASE_URL ativa')
+    
+    this.pool = new Pool(poolConfig)
+    
+    // Event listeners
+    this.pool.on('connect', () => {
+      console.log('📊 Conectado via RENDER_DATABASE_URL')
+    })
+
+    this.pool.on('error', (err) => {
+      console.error('❌ Erro na conexão RENDER_DATABASE_URL:', err)
+    })
+  }
+
+  // Método específico para inicialização em produção com fallbacks
+  async initializeProductionConnection() {
+    console.log('🚀 PRODUÇÃO DETECTADA - Testando conectividade Supabase')
+    
+    // Configuração base otimizada para Render + Supabase
     const baseConfig = {
       user: 'postgres',
       password: 'ezivL8MIDMpHA6aQ',
       host: 'db.dkuhctiznnwalyptlkhu.supabase.co',
-      port: 5432, // Porta gratuita (não 6543 que é pooling pago)
+      port: 5432,
       database: 'postgres',
       ssl: { rejectUnauthorized: false },
-      max: 10, // Reduzido para gratuito
-      idleTimeoutMillis: 60000, // Aumentado para IPv6
-      connectionTimeoutMillis: 20000, // Timeout maior para IPv6
-      statement_timeout: 45000,
-      query_timeout: 45000,
-      application_name: 'silver-brand-chatbot',
-      // SEM family: 4 - permite IPv6 gratuito
-      // Configurações específicas para IPv6 estável
-      keepAlive: true,
-      keepAliveInitialDelayMillis: 10000
+      max: 8, // Otimizado para free tier
+      idleTimeoutMillis: 45000,
+      connectionTimeoutMillis: 25000, // Render-friendly timeout
+      statement_timeout: 40000,
+      query_timeout: 40000,
+      application_name: 'silver-brand-chatbot'
     }
     
-    console.log('✅ Configuração IPv6 gratuita ativada:')
+    console.log('🔧 Configuração base:')
     console.log('   Host:', baseConfig.host)
     console.log('   Port: 5432 (gratuita)')
-    console.log('   IPv6: Permitido (gratuito)')
-    console.log('   Timeout: 20s (aumentado para IPv6)')
-    console.log('   Max connections: 10 (limite gratuito)')
+    console.log('   Provider: Render.com')
     
     try {
-      // Tentativa principal: Conexão IPv6 direta
-      console.log('🔄 Conectando via IPv6 (gratuito)...')
-      await this.tryConnection(baseConfig, 'IPv6 gratuito')
+      // Tentativa 1: Configuração padrão (deixa o sistema resolver DNS automaticamente)
+      console.log('🔄 Tentativa 1: Resolução automática DNS...')
+      await this.tryConnection(baseConfig, 'DNS automático')
       
     } catch (error1) {
-      console.log('❌ Falha na conexão IPv6, tentando com configurações alternativas...')
+      console.log('❌ Falha DNS automático, tentando com connection string...')
       
       try {
-        // Segunda tentativa: Timeout ainda maior e configurações mais conservadoras
-        console.log('🔄 Tentativa 2: Timeout aumentado...')
+        // Tentativa 2: Connection string com SSL otimizado para Render
+        console.log('🔄 Tentativa 2: Connection string SSL...')
+        const connectionString = `postgresql://postgres:ezivL8MIDMpHA6aQ@db.dkuhctiznnwalyptlkhu.supabase.co:5432/postgres?sslmode=verify-full`
+        
         await this.tryConnection({
-          ...baseConfig,
-          connectionTimeoutMillis: 30000, // 30s
-          idleTimeoutMillis: 90000, // 90s
-          max: 5, // Menos conexões simultâneas
-          statement_timeout: 60000,
-          query_timeout: 60000
-        }, 'IPv6 timeout estendido')
+          connectionString,
+          ssl: { rejectUnauthorized: false },
+          max: 5,
+          idleTimeoutMillis: 45000,
+          connectionTimeoutMillis: 30000
+        }, 'Connection string SSL')
         
       } catch (error2) {
-        console.log('❌ Falha com timeout estendido, tentando connection string...')
+        console.log('❌ Falha SSL, tentando com configurações conservadoras...')
         
         try {
-          // Terceira tentativa: Connection string tradicional
-          console.log('🔄 Tentativa 3: Connection string...')
-          const connectionString = `postgresql://postgres:ezivL8MIDMpHA6aQ@db.dkuhctiznnwalyptlkhu.supabase.co:5432/postgres?sslmode=require`
-          
+          // Tentativa 3: Configuração ultra-conservadora para Render
+          console.log('🔄 Tentativa 3: Configuração conservadora...')
           await this.tryConnection({
-            connectionString,
-            ssl: { rejectUnauthorized: false },
-            max: 5,
+            ...baseConfig,
+            max: 3, // Muito conservador
+            connectionTimeoutMillis: 35000, // Timeout longo
             idleTimeoutMillis: 60000,
-            connectionTimeoutMillis: 30000,
-            keepAlive: true,
-            keepAliveInitialDelayMillis: 10000
-          }, 'Connection string')
+            ssl: { 
+              rejectUnauthorized: false,
+              checkServerIdentity: () => undefined // Bypass SSL checks
+            }
+          }, 'Configuração conservadora')
           
         } catch (error3) {
-          console.error('💥 TODAS AS TENTATIVAS IPv6 FALHARAM')
-          console.error('Erro 1 (IPv6 padrão):', error1.message)
-          console.error('Erro 2 (timeout estendido):', error2.message) 
-          console.error('Erro 3 (connection string):', error3.message)
+          console.log('❌ Render connectivity issue detected, tentando último recurso...')
           
-          // Log de diagnóstico
-          console.error('🔍 Diagnóstico:')
-          console.error('   - Usando IPv6 gratuito (não IPv4 pago)')
-          console.error('   - Porta 5432 gratuita (não 6543 pooling)')
-          console.error('   - Pode ser problema de rede IPv6 do provider')
-          
-          throw new Error('Conexão IPv6 falhou - verifique conectividade IPv6 do servidor')
+          try {
+            // Tentativa 4: Connection string simples (último recurso)
+            console.log('🔄 Tentativa 4: Último recurso...')
+            const fallbackString = `postgres://postgres:ezivL8MIDMpHA6aQ@db.dkuhctiznnwalyptlkhu.supabase.co:5432/postgres`
+            
+            await this.tryConnection({
+              connectionString: fallbackString,
+              ssl: false, // Sem SSL como último recurso (não recomendado mas funcional)
+              max: 2,
+              connectionTimeoutMillis: 40000
+            }, 'Último recurso')
+            
+            console.warn('⚠️ CONECTADO SEM SSL - Não é seguro para produção!')
+            
+          } catch (error4) {
+            console.error('💥 TODAS AS TENTATIVAS FALHARAM - PROBLEMA DE CONECTIVIDADE RENDER+SUPABASE')
+            console.error('Erro 1 (DNS auto):', error1.message)
+            console.error('Erro 2 (SSL string):', error2.message) 
+            console.error('Erro 3 (conservador):', error3.message)
+            console.error('Erro 4 (último recurso):', error4.message)
+            
+            console.error('🔍 Possíveis causas:')
+            console.error('   - Render não tem conectividade IPv6 com Supabase')
+            console.error('   - Firewall bloqueando conexões do Render')
+            console.error('   - Necessário IPv4 add-on no Supabase (pago)')
+            console.error('   - Problema temporário de rede')
+            
+            // Sugerir usar variáveis de ambiente para connection string alternativa
+            console.error('💡 Solução: Configure RENDER_DATABASE_URL nas variáveis de ambiente')
+            
+            throw new Error('Render-Supabase connectivity failed - try IPv4 add-on or alternative DB')
+          }
         }
       }
     }
