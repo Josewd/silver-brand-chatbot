@@ -1,4 +1,5 @@
 const { Pool } = require('pg')
+const dns = require('dns')
 
 // Configuração do pool de conexões PostgreSQL
 class DatabaseClient {
@@ -8,41 +9,128 @@ class DatabaseClient {
     
     // FORÇA CONFIGURAÇÃO DIRETA PARA SUPABASE EM PRODUÇÃO
     if (process.env.NODE_ENV === 'production') {
-      console.log('🚀 PRODUÇÃO DETECTADA - Usando configuração Supabase direta')
-      const poolConfig = {
-        user: 'postgres',
-        password: 'ezivL8MIDMpHA6aQ',
-        host: 'db.dkuhctiznnwalyptlkhu.supabase.co',
-        port: 5432, // Porta gratuita
-        database: 'postgres',
-        ssl: { rejectUnauthorized: false },
-        max: 20,
-        idleTimeoutMillis: 30000,
-        connectionTimeoutMillis: 5000,
-        family: 4, // FORÇA IPv4 - CRÍTICO para resolver ENETUNREACH
-        statement_timeout: 30000,
-        query_timeout: 30000,
-        application_name: 'silver-brand-chatbot'
-      };
-      
-      console.log('✅ Configuração hardcoded ativada:');
-      console.log('   Host:', poolConfig.host);
-      console.log('   Port: 5432 (gratuita)');
-      console.log('   Family: IPv4 forçado para resolver ENETUNREACH');
-      
-      this.pool = new Pool(poolConfig);
-      
-      // Log de conexão
-      this.pool.on('connect', () => {
-        console.log('📊 Conectado ao banco PostgreSQL (hardcoded)')
-      })
-
-      this.pool.on('error', (err) => {
-        console.error('❌ Erro na conexão com banco:', err)
-      })
-      
-      return; // Sai da função, não executa o resto
+      this.initializeProductionConnection()
+      return
     }
+    
+    // Usar método de desenvolvimento
+    this.initializeDevelopmentConnection()
+  }
+
+  // Método específico para inicialização em produção com IPv6 gratuito
+  async initializeProductionConnection() {
+    console.log('🚀 PRODUÇÃO DETECTADA - Usando configuração Supabase IPv6 gratuita')
+    
+    // Configuração base para IPv6 (gratuito) com timeout mais longo
+    const baseConfig = {
+      user: 'postgres',
+      password: 'ezivL8MIDMpHA6aQ',
+      host: 'db.dkuhctiznnwalyptlkhu.supabase.co',
+      port: 5432, // Porta gratuita (não 6543 que é pooling pago)
+      database: 'postgres',
+      ssl: { rejectUnauthorized: false },
+      max: 10, // Reduzido para gratuito
+      idleTimeoutMillis: 60000, // Aumentado para IPv6
+      connectionTimeoutMillis: 20000, // Timeout maior para IPv6
+      statement_timeout: 45000,
+      query_timeout: 45000,
+      application_name: 'silver-brand-chatbot',
+      // SEM family: 4 - permite IPv6 gratuito
+      // Configurações específicas para IPv6 estável
+      keepAlive: true,
+      keepAliveInitialDelayMillis: 10000
+    }
+    
+    console.log('✅ Configuração IPv6 gratuita ativada:')
+    console.log('   Host:', baseConfig.host)
+    console.log('   Port: 5432 (gratuita)')
+    console.log('   IPv6: Permitido (gratuito)')
+    console.log('   Timeout: 20s (aumentado para IPv6)')
+    console.log('   Max connections: 10 (limite gratuito)')
+    
+    try {
+      // Tentativa principal: Conexão IPv6 direta
+      console.log('🔄 Conectando via IPv6 (gratuito)...')
+      await this.tryConnection(baseConfig, 'IPv6 gratuito')
+      
+    } catch (error1) {
+      console.log('❌ Falha na conexão IPv6, tentando com configurações alternativas...')
+      
+      try {
+        // Segunda tentativa: Timeout ainda maior e configurações mais conservadoras
+        console.log('🔄 Tentativa 2: Timeout aumentado...')
+        await this.tryConnection({
+          ...baseConfig,
+          connectionTimeoutMillis: 30000, // 30s
+          idleTimeoutMillis: 90000, // 90s
+          max: 5, // Menos conexões simultâneas
+          statement_timeout: 60000,
+          query_timeout: 60000
+        }, 'IPv6 timeout estendido')
+        
+      } catch (error2) {
+        console.log('❌ Falha com timeout estendido, tentando connection string...')
+        
+        try {
+          // Terceira tentativa: Connection string tradicional
+          console.log('🔄 Tentativa 3: Connection string...')
+          const connectionString = `postgresql://postgres:ezivL8MIDMpHA6aQ@db.dkuhctiznnwalyptlkhu.supabase.co:5432/postgres?sslmode=require`
+          
+          await this.tryConnection({
+            connectionString,
+            ssl: { rejectUnauthorized: false },
+            max: 5,
+            idleTimeoutMillis: 60000,
+            connectionTimeoutMillis: 30000,
+            keepAlive: true,
+            keepAliveInitialDelayMillis: 10000
+          }, 'Connection string')
+          
+        } catch (error3) {
+          console.error('💥 TODAS AS TENTATIVAS IPv6 FALHARAM')
+          console.error('Erro 1 (IPv6 padrão):', error1.message)
+          console.error('Erro 2 (timeout estendido):', error2.message) 
+          console.error('Erro 3 (connection string):', error3.message)
+          
+          // Log de diagnóstico
+          console.error('🔍 Diagnóstico:')
+          console.error('   - Usando IPv6 gratuito (não IPv4 pago)')
+          console.error('   - Porta 5432 gratuita (não 6543 pooling)')
+          console.error('   - Pode ser problema de rede IPv6 do provider')
+          
+          throw new Error('Conexão IPv6 falhou - verifique conectividade IPv6 do servidor')
+        }
+      }
+    }
+  }
+
+  // Método auxiliar para tentar conexão
+  async tryConnection(config, description) {
+    console.log(`🔄 Tentando conexão ${description}...`)
+    console.log('   Host:', config.host)
+    console.log('   Port:', config.port)
+    
+    this.pool = new Pool(config)
+    
+    // Teste de conexão
+    const testClient = await this.pool.connect()
+    await testClient.query('SELECT 1')
+    testClient.release()
+    
+    console.log(`✅ Sucesso com ${description}!`)
+    
+    // Configurar event listeners
+    this.pool.on('connect', () => {
+      console.log(`📊 Conectado ao banco PostgreSQL (${description})`)
+    })
+
+    this.pool.on('error', (err) => {
+      console.error('❌ Erro na conexão com banco:', err)
+    })
+  }
+
+  // Inicialização para ambiente de desenvolvimento
+  initializeDevelopmentConnection() {
     
     // CÓDIGO ORIGINAL PARA DESENVOLVIMENTO
     let connectionString = process.env.SUPABASE_URL || process.env.DATABASE_URL
@@ -74,7 +162,7 @@ class DatabaseClient {
       // Tentar reconstruir URL se parecer supabase truncado
       if (connectionString.includes('base') && !connectionString.includes('.supabase.co')) {
         console.log('🔄 Tentando reconstruir URL do Supabase...')
-        connectionString = `postgresql://postgres:ezivL8MIDMpHA6aQ@db.dkuhctiznnwalyptlkhu.supabase.co:6543/postgres`
+        connectionString = `postgresql://postgres:ezivL8MIDMpHA6aQ@db.dkuhctiznnwalyptlkhu.supabase.co:5432/postgres`
         console.log('🔧 URL reconstruída:', connectionString.replace(/:\/\/.*@/, '://***@'))
       }
     }
@@ -82,9 +170,9 @@ class DatabaseClient {
     // Configurações específicas para Supabase
     if (connectionString.includes('.supabase.co')) {
       console.log('🟣 Detectado Supabase, ajustando configurações...')
-      // Se usar porta 5432, sugerir porta de pooling 6543
+      // Detectado Supabase - usando porta 5432 gratuita
       if (connectionString.includes(':5432/')) {
-        console.warn('⚠️ Recomendado usar porta 6543 (pooling) ao invés de 5432 para Supabase')
+        console.log('✅ Usando porta 5432 gratuita do Supabase')
       }
     }
     
@@ -115,7 +203,6 @@ class DatabaseClient {
           max: 20,
           idleTimeoutMillis: 30000,
           connectionTimeoutMillis: 5000,
-          family: 4,
           statement_timeout: 30000,
           query_timeout: 30000,
           application_name: 'silver-brand-chatbot'
@@ -142,7 +229,6 @@ class DatabaseClient {
           max: 20,
           idleTimeoutMillis: 30000,
           connectionTimeoutMillis: 5000,
-          family: 4,
           statement_timeout: 30000,
           query_timeout: 30000,
           application_name: 'silver-brand-chatbot'
@@ -162,8 +248,7 @@ class DatabaseClient {
           ssl: false,
           max: 20,
           idleTimeoutMillis: 30000,
-          connectionTimeoutMillis: 5000,
-          family: 4
+          connectionTimeoutMillis: 5000
         };
       }
     } catch (error) {
@@ -175,13 +260,12 @@ class DatabaseClient {
         user: 'postgres',
         password: 'ezivL8MIDMpHA6aQ',
         host: 'db.dkuhctiznnwalyptlkhu.supabase.co',
-        port: 6543, // Usar pooling
+        port: 5432, // Usar porta gratuita
         database: 'postgres',
         ssl: { rejectUnauthorized: false },
         max: 20,
         idleTimeoutMillis: 30000,
         connectionTimeoutMillis: 5000,
-        family: 4,
         statement_timeout: 30000,
         query_timeout: 30000,
         application_name: 'silver-brand-chatbot'
