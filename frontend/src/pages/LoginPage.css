@@ -20,7 +20,6 @@
 }
 
 .login-header {
-  background: #000;
   color: #fff;
   padding: 30px 40px 20px;
   position: relative;
@@ -61,7 +60,6 @@
   max-width: 180px;
   height: auto;
   margin-bottom: 0;
-  filter: brightness(0) invert(1);
 }
 
 .login-content {

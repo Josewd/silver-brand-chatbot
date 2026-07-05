@@ -1,7 +1,7 @@
 /* FieldHelpButton.css - Mantendo consistência visual */
 
 .field-help-button {
-  background: linear-gradient(135deg, #667eea, #764ba2);
+  background: linear-gradient(135deg, #808080, #000000);
   color: #fff;
   border: none;
   padding: 6px 12px;
@@ -20,7 +20,7 @@
 .field-help-button:hover {
   transform: translateY(-1px);
   box-shadow: 0 4px 8px rgba(102, 126, 234, 0.3);
-  background: linear-gradient(135deg, #5a6fd8, #6842a0);
+  background: linear-gradient(135deg, #808080, #000000);
 }
 
 .field-help-button:active {
