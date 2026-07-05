@@ -6,6 +6,7 @@
   "scripts": {
     "start": "node src/server-new.js",
     "dev": "nodemon src/server-new.js",
+    "debug-env": "node debug-env.js",
     "old-start": "node src/server.js",
     "test": "jest"
   },

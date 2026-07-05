@@ -3,8 +3,21 @@ const { Pool } = require('pg')
 // Configuração do pool de conexões PostgreSQL
 class DatabaseClient {
   constructor() {
+    // Priorizar SUPABASE_URL, fallback para DATABASE_URL, e depois localhost
+    const connectionString = process.env.SUPABASE_URL || process.env.DATABASE_URL
+    
+    console.log('🔧 Configurando conexão PostgreSQL...')
+    console.log('🔗 Connection string configurada:', connectionString ? 'SIM' : 'NÃO')
+    console.log('📊 Environment:', process.env.NODE_ENV)
+    
+    if (!connectionString) {
+      console.error('❌ ERRO: Nenhuma string de conexão encontrada!')
+      console.error('💡 Configure SUPABASE_URL ou DATABASE_URL')
+      throw new Error('Database connection string not found')
+    }
+    
     this.pool = new Pool({
-      connectionString: process.env.DATABASE_URL || process.env.SUPABASE_URL,
+      connectionString,
       ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
       max: 20, // Máximo de conexões no pool
       idleTimeoutMillis: 30000,
