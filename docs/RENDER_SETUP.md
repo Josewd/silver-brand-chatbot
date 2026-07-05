@@ -1,50 +1,48 @@
-# 🚀 Configuração Render + Supabase
+# 🚀 Configuração Render + Supabase Session Pooler
 
-## Problema: ENETUNREACH IPv6
+## ✅ Solução: Session Pooler (Gratuito + IPv4)
 
-O Render pode ter limitações de conectividade IPv6 com Supabase. Aqui estão as soluções:
+O Session pooler do Supabase resolve o problema ENETUNREACH IPv6 gratuitamente!
 
-## ✅ Solução 1: Variável de Ambiente (Recomendada)
+## 📋 Setup Session Pooler
 
-No painel do Render, adicione a variável de ambiente:
+### 1. No Supabase Dashboard:
+1. Vá em **Database** → **Connect**
+2. Escolha **"Session pooler"** (não Direct connection)
+3. Copie a connection string:
+   ```
+   postgresql://postgres.dkuhctiznnwalyptlkhu:[YOUR-PASSWORD]@aws-0-eu-west-1.pooler.supabase.com:5432/postgres
+   ```
 
-```
-RENDER_DATABASE_URL=postgresql://postgres:ezivL8MIDMpHA6aQ@db.dkuhctiznnwalyptlkhu.supabase.co:5432/postgres?sslmode=require
-```
-
-### Como adicionar no Render:
-1. Acesse seu dashboard do Render
+### 2. No Render Dashboard:
+1. Acesse seu projeto no Render
 2. Vá em **Environment** 
-3. Adicione a variável `RENDER_DATABASE_URL`
-4. Cole o valor acima (com a senha real)
-5. Salve e redeploy
+3. Adicione a variável:
+   ```
+   RENDER_DATABASE_URL=postgresql://postgres.dkuhctiznnwalyptlkhu:ezivL8MIDMpHA6aQ@aws-0-eu-west-1.pooler.supabase.com:5432/postgres
+   ```
+4. **Deploy**
 
-## ✅ Solução 2: IPv4 Add-on Supabase (Paga)
+## 🎯 Por que funciona:
 
-Se o problema persistir, no Supabase:
-1. Vá em **Settings > Database**
-2. Ative **"Enable IPv4 add-on"** (custa ~$4/mês)
-3. Use a configuração IPv4
+| Conexão | IPv4? | IPv6? | Custo | Render |
+|---------|-------|-------|-------|--------|
+| Direct connection | ❌ | ✅ | Grátis | ❌ Falha |
+| **Session pooler** | **✅** | **✅** | **Grátis** | **✅ Funciona** |
+| IPv4 add-on | ✅ | ✅ | $4/mês | ✅ Desnecessário |
 
-## ✅ Solução 3: Banco Alternativo
+## ✅ Benefícios Session Pooler:
+- **Gratuito** em todos os planos Supabase
+- **IPv4 + IPv6** - compatível com qualquer provider
+- **Performance melhor** - pooling de conexões
+- **Zero configuração extra** - funciona out-of-the-box
 
-Considere usar:
-- **Neon** (PostgreSQL gratuito com melhor compatibilidade Render)
-- **Railway** (PostgreSQL built-in)
-- **PlanetScale** (MySQL compatível)
+## 🔧 Código já atualizado:
+- ✅ Session pooler como padrão em produção
+- ✅ Fallbacks automáticos
+- ✅ Direct connection como backup
+- ✅ Configuração otimizada para Render
 
-## 🔍 Debug
-
-Para debugar a conectividade:
-
-```bash
-# No terminal do Render (se disponível)
-ping6 db.dkuhctiznnwalyptlkhu.supabase.co
-nslookup db.dkuhctiznnwalyptlkhu.supabase.co
-```
-
-## 📊 Status atual
-
-- ✅ Código local funciona (IPv6 ok)
-- ❌ Render produção falha (IPv6 connectivity issue)
-- 🔄 Implementado fallback automático
+## 🎉 Status:
+- ✅ Testado localmente: Funcionando
+- 🚀 Deploy em andamento com nova configuração
