@@ -186,9 +186,9 @@ Seja direto, estratégico e transforme ideias amadoras em branding profissional.
       case 'openai':
         return 'gpt-4o-mini'
       case 'groq':
-        return 'mixtral-8x7b-32768'
+        return 'openai/gpt-oss-20b' // Substituído mixtral-8x7b-32768 (descontinuado)
       default:
-        return 'llama-3.1-8b-instant'
+        return 'openai/gpt-oss-20b'
     }
   }
 }

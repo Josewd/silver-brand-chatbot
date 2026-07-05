@@ -134,15 +134,17 @@ router.post('/:id/fields/:fieldId/help', requireClientToken, async (req, res) =>
   } catch (error) {
     console.error('Erro ao processar mensagem de ajuda:', error)
     
-    // Salvar mensagem de erro no histórico
+    // Salvar mensagem de erro no histórico (apenas se session foi definida)
     try {
-      await dbClient.query(queries.addHelpMessage, [
-        session.id,
-        fieldId,
-        'assistant',
-        'Desculpe, ocorreu um erro ao processar sua mensagem. Tente novamente.',
-        null
-      ])
+      if (req.session && req.session.id) {
+        await dbClient.query(queries.addHelpMessage, [
+          req.session.id,
+          fieldId,
+          'assistant',
+          'Desculpe, ocorreu um erro ao processar sua mensagem. Tente novamente.',
+          null
+        ])
+      }
     } catch (saveError) {
       console.error('Erro ao salvar mensagem de erro:', saveError)
     }
