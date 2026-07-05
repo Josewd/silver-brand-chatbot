@@ -31,12 +31,13 @@ class AIClient {
 
       // Decidir se deve usar tools baseado no histórico
       const shouldUseDraft = this.shouldProposeDraft(helpHistory, userMessage)
+      const userMessageCount = helpHistory.filter(msg => msg.role === 'user').length
       const tools = shouldUseDraft ? this.buildFieldTools() : []
 
       console.log(`🎯 Processando ajuda para campo: ${field.id}`)
       console.log(`📝 Contexto: ${Object.keys(formData).length} campos preenchidos`)
-      console.log(`💬 Histórico: ${helpHistory.length} mensagens`)
-      console.log(`🛠️ Tools habilitadas: ${shouldUseDraft ? 'SIM' : 'NÃO (conversação)'}`)
+      console.log(`💬 Histórico: ${helpHistory.length} mensagens (${userMessageCount} do usuário)`)
+      console.log(`🛠️ Tools habilitadas: ${shouldUseDraft ? 'SIM' : 'NÃO (mais conversa necessária)'}`)
 
       const requestConfig = {
         model: this.getModelName(),
@@ -92,34 +93,42 @@ class AIClient {
 
   // Decidir se deve propor rascunho baseado no histórico
   shouldProposeDraft(helpHistory, userMessage) {
+    // Palavras-chave explícitas que indicam que o usuário quer uma proposta AGORA
+    const explicitProposalKeywords = [
+      'crie agora', 'faça agora', 'escreva agora', 'elabore agora',
+      'pode fazer', 'pode criar', 'me ajuda a criar', 'sugira uma versão',
+      'proposta final', 'versão final', 'rascunho final', 'pode escrever'
+    ]
+    
+    const hasExplicitRequest = explicitProposalKeywords.some(keyword => 
+      userMessage.toLowerCase().includes(keyword)
+    )
+    
+    // Se tem pedido explícito, sempre atender (exceto primeira mensagem absoluta)
+    if (hasExplicitRequest && helpHistory.length > 0) {
+      return true
+    }
+    
     // Se é a primeira mensagem, apenas conversar
     if (helpHistory.length === 0) {
       return false
     }
     
-    // Se já tem pelo menos 1 troca de mensagens (2 mensagens total)
-    // E a mensagem atual parece ter informação suficiente
-    if (helpHistory.length >= 2) {
+    // Contar apenas mensagens do usuário (não da AI) para determinar contexto
+    const userMessages = helpHistory.filter(msg => msg.role === 'user').length
+    
+    // Mínimo de 2 mensagens do usuário antes de propor rascunho
+    if (userMessages < 2) {
+      return false
+    }
+    
+    // Se já tem pelo menos 2 mensagens do usuário E histórico total >= 4
+    if (userMessages >= 2 && helpHistory.length >= 4) {
       return true
     }
     
-    // Se a mensagem atual é longa e detalhada (>50 caracteres)
-    if (userMessage.length > 50) {
-      return true  
-    }
-    
-    // Palavras-chave que indicam que o usuário quer uma proposta
-    const proposalKeywords = [
-      'crie', 'faça', 'escreva', 'elabore', 'desenvolva', 'monte',
-      'pode fazer', 'pode criar', 'me ajuda a', 'sugira',
-      'proposta', 'versão', 'rascunho', 'exemplo'
-    ]
-    
-    const hasProposalIntent = proposalKeywords.some(keyword => 
-      userMessage.toLowerCase().includes(keyword)
-    )
-    
-    return hasProposalIntent
+    // Caso contrário, continuar conversando
+    return false
   }
 
   // Construir prompt do sistema para o campo específico
