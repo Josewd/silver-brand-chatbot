@@ -1,0 +1,666 @@
+/* FormPanel.css - Design Silver Brand House */
+
+.form-panel {
+  max-width: 210mm; /* A4 width */
+  margin: 0 auto;
+  padding: 0;
+  background: #fff;
+  min-height: 100vh;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+.form-panel.loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 400px;
+}
+
+.loading-message {
+  color: #666;
+  font-size: 16px;
+}
+
+/* Header do formulário - Estilo Silver Brand House */
+.form-header {
+  background: #000;
+  color: #fff;
+  padding: 30px 40px 20px;
+  position: relative;
+  margin-bottom: 0;
+  border: none;
+}
+
+.form-header::before {
+  content: '';
+  position: absolute;
+  top: 20px;
+  right: 40px;
+  width: 2px;
+  height: 60px;
+  background: #fff;
+}
+
+.brand-contact {
+  position: absolute;
+  top: 20px;
+  right: 60px;
+  font-size: 11px;
+  line-height: 1.2;
+  text-align: right;
+}
+
+.form-title {
+  font-size: 42px;
+  font-weight: 900;
+  color: #fff;
+  margin: 0;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  line-height: 0.9;
+}
+
+.form-subtitle {
+  font-size: 24px;
+  font-weight: 300;
+  color: #fff;
+  margin: 5px 0 20px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  line-height: 1;
+}
+
+.form-description {
+  font-size: 12px;
+  color: #fff;
+  line-height: 1.4;
+  margin-top: 20px;
+  max-width: 70%;
+}
+
+.client-info {
+  margin-top: 25px;
+  padding-top: 15px;
+  border-top: 1px solid #333;
+}
+
+.client-label {
+  font-size: 11px;
+  color: #ccc;
+  margin-bottom: 5px;
+}
+
+.client-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: #fff;
+}
+
+/* Seções do formulário - Design minimalista */
+.form-content {
+  padding: 40px;
+}
+
+.form-sections {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.form-section {
+  background: #fff;
+  border-radius: 0;
+  padding: 30px 0;
+  border: none;
+  border-bottom: 1px solid #e5e5e5;
+  transition: none;
+  page-break-inside: avoid;
+}
+
+.form-section:last-child {
+  border-bottom: none;
+}
+
+.form-section.completed {
+  border-color: #e5e5e5;
+  background: #fff;
+}
+
+.form-section.in-progress {
+  border-color: #e5e5e5;
+  background: #fff;
+}
+
+.form-section.pending {
+  border-color: #e5e5e5;
+  background: #fff;
+}
+
+/* Header da seção - Estilo PDF */
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 30px;
+  padding-bottom: 15px;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.section-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: #000;
+  margin: 0 0 20px 0;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.section-progress {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.progress-text {
+  font-size: 14px;
+  font-weight: 500;
+  color: #475569;
+  min-width: 35px;
+}
+
+.progress-bar {
+  width: 100px;
+  height: 6px;
+  background-color: #e2e8f0;
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #3b82f6, #1d4ed8);
+  border-radius: 3px;
+  transition: width 0.3s ease;
+}
+
+/* Campos da seção */
+.section-fields {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 20px;
+}
+
+/* Layout específico para campos de contato */
+.section-fields.contact-layout {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 15px 20px;
+}
+
+.section-fields.contact-layout .form-field:nth-child(3) {
+  grid-column: 1 / -1; /* Nome da empresa ocupa toda largura */
+}
+
+.section-fields.contact-layout .form-field:nth-child(4) {
+  grid-column: 1 / -1; /* Website ocupa toda largura */
+}
+
+/* Layout para informações básicas em linha */
+.section-fields.basic-layout {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+
+/* Campo individual */
+.form-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.field-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.field-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #000;
+  margin-bottom: 6px;
+  text-transform: none;
+}
+
+.field-required {
+  color: #000;
+  font-weight: 600;
+}
+
+/* Inputs base - Estilo minimalista */
+.field-input,
+.field-textarea,
+.field-select {
+  padding: 8px 0;
+  border: none;
+  border-bottom: 1px solid #ccc;
+  border-radius: 0;
+  font-size: 13px;
+  color: #000;
+  background: transparent;
+  transition: border-color 0.2s ease;
+  font-family: inherit;
+}
+
+.field-input:focus,
+.field-textarea:focus,
+.field-select:focus {
+  outline: none;
+  border-bottom-color: #000;
+  box-shadow: none;
+}
+
+.field-input:disabled,
+.field-textarea:disabled,
+.field-select:disabled {
+  background-color: transparent;
+  color: #999;
+  cursor: not-allowed;
+}
+
+.field-input::placeholder,
+.field-textarea::placeholder {
+  color: #999;
+  font-style: italic;
+}
+
+/* Textarea específico */
+.field-textarea {
+  min-height: 60px;
+  resize: vertical;
+  line-height: 1.4;
+}
+
+/* MultiSelect - Design limpo */
+.multiselect-container {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.multiselect-option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 0;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: none;
+  user-select: none;
+}
+
+.multiselect-option:hover {
+  background: transparent;
+}
+
+.multiselect-option.selected {
+  background: transparent;
+}
+
+.multiselect-checkbox {
+  width: 14px;
+  height: 14px;
+  cursor: pointer;
+  border: 1px solid #000;
+  background: transparent;
+}
+
+.multiselect-checkbox:checked {
+  background: #000;
+}
+
+.multiselect-label {
+  flex: 1;
+  font-size: 13px;
+  color: #000;
+}
+
+/* Scale Input - Design simplificado */
+.scale-container {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 15px 0;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid #ccc;
+}
+
+.scale-labels {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex: 1;
+  margin-right: 20px;
+}
+
+.scale-label {
+  font-size: 12px;
+  color: #000;
+  font-weight: 500;
+}
+
+.scale-inputs {
+  display: flex;
+  gap: 15px;
+}
+
+.scale-radio input[type="radio"] {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 16px;
+  height: 16px;
+  border: 1px solid #000;
+  border-radius: 0;
+  background: transparent;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  margin: 0;
+}
+
+.scale-radio input[type="radio"]:hover {
+  background: #f5f5f5;
+}
+
+.scale-radio input[type="radio"]:checked {
+  background: #000;
+}
+
+/* Notice de somente leitura */
+.readonly-notice {
+  margin-top: 30px;
+  padding: 15px 20px;
+  background: #f8f8f8;
+  border: 1px solid #ddd;
+  border-radius: 0;
+  text-align: center;
+  color: #666;
+  font-weight: 500;
+  font-size: 12px;
+}
+
+/* Responsividade - Adaptado para design Silver Brand House */
+@media (max-width: 768px) {
+  .form-panel {
+    padding: 0;
+  }
+
+  .form-header {
+    padding: 20px 25px 15px;
+  }
+
+  .brand-contact {
+    right: 45px;
+    font-size: 10px;
+  }
+
+  .form-title {
+    font-size: 28px;
+  }
+
+  .form-subtitle {
+    font-size: 18px;
+  }
+
+  .form-description {
+    max-width: 85%;
+    font-size: 11px;
+  }
+
+  .form-content {
+    padding: 25px;
+  }
+
+  .form-section {
+    padding: 20px 0;
+  }
+
+  .section-fields.contact-layout {
+    grid-template-columns: 1fr;
+    gap: 15px;
+  }
+
+  .section-fields.contact-layout .form-field:nth-child(3),
+  .section-fields.contact-layout .form-field:nth-child(4) {
+    grid-column: 1;
+  }
+
+  .section-fields.basic-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .scale-container {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 15px;
+    padding: 15px 0;
+  }
+
+  .scale-labels {
+    order: 1;
+    margin-right: 0;
+  }
+
+  .scale-inputs {
+    order: 2;
+    justify-content: center;
+  }
+}
+
+@media (max-width: 480px) {
+  .form-header {
+    padding: 15px 20px 12px;
+  }
+
+  .form-header::before {
+    display: none;
+  }
+
+  .brand-contact {
+    position: static;
+    margin-top: 15px;
+    text-align: left;
+    font-size: 9px;
+  }
+
+  .form-title {
+    font-size: 24px;
+  }
+
+  .form-subtitle {
+    font-size: 16px;
+  }
+
+  .form-description {
+    max-width: 100%;
+    font-size: 10px;
+  }
+
+  .form-content {
+    padding: 20px;
+  }
+
+  .section-fields {
+    gap: 15px;
+  }
+
+  .form-section {
+    padding: 15px 0;
+  }
+
+  .multiselect-container {
+    gap: 6px;
+  }
+
+  .multiselect-option {
+    padding: 6px 0;
+  }
+
+  .scale-inputs {
+    gap: 10px;
+  }
+
+  .included-items-grid {
+    grid-template-columns: 1fr;
+    gap: 6px;
+  }
+}
+
+/* Impressão - Para manter formato A4 */
+@media print {
+  .form-panel {
+    max-width: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  .form-header {
+    background: #000 !important;
+    color: #fff !important;
+    -webkit-print-color-adjust: exact;
+    color-adjust: exact;
+  }
+
+  .form-content {
+    padding: 20mm;
+  }
+
+  .form-section {
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+
+  .field-input,
+  .field-textarea,
+  .field-select {
+    border-bottom: 1px solid #000 !important;
+    -webkit-print-color-adjust: exact;
+    color-adjust: exact;
+  }
+}
+
+/* Classes auxiliares para layout específico */
+.section-number {
+  position: absolute;
+  bottom: 20px;
+  right: 40px;
+  font-size: 36px;
+  font-weight: 900;
+  color: rgba(255, 255, 255, 0.3);
+}
+
+.page-indicator {
+  position: absolute;
+  bottom: 20px;
+  right: 40px;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+/* Layout especial para seção de personalidade */
+.personality-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 25px;
+}
+
+.personality-scales {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 15px;
+}
+
+.personality-words {
+  border-top: 1px solid #e5e5e5;
+  padding-top: 25px;
+}
+
+/* Campo de escala sem label */
+.scale-field-no-label {
+  margin-bottom: 0;
+}
+
+.scale-field-no-label .scale-container {
+  border-bottom: none;
+  padding: 10px 0;
+}
+
+/* Lista de itens inclusos */
+.included-list-container {
+  margin: 15px 0;
+}
+
+.included-items-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px 20px;
+  margin-top: 10px;
+}
+
+.included-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.included-item .bullet {
+  color: #000;
+  font-weight: bold;
+  margin-top: 1px;
+  flex-shrink: 0;
+}
+
+.included-item .item-text {
+  color: #000;
+  flex: 1;
+}
+
+/* Indicador visual para campos obrigatórios */
+.field-required-indicator {
+  color: #000;
+  font-weight: bold;
+  margin-left: 2px;
+}
+
+/* Espaçamento específico para diferentes tipos de campo */
+.field-group {
+  margin-bottom: 25px;
+}
+
+.field-group:last-child {
+  margin-bottom: 0;
+}
+
+/* Texto de exemplo/placeholder estilizado */
+.field-example {
+  font-size: 11px;
+  color: #999;
+  font-style: italic;
+  margin-top: 4px;
+  line-height: 1.3;
+}
+
+/* Urgency note styling */
+.urgency-note {
+  position: absolute;
+  bottom: 90px;
+  right: 40px;
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.8);
+  max-width: 200px;
+  line-height: 1.3;
+}

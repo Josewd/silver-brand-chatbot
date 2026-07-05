@@ -1,22 +1,27 @@
+/* AdminPage.css - Mantendo a paleta de cores do projeto */
+
 .admin-page {
   min-height: 100vh;
-  background: #f5f5f5;
+  background: linear-gradient(135deg, #f8fafc, #e2e8f0);
   padding: 20px;
 }
 
-.admin-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  color: #000000;
-  padding: 40px 20px;
+.admin-container {
   max-width: 1200px;
   margin: 0 auto;
 }
 
-.header-left {
+/* Header */
+.admin-header {
+  background: #fff;
+  border-radius: 12px;
+  padding: 30px;
+  margin-bottom: 30px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+}
+
+.header-content {
   text-align: center;
-  flex: 1;
 }
 
 .admin-logo {
@@ -24,70 +29,94 @@
   margin-bottom: 20px;
 }
 
-.admin-header h1 {
-  font-size: 36px;
-  margin-bottom: 10px;
+.admin-title {
+  font-size: 32px;
+  font-weight: 700;
+  color: #1e293b;
+  margin-bottom: 8px;
+  letter-spacing: 0.5px;
 }
 
-.admin-header p {
+.admin-subtitle {
   font-size: 16px;
-  opacity: 0.9;
+  color: #64748b;
+  margin: 0;
 }
 
-.btn-logout {
-  background: #e74c3c;
-  color: white;
-  border: none;
-  padding: 10px 20px;
-  border-radius: 6px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background 0.3s, transform 0.2s;
-  font-size: 14px;
-}
-
-.btn-logout:hover {
-  background: #c0392b;
-  transform: translateY(-2px);
-}
-
-.admin-content {
-  max-width: 1200px;
-  margin: 0 auto;
-}
-
-.actions-bar {
-  margin-bottom: 30px;
-}
-
-.btn-create {
-  padding: 14px 28px;
-  background: #000000;
-  color: white;
-  border: none;
+/* Error Banner */
+.error-banner {
+  background: #fee;
+  color: #c00;
+  padding: 15px 20px;
   border-radius: 8px;
+  border: 1px solid #fcc;
+  margin-bottom: 20px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.error-icon {
+  font-size: 18px;
+}
+
+.error-close {
+  margin-left: auto;
+  background: none;
+  border: none;
+  color: #c00;
+  font-size: 20px;
+  cursor: pointer;
+  padding: 0;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Actions */
+.admin-actions {
+  margin-bottom: 30px;
+}
+
+.btn-create-session {
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  color: #fff;
+  border: none;
+  padding: 16px 24px;
   font-size: 16px;
   font-weight: 600;
+  border-radius: 8px;
   cursor: pointer;
-  transition: transform 0.2s, box-shadow 0.2s;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
 }
 
-.btn-create:hover {
+.btn-create-session:hover:not(:disabled) {
   transform: translateY(-2px);
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 6px 16px rgba(102, 126, 234, 0.4);
 }
 
-.create-form-card {
-  background: white;
+.btn-create-session:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* Create Session Form */
+.create-session-form {
+  background: #fff;
   border-radius: 12px;
-  padding: 30px;
+  padding: 25px;
   margin-bottom: 30px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+  border: 2px solid #3b82f6;
 }
 
-.create-form-card h2 {
-  color: #333;
+.create-session-form h3 {
+  color: #1e293b;
+  font-size: 20px;
   margin-bottom: 20px;
 }
 
@@ -97,125 +126,171 @@
 
 .form-group label {
   display: block;
-  margin-bottom: 8px;
-  color: #555;
-  font-weight: 600;
+  font-weight: 500;
+  color: #374151;
+  margin-bottom: 6px;
 }
 
 .form-group input,
 .form-group textarea {
   width: 100%;
-  padding: 12px;
-  border: 1px solid #ddd;
-  border-radius: 8px;
-  font-size: 15px;
+  padding: 12px 16px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 14px;
   font-family: inherit;
-  transition: border-color 0.2s;
+  transition: border-color 0.2s ease;
 }
 
 .form-group input:focus,
 .form-group textarea:focus {
   outline: none;
-  border-color: #000000;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.form-group small {
+  color: #6b7280;
+  font-size: 12px;
+  margin-top: 4px;
+  display: block;
+}
+
+/* Prefill inputs */
+.prefill-inputs {
+  display: grid;
+  gap: 15px;
+}
+
+.input-row {
+  display: grid;
+  grid-template-columns: 120px 1fr;
+  gap: 12px;
+  align-items: center;
+}
+
+.input-row label {
+  font-size: 13px;
+  font-weight: 500;
+  color: #4b5563;
+  margin: 0;
+}
+
+.input-row input {
+  margin: 0;
+}
+
+.form-actions {
+  display: flex;
+  gap: 12px;
 }
 
 .btn-submit {
-  width: 100%;
-  padding: 14px;
-  background: #000000;
-  color: white;
+  background: #22c55e;
+  color: #fff;
   border: none;
-  border-radius: 8px;
-  font-size: 16px;
-  font-weight: 600;
+  padding: 12px 24px;
+  border-radius: 6px;
+  font-weight: 500;
   cursor: pointer;
-  transition: transform 0.2s;
+  transition: all 0.2s ease;
 }
 
 .btn-submit:hover:not(:disabled) {
-  transform: translateY(-2px);
+  background: #16a34a;
+  transform: translateY(-1px);
 }
 
 .btn-submit:disabled {
   opacity: 0.6;
   cursor: not-allowed;
+  transform: none;
 }
 
-.success-card {
-  margin-top: 30px;
-  padding: 20px;
-  background: #f0fdf4;
-  border: 2px solid #86efac;
-  border-radius: 8px;
-}
-
-.success-card h3 {
-  color: #166534;
-  margin-bottom: 15px;
-}
-
-.session-link {
-  margin: 15px 0;
-}
-
-.session-link strong {
-  display: block;
-  margin-bottom: 8px;
-  color: #555;
-}
-
-.link-container {
-  display: flex;
-  gap: 10px;
-}
-
-.link-container input {
-  flex: 1;
-  padding: 10px;
-  border: 1px solid #ddd;
-  border-radius: 6px;
-  font-size: 14px;
-}
-
-.link-container button {
-  padding: 10px 20px;
-  background: #000000;
-  color: white;
+.btn-cancel {
+  background: #6b7280;
+  color: #fff;
   border: none;
+  padding: 12px 24px;
+  border-radius: 6px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-cancel:hover {
+  background: #4b5563;
+  transform: translateY(-1px);
+}
+
+/* Sessions Section */
+.sessions-section {
+  background: #fff;
+  border-radius: 12px;
+  padding: 25px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+}
+
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 25px;
+  padding-bottom: 15px;
+  border-bottom: 2px solid #e2e8f0;
+}
+
+.section-header h2 {
+  color: #1e293b;
+  font-size: 24px;
+  margin: 0;
+}
+
+.btn-refresh {
+  background: #f3f4f6;
+  color: #374151;
+  border: 1px solid #d1d5db;
+  padding: 8px 16px;
   border-radius: 6px;
   cursor: pointer;
-  transition: background 0.2s;
-}
-
-.link-container button:hover {
-  background: #333333;
-}
-
-.info-text {
-  margin-top: 10px;
-  color: #666;
   font-size: 14px;
+  transition: all 0.2s ease;
 }
 
-.sessions-list {
-  background: white;
-  border-radius: 12px;
-  padding: 30px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+.btn-refresh:hover:not(:disabled) {
+  background: #e5e7eb;
+  transform: translateY(-1px);
 }
 
-.sessions-list h2 {
-  color: #333;
-  margin-bottom: 20px;
+.btn-refresh:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
+/* Loading and Empty States */
+.loading-state,
 .empty-state {
   text-align: center;
-  color: #999;
-  padding: 40px;
-  font-size: 16px;
+  padding: 60px 20px;
+  color: #6b7280;
 }
 
+.spinner {
+  width: 40px;
+  height: 40px;
+  border: 4px solid #e5e7eb;
+  border-top: 4px solid #3b82f6;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin: 0 auto 20px;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Sessions Grid */
 .sessions-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
@@ -223,45 +298,43 @@
 }
 
 .session-card {
-  border: 1px solid #e5e5e5;
+  background: #f8fafc;
+  border: 2px solid #e2e8f0;
   border-radius: 8px;
   padding: 20px;
-  transition: box-shadow 0.2s, transform 0.2s;
+  transition: all 0.2s ease;
 }
 
 .session-card:hover {
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  border-color: #3b82f6;
   transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
 }
 
 .session-header {
   display: flex;
   justify-content: space-between;
-  align-items: flex-start;
+  align-items: center;
   margin-bottom: 15px;
 }
 
-.session-header h3 {
-  color: #333;
-  font-size: 18px;
-  margin: 0;
-}
-
-.status-badge {
-  padding: 4px 12px;
-  border-radius: 20px;
+.session-id {
+  font-family: 'Monaco', 'Menlo', monospace;
+  background: #e5e7eb;
+  color: #374151;
+  padding: 4px 8px;
+  border-radius: 4px;
   font-size: 12px;
   font-weight: 600;
 }
 
-.status-badge.completed {
-  background: #dcfce7;
-  color: #166534;
-}
-
-.status-badge.pending {
-  background: #fef3c7;
-  color: #92400e;
+.session-status {
+  color: #fff;
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 500;
+  text-transform: uppercase;
 }
 
 .session-info {
@@ -271,57 +344,74 @@
 .info-row {
   display: flex;
   justify-content: space-between;
+  align-items: center;
   margin-bottom: 8px;
-  font-size: 14px;
 }
 
-.info-row .label {
-  color: #666;
+.info-label {
+  font-size: 13px;
+  color: #6b7280;
 }
 
-.info-row .value {
-  color: #333;
-  font-weight: 600;
+.info-value {
+  font-size: 13px;
+  color: #1f2937;
+  font-weight: 500;
 }
 
 .session-actions {
-  display: flex;
-  gap: 10px;
+  border-top: 1px solid #e2e8f0;
+  padding-top: 15px;
 }
 
-.btn-view,
-.btn-download {
-  flex: 1;
-  padding: 10px;
+.btn-copy-link {
+  background: #000;
+  color: #fff;
   border: none;
+  padding: 10px 16px;
   border-radius: 6px;
-  font-size: 14px;
-  font-weight: 600;
   cursor: pointer;
-  transition: transform 0.2s;
+  font-size: 14px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  width: 100%;
 }
 
-.btn-view {
-  background: #000000;
-  color: white;
+.btn-copy-link:hover {
+  background: #1a1a1a;
+  transform: translateY(-1px);
 }
 
-.btn-download {
-  background: #333333;
-  color: white;
-}
-
-.btn-view:hover,
-.btn-download:hover {
-  transform: translateY(-2px);
-}
-
+/* Responsive */
 @media (max-width: 768px) {
+  .admin-page {
+    padding: 15px;
+  }
+
+  .admin-header {
+    padding: 20px;
+  }
+
+  .admin-title {
+    font-size: 24px;
+  }
+
+  .section-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 15px;
+  }
+
   .sessions-grid {
     grid-template-columns: 1fr;
   }
-  
-  .link-container {
+
+  .form-actions {
     flex-direction: column;
+  }
+
+  .btn-submit,
+  .btn-cancel {
+    width: 100%;
   }
 }

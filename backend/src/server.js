@@ -6,10 +6,16 @@ const { Server } = require('socket.io');
 const cors = require('cors');
 const { v4: uuidv4 } = require('uuid');
 
-const { initDatabase, createSession, getSession, updateFormState, saveMessage, getMessages, getAllSessions } = require('./db/sqlite-database');
-const { extractFields } = require('./ai/extractFields');
-const { calculateProgress } = require('./utils/progress');
+// Sistema antigo SQLite (comentado temporariamente)
+// const { initDatabase, createSession, getSession, updateFormState, saveMessage, getMessages, getAllSessions } = require('./db/sqlite-database');
+// const { extractFields } = require('./ai/extractFields');
+// const { calculateProgress } = require('./utils/progress');
 const formSchema = require('./schema/form-schema.json');
+
+// Importar novas rotas REST para formulário com ajuda inteligente
+const adminRoutes = require('./routes/admin');
+const sessionRoutes = require('./routes/sessions');
+const fieldHelpRoutes = require('./routes/fieldHelp');
 
 const app = express();
 const server = createServer(app);
@@ -30,6 +36,11 @@ const corsOptions = {
 
 app.use(cors(corsOptions));
 app.use(express.json());
+
+// === NOVAS ROTAS REST PARA FORMULÁRIO ===
+app.use('/api/admin', adminRoutes);
+app.use('/api/sessions', sessionRoutes);
+app.use('/api/sessions', fieldHelpRoutes);
 
 // Socket.io com configuração para Render free tier
 const io = new Server(server, {

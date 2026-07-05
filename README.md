@@ -1,272 +1,263 @@
-# Silver Brand House - Chatbot de Briefing Interativo
+# Silver Brand Chatbot - Formulário com Ajuda Inteligente
 
-Sistema completo de briefing interativo para coleta de informações de identidade visual, com chat inteligente, painel administrativo e geração automática de PDF.
+Sistema de briefing de marca com IA integrada por campo, mantendo o chat existente e adicionando novo formulário interativo.
 
-## 🎯 Funcionalidades
+## 🏗️ Arquitetura
 
-- **Chat Inteligente**: Sistema de IA híbrido (Groq + Hugging Face) com fallback automático
-- **Barra de Progresso Visual**: Checkpoints interativos com tooltips mostrando cada etapa
-- **Painel Administrativo**: Gerenciamento de sessões, visualização de briefings e downloads
-- **Geração de PDF**: Briefing completo formatado profissionalmente
-- **Interface Moderna**: React + Vite com design responsivo
-- **Alta Disponibilidade**: Fallback automático entre providers de IA
+**Princípio central**: A IA só é chamada quando o usuário pede ajuda explicitamente, campo por campo. Isso elimina custo desnecessário e evita chamadas genéricas.
 
-## 🚀 Stack Tecnológica
+### Fluxo Principal
+1. **Admin** cria sessão via `/admin/new` → gera link único `/form/:clientToken`
+2. **Cliente** acessa o link → vê formulário com campos pré-preenchidos (se houver)
+3. **Cliente** preenche campos simples diretamente no formulário
+4. **Cliente** clica "✨ Ajuda Inteligente" nos campos complexos → abre chat focado apenas naquele campo
+5. **IA** conversa sobre o campo específico → propõe rascunho → cliente aplica ou continua ajustando
 
-### Backend
-- **FastAPI**: Framework web moderno e rápido
-- **SQLite**: Banco de dados leve para persistência
-- **Groq + Hugging Face**: Sistema híbrido de IA com fallback automático
-  - Groq (Primário): Llama 3.3 70B - Rápido e eficiente
-  - Hugging Face (Fallback): Llama 3.1 8B - Backup confiável
-- **ReportLab**: Geração de PDFs profissionais
+### Tecnologias
+- **Frontend**: React (mantendo estilos atuais)
+- **Backend**: Node.js + Express + PostgreSQL
+- **IA**: Groq API (gratuita) com fallback OpenAI
+- **Deploy**: Render free tier + Supabase/Neon (Postgres)
 
-### Frontend
-- **React 18**: Biblioteca UI moderna
-- **Vite**: Build tool ultra-rápido
-- **React Router**: Navegação entre páginas
+## 🚀 Configuração
 
-## ✨ Sistema de IA Híbrido
-
-O chatbot usa um **sistema inteligente com fallback automático**:
-
-```
-1. Groq (Primário) → Responde 95%+ das conversas
-   ↓ Se falhar
-2. Hugging Face (Fallback) → Backup automático
-   ↓ Se falhar
-3. Mensagem de erro amigável
-```
-
-**Benefícios:**
-- ✅ 99.9% de disponibilidade
-- ✅ 100% gratuito
-- ✅ Alta performance
-- ✅ Sem limites práticos
-- ✅ Transparente para o usuário
-
-📖 Leia mais: [`SISTEMA_IA_HIBRIDO.md`](SISTEMA_IA_HIBRIDO.md)
-
-## 📋 Pré-requisitos
-
-- Python 3.11+
-- Node.js 18+
-- Chave de API do Groq (obrigatório)
-- Chave de API do Hugging Face (opcional, mas recomendado)
-
-## ⚡ Início Rápido (5 minutos)
-
-Veja: [`INICIO_RAPIDO.md`](INICIO_RAPIDO.md)
-
-## 🔧 Instalação Local Completa
-
-### 1. Clone o repositório
-```bash
-git clone https://github.com/seu-usuario/silver-brand-chatbot.git
-cd silver-brand-chatbot
-```
-
-### 2. Configure o Backend
+### 1. Backend
 
 ```bash
-# Crie e ative o ambiente virtual
-python -m venv venv
-source venv/bin/activate  # No Windows: venv\Scripts\activate
-
-# Instale as dependências
-pip install -r requirements.txt
-
-# Configure as variáveis de ambiente
-cp .env.example .env
-# Edite o .env e adicione suas chaves de API
+cd backend
+npm install
 ```
 
-### 3. Obter API Keys (Gratuito)
+**Variáveis de ambiente** (`.env`):
+```env
+# IA
+GROQ_API_KEY=sua_chave_groq
+OPENAI_API_KEY=sua_chave_openai  # opcional, fallback
+AI_PROVIDER=groq
 
-**Groq (Obrigatório):**
-1. Acesse: https://console.groq.com/
-2. Crie conta → API Keys → Create API Key
-3. Copie a key `gsk_...` para o `.env`
+# Banco PostgreSQL (Supabase/Neon)
+SUPABASE_URL=postgresql://user:pass@host:5432/db
 
-**Hugging Face (Opcional mas recomendado):**
-1. Acesse: https://huggingface.co/settings/tokens
-2. New token → Read access
-3. Copie a key `hf_...` para o `.env`
+# Admin
+ADMIN_API_KEY=silver-admin-2026-key
 
-📖 Guia detalhado: [`COMO_OBTER_API_KEYS.md`](COMO_OBTER_API_KEYS.md)
+# CORS
+FRONTEND_URL=http://localhost:5173
+```
 
-### 4. Testar Sistema
+**Configurar banco**:
+```sql
+-- Execute o arquivo database/schema.sql no seu PostgreSQL
+psql -h host -U user -d database -f database/schema.sql
+```
 
+**Rodar servidor**:
 ```bash
-python test_system.py
+npm run dev  # ou npm start
 ```
 
-Deve mostrar:
-```
-✅ 5/5 testes passaram
-🎉 Sistema pronto para uso!
-```
-
-### 5. Configure o Frontend
+### 2. Frontend
 
 ```bash
 cd frontend
 npm install
-npm run build
-cd ..
+npm run dev
 ```
 
-### 6. Execute o servidor
+## 📋 Endpoints API
+
+### Admin
+- `POST /api/admin/sessions` - Criar nova sessão
+- `GET /api/admin/sessions` - Listar todas as sessões
+- `GET /api/admin/sessions/:id` - Obter sessão específica
+
+### Clientes
+- `GET /api/sessions/:id` - Carregar formulário e estado (requer clientToken)
+- `PATCH /api/sessions/:id/fields/:fieldId` - Salvar campo (requer clientToken)
+- `GET /api/sessions/:id/fields/:fieldId/help` - Carregar histórico de ajuda
+- `POST /api/sessions/:id/fields/:fieldId/help` - Enviar mensagem para IA
+
+### Autenticação
+- Rotas `/admin/*`: Header `Authorization: Bearer ADMIN_API_KEY`
+- Rotas `/sessions/*`: Header `x-client-token: TOKEN_DA_SESSAO`
+
+## 🎯 Como Usar
+
+### 1. Criar Sessão (Admin)
+Acesse `/admin/new` ou use a API:
 
 ```bash
-uvicorn app.main:app --reload --port 8000
+curl -X POST http://localhost:3001/api/admin/sessions \
+  -H "Authorization: Bearer silver-admin-2026-key" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "createdBy": "João Admin",
+    "prefill": {
+      "nome": "Cliente Teste",
+      "empresa_slogan": "Empresa XYZ - Inovação em Café"
+    }
+  }'
 ```
 
-Acesse: `http://localhost:8000`
-
-## 🌐 Deploy no Render
-
-### Passo a Passo Completo
-
-📖 Veja: [`DEPLOY_RENDER.md`](DEPLOY_RENDER.md)
-
-### Resumo Rápido
-
-1. Faça push do código para o GitHub
-2. Conecte o repositório no Render
-3. Configure as variáveis de ambiente:
-   - `GROQ_API_KEY` (obrigatório)
-   - `HUGGINGFACE_API_KEY` (opcional)
-   - `ADMIN_EMAIL`, `ADMIN_PHONE`, `COMPANY_NAME`
-   - `FRONTEND_URL` (após deploy do frontend)
-4. Deploy automático!
-
-### Build & Start Commands
-
-**Build:**
-```bash
-pip install -r requirements.txt
+Resposta:
+```json
+{
+  "sessionId": "uuid-da-sessao",
+  "clientToken": "token-unico",
+  "clientLink": "http://localhost:5173/form/token-unico"
+}
 ```
 
-**Start:**
-```bash
-uvicorn app.main:app --host 0.0.0.0 --port $PORT
+### 2. Cliente Preenche Formulário
+1. Acessa o link recebido: `/form/:clientToken`
+2. Vê formulário com 9 seções e campos pré-preenchidos
+3. Preenche campos simples normalmente
+4. Usa "✨ Ajuda Inteligente" nos campos complexos
+
+### 3. Campos com Ajuda IA
+Campos com `"ai_help": true` no schema:
+- `sobre_empresa` - Sobre a empresa 
+- `missao_visao_valores` - Missão, visão e valores
+- `objetivos_hoje` - Principais objetivos hoje
+- `diferencial` - Principal diferencial do negócio
+- `como_ser_percebida` - Como quer ser percebida
+- `diferencial_concorrencia` - O que diferencia da concorrência  
+- `por_que_escolher` - Por que alguém deveria escolher você
+- `tres_palavras` - 3 palavras que definem a marca
+
+## 🔧 Estrutura de Arquivos
+
+```
+backend/
+├── src/
+│   ├── ai/
+│   │   ├── aiClient.js      # Cliente AI principal
+│   │   ├── groq.js          # Implementação Groq
+│   │   └── openai.js        # Implementação OpenAI
+│   ├── db/
+│   │   └── postgres-client.js # Cliente PostgreSQL
+│   ├── routes/
+│   │   ├── admin.js         # Rotas admin
+│   │   ├── sessions.js      # Rotas de sessões
+│   │   └── fieldHelp.js     # Rotas de ajuda por campo
+│   ├── schema/
+│   │   └── form-schema.json # Schema do formulário
+│   └── server.js            # Servidor principal
+├── database/
+│   └── schema.sql           # Esquema do banco
+└── package.json
+
+frontend/
+├── src/
+│   ├── components/
+│   │   ├── FormPanel.jsx        # Formulário principal
+│   │   ├── FieldHelpButton.jsx  # Botão ajuda IA
+│   │   ├── FieldHelpPanel.jsx   # Chat por campo
+│   │   └── inputs/              # Componentes de input
+│   │       ├── TextInput.jsx
+│   │       ├── SelectInput.jsx
+│   │       ├── MultiSelectInput.jsx
+│   │       ├── ScaleInput.jsx
+│   │       └── TextareaInput.jsx
+│   ├── pages/
+│   │   ├── FormPage.jsx         # Página principal do formulário
+│   │   ├── AdminPage.jsx        # Admin para criar sessões
+│   │   └── ChatPage.jsx         # Chat antigo (mantido)
+│   └── App.jsx                  # Roteamento
+└── package.json
 ```
 
-## 📖 Documentação
+## 🎨 Schema do Formulário
 
-- 📄 [`SISTEMA_IA_HIBRIDO.md`](SISTEMA_IA_HIBRIDO.md) - Como funciona o sistema de IA
-- 📄 [`COMO_OBTER_API_KEYS.md`](COMO_OBTER_API_KEYS.md) - Guia de API keys (grátis)
-- 📄 [`MUDANCAS_IA_HIBRIDA.md`](MUDANCAS_IA_HIBRIDA.md) - Resumo das mudanças
-- 📄 [`INICIO_RAPIDO.md`](INICIO_RAPIDO.md) - Setup em 5 minutos
-- 📄 [`DEPLOY_RENDER.md`](DEPLOY_RENDER.md) - Deploy detalhado
-- 📄 [`frontend/DEPLOY_VERCEL.md`](frontend/DEPLOY_VERCEL.md) - Deploy do frontend
+O arquivo `form-schema.json` define:
+- 9 seções: contato, info_basicas, entrega, perfil, posicionamento, personalidade, concorrentes, visual, final
+- Tipos de campo: text, email, select, multiselect, textarea, scale
+- Flag `ai_help: true/false` por campo
+- Validações e opções
 
-## 📁 Estrutura do Projeto
-
-```
-silver-brand-chatbot/
-├── app/
-│   ├── __init__.py
-│   ├── main.py           # API FastAPI
-│   ├── ai.py             # Sistema híbrido de IA ⭐
-│   ├── models.py         # Modelos SQLAlchemy
-│   ├── config.py         # Configurações
-│   └── pdf_generator.py  # Geração de PDFs
-├── frontend/
-│   ├── src/
-│   │   ├── App.jsx
-│   │   ├── pages/
-│   │   │   ├── ChatPage.jsx      # Chat do cliente
-│   │   │   └── AdminPage.jsx     # Painel admin
-│   │   └── ...
-│   └── ...
-├── database/             # SQLite (ignorado no git)
-├── generated_pdfs/       # PDFs gerados (ignorado no git)
-├── requirements.txt      # Dependências Python
-├── test_system.py       # Teste completo do sistema
-├── test_ai_hybrid.py    # Teste do sistema de IA
-└── README.md
+Exemplo:
+```json
+{
+  "id": "missao_visao_valores",
+  "label": "Missão, visão e valores", 
+  "type": "textarea",
+  "ai_help": true
+}
 ```
 
-## 🎨 Estrutura do Briefing
+## 🤖 Como a IA Funciona
 
-O sistema coleta informações em 8 seções:
+### System Prompt
+A IA recebe contexto específico:
+- Campo atual sendo trabalhado
+- Dados já preenchidos no formulário
+- Histórico da conversa daquele campo específico
+- Instruções para focar apenas no campo
 
-1. **Detalhes de Contato** - Nome, email, telefone, localização
-2. **Informações Básicas** - Tipo de projeto, prazo
-3. **Lista de Entrega** - Itens incluídos e extras desejados
-4. **Perfil da Empresa** - Descrição, produtos, missão, valores
-5. **Posicionamento & Personalidade** - Como quer ser percebida, escalas de personalidade
-6. **Concorrentes e Referências** - Análise competitiva, inspirações
-7. **Preferências Visuais** - Cores, estilos de logo, tipografia
-8. **Informações Finais** - Observações adicionais
-
-## 🔒 Segurança
-
-- Variáveis de ambiente para dados sensíveis
-- `.env` no `.gitignore`
-- CORS configurado
-- Validação de entrada com Pydantic
-- Sistema de IA com fallback (não depende de um único provider)
-
-## 🧪 Testes
-
-```bash
-# Testar sistema completo
-python test_system.py
-
-# Testar sistema de IA especificamente
-python test_ai_hybrid.py
+### Tool Calling
+Quando tem informação suficiente, a IA chama:
+```javascript
+propose_field_value({ value: "texto final proposto" })
 ```
 
-## 🚨 Solução de Problemas
+### Fluxo da Conversa
+1. Cliente clica "Ajuda Inteligente"
+2. Abre com pergunta inicial sobre o campo
+3. IA faz perguntas específicas e direcionadas
+4. Quando satisfeita, propõe rascunho
+5. Cliente pode aplicar ou continuar ajustando
 
-### "Rate limit exceeded" no Groq
-✅ Normal! Sistema automaticamente usa Hugging Face como backup.
+## 🔄 Compatibilidade
 
-### "Todos os providers falharam"
-1. Verificar `GROQ_API_KEY` no `.env`
-2. Verificar conexão com internet
-3. Aguardar 1 minuto e tentar novamente
+Sistema mantém **100% compatibilidade** com chat existente:
+- Rotas `/chat/:sessionId` continuam funcionando
+- WebSocket e SQLite preservados
+- Só adiciona novas funcionalidades
 
-### Respostas lentas
-- Provavelmente usando Hugging Face (fallback)
-- Configure `HUGGINGFACE_API_KEY` para melhor performance
+## 🌐 Deploy
 
-## 💡 Por Que Este Sistema é Melhor?
+### Render (Backend)
+1. Conectar repo GitHub
+2. Configurar variáveis de ambiente
+3. Deploy automático
 
-| Característica | Antes (Gemini) | Agora (Híbrido) |
-|---------------|----------------|-----------------|
-| Disponibilidade | ⚠️ 80-90% | ✅ 99.9% |
-| Velocidade | 🐢 Lento | ⚡ Muito rápido |
-| Custo | 💰 Grátis | 💰 Grátis |
-| Rate Limits | ❌ Baixos | ✅ Altos |
-| Fallback | ❌ Não | ✅ Automático |
-| Qualidade | ⭐⭐⭐⭐ | ⭐⭐⭐⭐⭐ |
+### Vercel (Frontend) 
+1. Conectar repo GitHub
+2. Configurar `REACT_APP_ADMIN_API_KEY`
+3. Deploy automático
 
-## 📝 Licença
+### PostgreSQL
+- **Supabase**: Gratuito, fácil setup
+- **Neon**: Alternativa gratuita
+- Executar `database/schema.sql`
 
-Este projeto é proprietário da Silver Brand House.
+## 🐛 Troubleshooting
 
-## 🤝 Contribuindo
+### Erro de CORS
+Verifique `FRONTEND_URL` no backend e configuração CORS
 
-Para contribuir com melhorias:
+### Erro de autenticação
+- Admin: Verificar `ADMIN_API_KEY`  
+- Cliente: Verificar se `clientToken` é válido
 
-1. Fork o projeto
-2. Crie uma branch (`git checkout -b feature/nova-funcionalidade`)
-3. Commit suas mudanças (`git commit -m 'Adiciona nova funcionalidade'`)
-4. Push para a branch (`git push origin feature/nova-funcionalidade`)
-5. Abra um Pull Request
+### Erro de IA
+- Groq: Verificar `GROQ_API_KEY`
+- OpenAI: Fallback automático se configurado
 
-## 📧 Contato
+### Erro de banco
+- Verificar `SUPABASE_URL`
+- Executar migrations: `database/schema.sql`
 
-**Silver Brand House**
-- Email: brandhousesilver@gmail.com
-- Telefone: +55 11 96015-7100
+## 📈 Métricas
 
----
+Sistema calcula progresso automaticamente:
+- Por seção: `(campos_preenchidos / total_campos) * 100`
+- Geral: média das seções
+- Salva a cada alteração de campo
 
-✨ **Sistema 100% gratuito, confiável e pronto para produção!** ✨
+## 🔐 Segurança
 
-Feito com ❤️ pela Silver Brand House
+- **Admin**: API Key simples (pode evoluir para JWT)
+- **Cliente**: Token único por sessão
+- **Banco**: Row Level Security habilitado
+- **CORS**: Configurado por ambiente

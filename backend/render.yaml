@@ -1,0 +1,16 @@
+# Render Deployment Configuration
+# This service will be deployed as a Node.js web service
+
+# Environment: Node.js
+# Build Command: npm install
+# Start Command: npm start
+
+# Required Environment Variables:
+# - GROQ_API_KEY
+# - OPENAI_API_KEY  
+# - SUPABASE_URL
+# - AI_PROVIDER
+# - ADMIN_API_KEY
+# - ADMIN_PASSWORD
+# - FRONTEND_URL
+# - PORT (will be set automatically by Render)
