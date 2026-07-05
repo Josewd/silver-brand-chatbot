@@ -3,7 +3,48 @@ const { Pool } = require('pg')
 // Configuração do pool de conexões PostgreSQL
 class DatabaseClient {
   constructor() {
-    // Priorizar SUPABASE_URL, fallback para DATABASE_URL, e depois localhost
+    console.log('🔧 Configurando conexão PostgreSQL...')
+    console.log('📊 Environment:', process.env.NODE_ENV)
+    
+    // FORÇA CONFIGURAÇÃO DIRETA PARA SUPABASE EM PRODUÇÃO
+    if (process.env.NODE_ENV === 'production') {
+      console.log('🚀 PRODUÇÃO DETECTADA - Usando configuração Supabase direta')
+      const poolConfig = {
+        user: 'postgres',
+        password: 'ezivL8MIDMpHA6aQ',
+        host: 'db.dkuhctiznnwalyptlkhu.supabase.co',
+        port: 6543, // FORÇA POOLING
+        database: 'postgres',
+        ssl: { rejectUnauthorized: false },
+        max: 20,
+        idleTimeoutMillis: 30000,
+        connectionTimeoutMillis: 5000,
+        family: 4, // FORÇA IPv4
+        statement_timeout: 30000,
+        query_timeout: 30000,
+        application_name: 'silver-brand-chatbot'
+      };
+      
+      console.log('✅ Configuração hardcoded ativada:');
+      console.log('   Host:', poolConfig.host);
+      console.log('   Port:', poolConfig.port);
+      console.log('   Family: IPv4 forçado');
+      
+      this.pool = new Pool(poolConfig);
+      
+      // Log de conexão
+      this.pool.on('connect', () => {
+        console.log('📊 Conectado ao banco PostgreSQL (hardcoded)')
+      })
+
+      this.pool.on('error', (err) => {
+        console.error('❌ Erro na conexão com banco:', err)
+      })
+      
+      return; // Sai da função, não executa o resto
+    }
+    
+    // CÓDIGO ORIGINAL PARA DESENVOLVIMENTO
     let connectionString = process.env.SUPABASE_URL || process.env.DATABASE_URL
     
     console.log('🔧 Configurando conexão PostgreSQL...')
