@@ -13,13 +13,13 @@ class DatabaseClient {
         user: 'postgres',
         password: 'ezivL8MIDMpHA6aQ',
         host: 'db.dkuhctiznnwalyptlkhu.supabase.co',
-        port: 6543, // FORÇA POOLING
+        port: 5432, // Porta gratuita
         database: 'postgres',
         ssl: { rejectUnauthorized: false },
         max: 20,
         idleTimeoutMillis: 30000,
         connectionTimeoutMillis: 5000,
-        family: 4, // FORÇA IPv4
+        family: 4, // FORÇA IPv4 - CRÍTICO para resolver ENETUNREACH
         statement_timeout: 30000,
         query_timeout: 30000,
         application_name: 'silver-brand-chatbot'
@@ -27,8 +27,8 @@ class DatabaseClient {
       
       console.log('✅ Configuração hardcoded ativada:');
       console.log('   Host:', poolConfig.host);
-      console.log('   Port:', poolConfig.port);
-      console.log('   Family: IPv4 forçado');
+      console.log('   Port: 5432 (gratuita)');
+      console.log('   Family: IPv4 forçado para resolver ENETUNREACH');
       
       this.pool = new Pool(poolConfig);
       
