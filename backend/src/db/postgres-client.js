@@ -14,10 +14,14 @@ class DatabaseClient {
     console.log('🔍 DATABASE_URL env:', process.env.DATABASE_URL ? 'PRESENTE' : 'AUSENTE')
     console.log('📏 Tamanho da string:', connectionString ? connectionString.length : 0)
     
-    if (!connectionString) {
-      console.error('❌ ERRO: Nenhuma string de conexão encontrada!')
-      console.error('💡 Configure SUPABASE_URL ou DATABASE_URL')
-      throw new Error('Database connection string not found')
+    // Verificar se temos variáveis individuais como alternativa
+    const hasIndividualVars = process.env.DB_HOST && process.env.DB_PASSWORD;
+    console.log('🔍 Variáveis individuais disponíveis:', hasIndividualVars ? 'SIM' : 'NÃO')
+    
+    if (!connectionString && !hasIndividualVars) {
+      console.error('❌ ERRO: Nenhuma configuração de banco encontrada!')
+      console.error('💡 Configure SUPABASE_URL, DATABASE_URL ou variáveis individuais (DB_HOST, DB_PASSWORD, etc.)')
+      throw new Error('Database connection configuration not found')
     }
 
     // Verificar se a string parece truncada
@@ -53,21 +57,99 @@ class DatabaseClient {
       }
     }
     
-    this.pool = new Pool({
-      connectionString,
-      ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
-      max: 20, // Máximo de conexões no pool
-      idleTimeoutMillis: 30000,
-      connectionTimeoutMillis: 5000, // Aumentado para Supabase
-      // Forçar IPv4 para evitar problemas com IPv6
-      family: 4,
-      // Configurações específicas para Supabase
-      ...(connectionString.includes('.supabase.co') && {
+    // Tentar usar parâmetros individuais se detectar problema com connection string
+    let poolConfig;
+    
+    try {
+      // Se temos variáveis individuais, usar elas diretamente
+      if (hasIndividualVars) {
+        console.log('🔧 Usando variáveis de ambiente individuais...')
+        poolConfig = {
+          user: process.env.DB_USER || 'postgres',
+          password: process.env.DB_PASSWORD,
+          host: process.env.DB_HOST,
+          port: parseInt(process.env.DB_PORT) || 5432,
+          database: process.env.DB_NAME || 'postgres',
+          ssl: { rejectUnauthorized: false },
+          max: 20,
+          idleTimeoutMillis: 30000,
+          connectionTimeoutMillis: 5000,
+          family: 4,
+          statement_timeout: 30000,
+          query_timeout: 30000,
+          application_name: 'silver-brand-chatbot'
+        };
+        
+        console.log('🔍 Configuração de variáveis individuais:');
+        console.log('   Host:', poolConfig.host);
+        console.log('   Port:', poolConfig.port);
+        console.log('   User:', poolConfig.user);
+        console.log('   Database:', poolConfig.database);
+        
+      } else if (connectionString.includes('.supabase.co') || process.env.NODE_ENV === 'production') {
+        console.log('🔧 Usando configuração individual para Supabase/Produção...')
+        
+        // Parse manual da URL para evitar problemas com connection string
+        const url = new URL(connectionString);
+        poolConfig = {
+          user: url.username || 'postgres',
+          password: url.password,
+          host: url.hostname,
+          port: parseInt(url.port) || 5432,
+          database: url.pathname.slice(1) || 'postgres', // Remove a barra inicial
+          ssl: { rejectUnauthorized: false },
+          max: 20,
+          idleTimeoutMillis: 30000,
+          connectionTimeoutMillis: 5000,
+          family: 4,
+          statement_timeout: 30000,
+          query_timeout: 30000,
+          application_name: 'silver-brand-chatbot'
+        };
+        
+        console.log('🔍 Configuração parseada:');
+        console.log('   Host:', poolConfig.host);
+        console.log('   Port:', poolConfig.port);
+        console.log('   User:', poolConfig.user);
+        console.log('   Database:', poolConfig.database);
+        console.log('   Password:', poolConfig.password ? '[PRESENTE]' : '[AUSENTE]');
+        
+      } else {
+        console.log('🔧 Usando connection string tradicional...')
+        poolConfig = {
+          connectionString,
+          ssl: false,
+          max: 20,
+          idleTimeoutMillis: 30000,
+          connectionTimeoutMillis: 5000,
+          family: 4
+        };
+      }
+    } catch (error) {
+      console.error('❌ Erro ao fazer parse da URL:', error.message);
+      console.log('🔄 Usando fallback hardcoded para Supabase...');
+      
+      // Fallback hardcoded para o seu projeto específico
+      poolConfig = {
+        user: 'postgres',
+        password: 'ezivL8MIDMpHA6aQ',
+        host: 'db.dkuhctiznnwalyptlkhu.supabase.co',
+        port: 6543, // Usar pooling
+        database: 'postgres',
+        ssl: { rejectUnauthorized: false },
+        max: 20,
+        idleTimeoutMillis: 30000,
+        connectionTimeoutMillis: 5000,
+        family: 4,
         statement_timeout: 30000,
         query_timeout: 30000,
         application_name: 'silver-brand-chatbot'
-      })
-    })
+      };
+      
+      console.log('✅ Fallback configurado com host:', poolConfig.host);
+    }
+    
+    this.pool = new Pool(poolConfig)
 
     // Log de conexão
     this.pool.on('connect', () => {
