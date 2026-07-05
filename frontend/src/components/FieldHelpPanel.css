@@ -296,17 +296,11 @@
   background: #667eea;
   color: #fff;
   border: none;
-  width: 40px;
-  height: 40px;
+  width: fit-content;
+  height: 20px;
   border-radius: 8px;
   cursor: pointer;
   font-size: 16px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.2s ease;
-  flex-shrink: 0;
-}
 
 .help-send-button:hover:not(:disabled) {
   background: #5a6fd8;
