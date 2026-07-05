@@ -664,3 +664,12 @@
   max-width: 200px;
   line-height: 1.3;
 }
+
+@media (max-width: 480px) {
+  .urgency-note {
+    display: none;
+  }
+  .brand-contact {
+    display: none;
+  }
+}

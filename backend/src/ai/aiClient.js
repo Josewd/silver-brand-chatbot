@@ -117,17 +117,14 @@ class AIClient {
     // Contar apenas mensagens do usuário (não da AI) para determinar contexto
     const userMessages = helpHistory.filter(msg => msg.role === 'user').length
     
-    // Mínimo de 2 mensagens do usuário antes de propor rascunho
-    if (userMessages < 2) {
-      return false
-    }
-    
-    // Se já tem pelo menos 2 mensagens do usuário E histórico total >= 4
-    if (userMessages >= 2 && helpHistory.length >= 4) {
+    // NOVA LÓGICA: Após 2 mensagens do usuário, SEMPRE propor rascunho
+    // Isso força a AI a parar de fazer perguntas e criar algo concreto
+    if (userMessages >= 2) {
+      console.log(`🎯 Forçando rascunho: ${userMessages} mensagens do usuário (>= 2)`)
       return true
     }
     
-    // Caso contrário, continuar conversando
+    // Se tem menos de 2 mensagens do usuário, continuar conversando
     return false
   }
 
@@ -153,9 +150,16 @@ class AIClient {
 
     // Adicionar contexto sobre o estágio da conversa
     const isFirstMessage = helpHistory.length === 0
-    const conversationStage = isFirstMessage 
-      ? "PRIMEIRA INTERAÇÃO - Foque em fazer perguntas e entender melhor"
-      : `CONVERSA EM ANDAMENTO - ${helpHistory.length} mensagens trocadas`
+    const userMessageCount = helpHistory.filter(msg => msg.role === 'user').length
+    
+    let conversationStage
+    if (isFirstMessage) {
+      conversationStage = "PRIMEIRA INTERAÇÃO - Foque em fazer 1-2 perguntas específicas"
+    } else if (userMessageCount >= 2) {
+      conversationStage = `TERCEIRA+ INTERAÇÃO - OBRIGATÓRIO propor rascunho com propose_field_value (${userMessageCount} mensagens do usuário)`
+    } else {
+      conversationStage = `SEGUNDA INTERAÇÃO - DEVE propor rascunho se tiver informação suficiente (${userMessageCount} mensagem do usuário)`
+    }
 
     return `
 Você é um ESPECIALISTA EM IDENTIDADE VISUAL E BRANDING com 15+ anos de experiência.
@@ -207,22 +211,20 @@ COMO AGIR POR CAMPO:
 
 FLUXO DE CONVERSA:
 1. **PRIMEIRA INTERAÇÃO**: Faça apenas 1-2 perguntas específicas e relevantes (NÃO uma lista longa)
-2. **SEJA CONVERSACIONAL**: Tome um tópico por vez, como uma conversa real
-3. **QUANDO TIVER CONTEXTO SUFICIENTE**: Então crie uma versão profissional usando propose_field_value
+2. **SEGUNDA INTERAÇÃO**: Com a resposta, SEMPRE crie um rascunho usando propose_field_value
+3. **IMPORTANTE**: Após 2 trocas, pare de fazer perguntas e SEMPRE proponha uma versão
 
 REGRAS IMPORTANTES:
 - ❌ NÃO faça listas de 5-6 perguntas de uma vez (muito formal/robótico)
-- ❌ NÃO proponha rascunho na primeira mensagem
-- ✅ PRIMEIRO converse naturalmente, 1-2 perguntas por vez
-- ✅ SÓ use propose_field_value quando tiver informações suficientes
-- ✅ Seja um consultor curioso, mas conversacional (não questionário)
-- ✅ Explore um tópico por vez, depois aprofunde naturalmente
+- ❌ NÃO continue fazendo perguntas após a segunda rodada
+- ✅ PRIMEIRA mensagem: conversa e 1-2 perguntas
+- ✅ SEGUNDA mensagem: OBRIGATÓRIO usar propose_field_value
+- ✅ Seja um consultor que entrega resultados, não que faz perguntas infinitas
 
-EXEMPLO BOM:
-"Entendi! Para te ajudar melhor, me conta: qual é o principal produto ou serviço da sua empresa? E quem são seus clientes típicos?"
-
-EXEMPLO RUIM:
-"1. Missão e Visão... 2. Produtos/Serviços... 3. Público-Alvo... [lista longa]"
+QUANDO PROPOR RASCUNHO:
+- Se userMessages >= 2: SEMPRE propor (não opcional)
+- Se pedido explícito: SEMPRE propor
+- Com 2 interações já tem contexto suficiente para criar algo profissional
 
 Seja direto, estratégico e transforme ideias amadoras em branding profissional.
 `.trim()

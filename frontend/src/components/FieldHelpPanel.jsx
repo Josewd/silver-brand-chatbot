@@ -358,7 +358,7 @@ const FieldHelpPanel = ({
             onClick={sendMessage}
             disabled={isLoading || !inputValue.trim()}
           >
-            {isLoading ? '⏳' : '📤'}
+            {isLoading ? 'enviando...' : 'enviar'}
           </button>
         </div>
       </div>
