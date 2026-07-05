@@ -10,10 +10,6 @@ function LoginPage() {
   const [loading, setLoading] = useState(false)
   const navigate = useNavigate()
 
-  // ❌ REDIRECIONAMENTO AUTOMÁTICO REMOVIDO 
-  // (Anteriormente havia um useEffect aqui que redirecionava automaticamente para /admin
-  // se existisse um token válido. Foi removido para permitir acesso manual à página de login.)
-
   const handleLogin = async (e) => {
     e.preventDefault()
     setLoading(true)
@@ -54,80 +50,38 @@ function LoginPage() {
     }
   }
 
-  // Função para limpar token e começar do zero
-  const clearSession = () => {
-    localStorage.removeItem('admin_token')
-    setError('')
-    alert('Sessão limpa! Agora você pode fazer login novamente.')
-  }
-
   return (
     <div className="login-page">
       <div className="login-container">
-        <img src="/logo-horizontal.png" alt="Silver Brand House" className="login-logo" />
-        <h1>Painel Administrativo</h1>
-        <p className="login-subtitle">Sistema de Briefing Inteligente</p>
-        
-        {/* Formulário de Login */}
-        <form onSubmit={handleLogin} className="login-form">
-          <div className="form-group">
-            <label htmlFor="password">Senha do Admin:</label>
-            <input
-              id="password"
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="Digite a senha (silveradmin2024)"
-              autoFocus
-              required
-            />
-          </div>
-
-          {error && <div className="error-message">{error}</div>}
-
-          <button type="submit" className="login-button" disabled={loading}>
-            {loading ? 'Verificando...' : 'Entrar no Admin'}
-          </button>
-        </form>
-
-        {/* Opções de desenvolvimento */}
-        <div className="dev-options">
-          <p className="dev-hint">💡 <strong>Opções de Desenvolvimento:</strong></p>
-          
-          <button 
-            onClick={clearSession}
-            className="dev-button clear"
-          >
-            🗑️ Limpar Sessão (Reset)
-          </button>
-          
-          <p className="dev-note">
-            Senha padrão: <code>silveradmin2024</code><br/>
-            <small>💡 Chat só acessível via Admin com sessão válida</small>
-          </p>
+        <div className="login-header">
+          <img src="/logo-horizontal.png" alt="Silver Brand House" className="login-logo" />
+          <div className="brand-line"></div>
         </div>
         
-        <div className="debug-info">
-          <p><strong>🔍 Debug Info:</strong></p>
-          <ul>
-            <li>URL atual: {window.location.pathname}</li>
-            <li>Backend: {BACKEND_URL}</li>
-            <li>Token salvo: {localStorage.getItem('admin_token') ? 'SIM' : 'NÃO'}</li>
-          </ul>
-          {localStorage.getItem('admin_token') && (
-            <button onClick={clearSession} className="dev-button clear">
-              🗑️ Limpar Token
+        <div className="login-content">
+          <h1>Painel Administrativo</h1>
+          <p className="login-subtitle">Sistema de Briefing Inteligente</p>
+          
+          <form onSubmit={handleLogin} className="login-form">
+            <div className="form-group">
+              <label htmlFor="password">Senha de Acesso</label>
+              <input
+                id="password"
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="Digite a senha do administrador"
+                autoFocus
+                required
+              />
+            </div>
+
+            {error && <div className="error-message">{error}</div>}
+
+            <button type="submit" className="login-button" disabled={loading}>
+              {loading ? 'Verificando...' : 'Acessar Painel'}
             </button>
-          )}
-        </div>
-        <div className="system-info">
-          <p><strong>📋 Sistema WebSocket + REST:</strong></p>
-          <ul>
-            <li>🟢 Backend: {BACKEND_URL}</li>
-            <li>📝 35 campos automáticos</li>
-            <li>💾 Persistência Supabase</li>
-            <li>🤖 IA Groq integrada</li>
-          </ul>
+          </form>
         </div>
       </div>
     </div>
