@@ -398,14 +398,6 @@ const AdminPage = () => {
                     >
                       💬 Abrir Chat
                     </button>
-                    <button 
-                      className="btn-delete-session"
-                      onClick={() => deleteSession(session.id)}
-                      disabled={loading}
-                      title="Deletar sessão"
-                    >
-                      🗑️ Deletar
-                    </button>
                   </div>
                 </div>
               ))}
