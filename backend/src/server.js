@@ -831,3 +831,6 @@ process.on('SIGTERM', () => {
     console.log('✅ Servidor encerrado com sucesso');
   });
 });
+
+// Export para Vercel
+module.exports = app;
