@@ -6,6 +6,6 @@
   "installCommand": "npm install",
   "devCommand": "npm run dev",
   "env": {
-    "VITE_BACKEND_URL": "@backend_url"
+    "VITE_BACKEND_URL": "https://silver-brand-chatbot-backend.vercel.app"
   }
 }
