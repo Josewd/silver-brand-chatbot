@@ -426,7 +426,7 @@ const queries = {
   // Admin queries
   getAllSessions: `
     SELECT s.id, s.client_token, s.status, s.created_by, s.created_at,
-           fs.progress
+           fs.data, fs.progress
     FROM sessions s
     LEFT JOIN form_states fs ON s.id = fs.session_id
     ORDER BY s.created_at DESC

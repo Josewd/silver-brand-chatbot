@@ -113,6 +113,7 @@ router.get('/sessions', requireAdminAuth, async (req, res) => {
       status: row.status,
       createdBy: row.created_by,
       createdAt: row.created_at,
+      data: row.data || {}, // Dados do formulário (nome, empresa, etc.)
       progress: row.progress || {}
     }))
 
@@ -147,6 +148,40 @@ router.get('/sessions/:id', requireAdminAuth, async (req, res) => {
 
   } catch (error) {
     console.error('Erro ao obter sessão:', error)
+    res.status(500).json({ error: 'Erro interno do servidor' })
+  }
+})
+
+// DELETE /admin/sessions/:id - Deletar sessão específica
+router.delete('/sessions/:id', requireAdminAuth, async (req, res) => {
+  try {
+    const { id } = req.params
+    
+    console.log(`🗑️ Admin solicitou delete da sessão: ${id}`)
+    
+    // Verificar se a sessão existe
+    const checkResult = await dbClient.query(queries.getSessionById, [id])
+    if (checkResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Sessão não encontrada' })
+    }
+
+    // Deletar dados relacionados primeiro (form_states, help_messages)
+    await dbClient.query('DELETE FROM help_messages WHERE session_id = $1', [id])
+    await dbClient.query('DELETE FROM form_states WHERE session_id = $1', [id])
+    
+    // Deletar a sessão
+    await dbClient.query('DELETE FROM sessions WHERE id = $1', [id])
+
+    console.log(`✅ Sessão ${id} deletada com sucesso`)
+    
+    res.json({
+      success: true,
+      message: 'Sessão deletada com sucesso',
+      sessionId: id
+    })
+
+  } catch (error) {
+    console.error('Erro ao deletar sessão:', error)
     res.status(500).json({ error: 'Erro interno do servidor' })
   }
 })

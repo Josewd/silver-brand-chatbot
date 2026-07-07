@@ -31,7 +31,7 @@ const corsOptions = {
     "https://silver-brand-chatbot.vercel.app"
   ],
   credentials: true,
-  methods: ["GET", "POST"]
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"]
 };
 
 app.use(cors(corsOptions));

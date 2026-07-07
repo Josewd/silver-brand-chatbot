@@ -95,7 +95,7 @@ const AdminPage = () => {
 
     try {
       setLoading(true)
-      const response = await fetch(`${BACKEND_URL}/api/admin/delete-session?sessionId=${sessionId}`, {
+      const response = await fetch(`${BACKEND_URL}/api/admin/sessions/${sessionId}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('admin_token') || 'silver-admin-2026-key'}`
