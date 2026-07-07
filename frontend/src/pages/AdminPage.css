@@ -569,3 +569,75 @@
     padding: 20px;
   }
 }
+
+/* Estilos para informações do cliente */
+.client-info {
+  border-bottom: 1px solid #e5e5e5;
+  padding-bottom: 12px;
+  margin-bottom: 12px;
+}
+
+.client-info .info-row .info-label {
+  font-weight: 600;
+  color: #333;
+}
+
+.client-info .info-row .info-value {
+  font-weight: 500;
+  color: #555;
+}
+
+.session-meta {
+  /* Estilo para meta informações da sessão */
+}
+
+/* Botão de deletar */
+.btn-delete-session {
+  background: #ef4444;
+  color: white;
+  border: none;
+  padding: 8px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.btn-delete-session:hover:not(:disabled) {
+  background: #dc2626;
+  transform: translateY(-1px);
+}
+
+.btn-delete-session:disabled {
+  background: #9ca3af;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* Melhorar layout dos cards */
+.session-card {
+  min-height: 280px; /* Aumentar altura para acomodar mais info */
+}
+
+.session-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* Responsivo para ações */
+@media (max-width: 768px) {
+  .session-actions {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+  
+  .btn-delete-session {
+    order: 3; /* Colocar delete por último no mobile */
+  }
+}

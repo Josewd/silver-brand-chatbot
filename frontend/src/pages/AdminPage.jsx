@@ -88,6 +88,36 @@ const AdminPage = () => {
     }
   }
 
+  const deleteSession = async (sessionId) => {
+    if (!confirm('Tem certeza que deseja deletar esta sessão? Esta ação não pode ser desfeita.')) {
+      return
+    }
+
+    try {
+      setLoading(true)
+      const response = await fetch(`${BACKEND_URL}/api/admin/delete-session?sessionId=${sessionId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('admin_token') || 'silver-admin-2026-key'}`
+        }
+      })
+
+      if (!response.ok) {
+        throw new Error('Erro ao deletar sessão')
+      }
+
+      // Remover sessão da lista
+      setSessions(prev => prev.filter(session => session.id !== sessionId))
+      alert('✅ Sessão deletada com sucesso!')
+
+    } catch (err) {
+      console.error('Erro ao deletar sessão:', err)
+      setError(err.message)
+    } finally {
+      setLoading(false)
+    }
+  }
+
   const copyToClipboard = (text) => {
     navigator.clipboard.writeText(text)
     alert('Link copiado para clipboard!')
@@ -308,21 +338,46 @@ const AdminPage = () => {
                   </div>
 
                   <div className="session-info">
-                    <div className="info-row">
-                      <span className="info-label">Criado por:</span>
-                      <span className="info-value">{session.createdBy || 'N/A'}</span>
+                    {/* Informações do Cliente */}
+                    <div className="client-info">
+                      <div className="info-row">
+                        <span className="info-label">👤 Cliente:</span>
+                        <span className="info-value">
+                          {session.data?.name || session.data?.nome || 'Não informado'}
+                        </span>
+                      </div>
+                      <div className="info-row">
+                        <span className="info-label">🏢 Empresa:</span>
+                        <span className="info-value">
+                          {session.data?.company_slogan || session.data?.empresa_slogan || 'Não informada'}
+                        </span>
+                      </div>
+                      <div className="info-row">
+                        <span className="info-label">📧 Email:</span>
+                        <span className="info-value">
+                          {session.data?.email || 'Não informado'}
+                        </span>
+                      </div>
                     </div>
-                    <div className="info-row">
-                      <span className="info-label">Data:</span>
-                      <span className="info-value">{session.createdAt ? formatDate(session.createdAt) : 'N/A'}</span>
-                    </div>
-                    <div className="info-row">
-                      <span className="info-label">Progresso geral:</span>
-                      <span className="info-value">
-                        {session.progress && Object.keys(session.progress).length > 0 ? 
-                          Math.round(Object.values(session.progress).reduce((a, b) => a + b, 0) / Object.values(session.progress).length) || 0
-                          : 0}%
-                      </span>
+
+                    {/* Informações da Sessão */}
+                    <div className="session-meta">
+                      <div className="info-row">
+                        <span className="info-label">Criado por:</span>
+                        <span className="info-value">{session.createdBy || 'N/A'}</span>
+                      </div>
+                      <div className="info-row">
+                        <span className="info-label">Data:</span>
+                        <span className="info-value">{session.createdAt ? formatDate(session.createdAt) : 'N/A'}</span>
+                      </div>
+                      <div className="info-row">
+                        <span className="info-label">Progresso geral:</span>
+                        <span className="info-value">
+                          {session.progress && Object.keys(session.progress).length > 0 ? 
+                            Math.round(Object.values(session.progress).reduce((a, b) => a + b, 0) / Object.values(session.progress).length) || 0
+                            : 0}%
+                        </span>
+                      </div>
                     </div>
                   </div>
 
@@ -331,6 +386,7 @@ const AdminPage = () => {
                       className="btn-copy-link"
                       onClick={() => copyToClipboard(`${window.location.origin}/form/${session.clientToken || 'N/A'}`)}
                       disabled={!session.clientToken}
+                      title="Copiar link do formulário"
                     >
                       📋 Copiar Link
                     </button>
@@ -338,8 +394,17 @@ const AdminPage = () => {
                       className="btn-open-chat"
                       onClick={() => openChat(session.clientToken)}
                       disabled={!session.clientToken}
+                      title="Abrir formulário em nova aba"
                     >
                       💬 Abrir Chat
+                    </button>
+                    <button 
+                      className="btn-delete-session"
+                      onClick={() => deleteSession(session.id)}
+                      disabled={loading}
+                      title="Deletar sessão"
+                    >
+                      🗑️ Deletar
                     </button>
                   </div>
                 </div>
