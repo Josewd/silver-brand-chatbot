@@ -252,14 +252,6 @@
           "ai_help": false 
         },
         { 
-          "id": "cores_referencias", 
-          "label": "Referências de cores (imagens):", 
-          "type": "file_upload", 
-          "accept": "image/*",
-          "multiple": true,
-          "ai_help": false 
-        },
-        { 
           "id": "cores_quer", 
           "label": "Cores que você gosta e quer explorar:", 
           "type": "text", 
@@ -272,26 +264,10 @@
           "ai_help": false 
         },
         { 
-          "id": "fontes_referencias", 
-          "label": "Referências de tipografia (imagens):", 
-          "type": "file_upload", 
-          "accept": "image/*",
-          "multiple": true,
-          "ai_help": false 
-        },
-        { 
           "id": "tipos_logo", 
           "label": "Tipos de logo que prefere:", 
           "type": "multiselect", 
           "options": ["Com símbolo", "Só a tipografia", "Minimalista", "Clássico", "Moderno"], 
-          "ai_help": false 
-        },
-        { 
-          "id": "logos_referencias", 
-          "label": "Referências de logos (imagens):", 
-          "type": "file_upload", 
-          "accept": "image/*",
-          "multiple": true,
           "ai_help": false 
         },
         { 

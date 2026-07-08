@@ -328,7 +328,6 @@ const AdminPage = () => {
               {sessions.map(session => (
                 <div key={session.id} className="session-card">
                   <div className="session-header">
-                    <div className="session-id">#{session.id?.substring(0, 8) || 'N/A'}</div>
                     <div 
                       className="session-status"
                       style={{ backgroundColor: getStatusColor(session.status) }}

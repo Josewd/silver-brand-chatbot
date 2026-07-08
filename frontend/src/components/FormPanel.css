@@ -21,79 +21,107 @@
   font-size: 16px;
 }
 
-/* Header do formulário - Estilo Silver Brand House */
+/* Header do formulário - Conforme layout do Figma */
 .form-header {
   background: #000;
   color: #fff;
-  padding: 30px 40px 20px;
-  position: relative;
+  padding: 29px 21px 29px 21px;
   margin-bottom: 0;
   border: none;
+  display: flex;
+  align-items: flex-start;
+  gap: 0;
+  position: relative;
+  height: 250px;
+  box-sizing: border-box;
 }
 
-.form-header::before {
-  content: '';
-  position: absolute;
-  top: 20px;
-  right: 40px;
+.header-logo-container {
+    width: 30%;
+    height: 100%;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.header-logo {
+  width: 169px;
+  height: 164px;
+  object-fit: contain;
+}
+
+.header-divider {
   width: 2px;
-  height: 60px;
+  height: 160px;
   background: #fff;
+  flex-shrink: 0;
+  margin-right: 41px;
+  margin-left: 16px;
+  margin-top: 4px;
 }
 
-.brand-contact {
-  position: absolute;
-  top: 20px;
-  right: 60px;
-  font-size: 11px;
-  line-height: 1.2;
-  text-align: right;
+.header-content {
+  flex: 1;
+  padding-top: 0;
+  position: relative;
+  height: 100%;
 }
+
 
 .form-title {
-  font-size: 42px;
-  font-weight: 900;
+  font-size: 28px;
+  font-weight: 700;
   color: #fff;
-  margin: 0;
   letter-spacing: 2px;
   text-transform: uppercase;
-  line-height: 0.9;
+  line-height: 1;
+  font-family: 'Helvetica Neue', -apple-system, BlinkMacSystemFont, sans-serif;
 }
 
 .form-subtitle {
-  font-size: 24px;
-  font-weight: 300;
+  font-size: 22px;
+  font-weight: 400;
   color: #fff;
-  margin: 5px 0 20px;
+  margin: 0 0 18px 0;
   letter-spacing: 1px;
   text-transform: uppercase;
   line-height: 1;
+  font-family: 'Helvetica Neue', sans-serif;
 }
 
 .form-description {
   font-size: 12px;
   color: #fff;
-  line-height: 1.4;
-  margin-top: 20px;
-  max-width: 70%;
+  line-height: 1;
+  font-family: 'Helvetica Neue', sans-serif;
+  max-width: 100%;
+}
+
+.form-description strong {
+  font-weight: 700;
 }
 
 .client-info {
-  margin-top: 25px;
-  padding-top: 15px;
-  border-top: 1px solid #333;
+  margin-top: 18px;
+  padding-top: 0;
 }
 
 .client-label {
-  font-size: 11px;
-  color: #ccc;
-  margin-bottom: 5px;
+  font-size: 12px;
+  color: #fff;
+  margin-bottom: 2px;
+  font-weight: 800;
+  font-family: 'Helvetica Neue', sans-serif;
+  display: inline;
 }
 
 .client-name {
-  font-size: 14px;
-  font-weight: 600;
+  font-size: 12px;
+  font-weight: 400;
   color: #fff;
+  display: inline;
+  margin-left: 4px;
 }
 
 /* Seções do formulário - Design minimalista */
@@ -391,19 +419,47 @@
   font-size: 12px;
 }
 
-/* Responsividade - Adaptado para design Silver Brand House */
+/* Responsividade - Mantém layout horizontal em mobile */
 @media (max-width: 768px) {
   .form-panel {
     padding: 0;
   }
 
   .form-header {
-    padding: 20px 25px 15px;
+    padding: 20px 15px;
+    height: auto;
+    min-height: 100px;
+    /* Mantém flex horizontal */
+    align-items: flex-start;
   }
 
-  .brand-contact {
-    right: 45px;
-    font-size: 10px;
+  .header-logo-container {
+    width: 50px;
+    height: 47px;
+    margin-right: 12px;
+    margin-top: 8px;
+  }
+
+  .header-logo {
+    width: 50px;
+    height: 47px;
+  }
+
+  .header-divider {
+    height: 150px;
+    margin-right: 15px;
+    margin-top: 3px;
+  }
+
+  .header-content {
+    /* Não altera text-align, mantém padrão */
+    height: auto;
+  }
+
+  .client-info {
+    position: absolute;
+    bottom: 15px;
+    left: 77px; /* Ajustado para logo menor */
   }
 
   .form-title {
@@ -411,12 +467,20 @@
   }
 
   .form-subtitle {
-    font-size: 18px;
+    font-size: 16px;
+    margin-bottom: 12px;
   }
 
   .form-description {
-    max-width: 85%;
-    font-size: 11px;
+    font-size: 9px;
+    margin-bottom: 15px;
+    max-width: 100%;
+    line-height: 1.3;
+  }
+
+  .client-label,
+  .client-name {
+    font-size: 9px;
   }
 
   .form-content {
@@ -666,9 +730,58 @@
 }
 
 @media (max-width: 480px) {
+  .form-header {
+    padding: 15px 10px;
+    min-height: 80px;
+  }
+
+  .header-logo-container {
+    width: 40px;
+    height: 37px;
+    margin-right: 10px;
+    margin-top: 6px;
+  }
+
+  .header-logo {
+    width: 40px;
+    height: 37px;
+  }
+
+  .header-divider {
+    height: 50px;
+    margin-right: 12px;
+    margin-top: 2px;
+  }
+
+  .client-info {
+    bottom: 12px;
+    left: 62px; /* Ajustado para logo ainda menor */
+  }
+
+  .form-title {
+    font-size: 22px;
+  }
+
+  .form-subtitle {
+    font-size: 13px;
+    margin-bottom: 8px;
+  }
+
+  .form-description {
+    font-size: 8px;
+    margin-bottom: 12px;
+    line-height: 1.2;
+  }
+
+  .client-label,
+  .client-name {
+    font-size: 8px;
+  }
+
   .urgency-note {
     display: none;
   }
+  
   .brand-contact {
     display: none;
   }

@@ -93,6 +93,9 @@ class AIClient {
 
   // Decidir se deve propor rascunho baseado no histórico
   shouldProposeDraft(helpHistory, userMessage) {
+    // NOVA LÓGICA: SEMPRE propor rascunho, mesmo na primeira interação
+    // Isso garante que o usuário sempre receba uma proposta concreta
+    
     // Palavras-chave explícitas que indicam que o usuário quer uma proposta AGORA
     const explicitProposalKeywords = [
       'crie agora', 'faça agora', 'escreva agora', 'elabore agora',
@@ -104,28 +107,15 @@ class AIClient {
       userMessage.toLowerCase().includes(keyword)
     )
     
-    // Se tem pedido explícito, sempre atender (exceto primeira mensagem absoluta)
-    if (hasExplicitRequest && helpHistory.length > 0) {
+    // Se tem pedido explícito, sempre atender
+    if (hasExplicitRequest) {
       return true
     }
     
-    // Se é a primeira mensagem, apenas conversar
-    if (helpHistory.length === 0) {
-      return false
-    }
-    
-    // Contar apenas mensagens do usuário (não da AI) para determinar contexto
-    const userMessages = helpHistory.filter(msg => msg.role === 'user').length
-    
-    // NOVA LÓGICA: Após 2 mensagens do usuário, SEMPRE propor rascunho
-    // Isso força a AI a parar de fazer perguntas e criar algo concreto
-    if (userMessages >= 2) {
-      console.log(`🎯 Forçando rascunho: ${userMessages} mensagens do usuário (>= 2)`)
-      return true
-    }
-    
-    // Se tem menos de 2 mensagens do usuário, continuar conversando
-    return false
+    // MUDANÇA PRINCIPAL: Sempre propor draft, mesmo na primeira mensagem
+    // Isso garante que a IA sempre forneça uma proposta concreta
+    console.log(`🎯 Sempre propondo rascunho (mensagens no histórico: ${helpHistory.length})`)
+    return true
   }
 
   // Resposta offline simulada para demonstração
@@ -154,11 +144,11 @@ class AIClient {
     
     let conversationStage
     if (isFirstMessage) {
-      conversationStage = "PRIMEIRA INTERAÇÃO - Foque em fazer 1-2 perguntas específicas"
-    } else if (userMessageCount >= 2) {
-      conversationStage = `TERCEIRA+ INTERAÇÃO - OBRIGATÓRIO propor rascunho com propose_field_value (${userMessageCount} mensagens do usuário)`
+      conversationStage = "PRIMEIRA INTERAÇÃO - OBRIGATÓRIO propor rascunho com propose_field_value"
+    } else if (userMessageCount >= 1) {
+      conversationStage = `INTERAÇÃO CONTÍNUA - OBRIGATÓRIO propor rascunho com propose_field_value (${userMessageCount} mensagens do usuário)`
     } else {
-      conversationStage = `SEGUNDA INTERAÇÃO - DEVE propor rascunho se tiver informação suficiente (${userMessageCount} mensagem do usuário)`
+      conversationStage = `INTERAÇÃO CONTÍNUA - OBRIGATÓRIO propor rascunho com propose_field_value (${userMessageCount} mensagem do usuário)`
     }
 
     return `
@@ -210,21 +200,20 @@ COMO AGIR POR CAMPO:
 - Equilibre aspiração com autenticidade
 
 FLUXO DE CONVERSA:
-1. **PRIMEIRA INTERAÇÃO**: Faça apenas 1-2 perguntas específicas e relevantes (NÃO uma lista longa)
-2. **SEGUNDA INTERAÇÃO**: Com a resposta, SEMPRE crie um rascunho usando propose_field_value
-3. **IMPORTANTE**: Após 2 trocas, pare de fazer perguntas e SEMPRE proponha uma versão
+1. **PRIMEIRA INTERAÇÃO**: Analise o contexto disponível e SEMPRE crie um rascunho usando propose_field_value
+2. **INTERAÇÕES SEGUINTES**: Continue refinando e melhorando o rascunho baseado no feedback
 
 REGRAS IMPORTANTES:
-- ❌ NÃO faça listas de 5-6 perguntas de uma vez (muito formal/robótico)
-- ❌ NÃO continue fazendo perguntas após a segunda rodada
-- ✅ PRIMEIRA mensagem: conversa e 1-2 perguntas
-- ✅ SEGUNDA mensagem: OBRIGATÓRIO usar propose_field_value
-- ✅ Seja um consultor que entrega resultados, não que faz perguntas infinitas
+- ✅ SEMPRE usar propose_field_value em qualquer interação
+- ✅ Seja um consultor que entrega resultados concretos imediatamente
+- ✅ Use o contexto disponível do formulário para criar propostas inteligentes
+- ✅ Mesmo com informações limitadas, crie uma versão profissional baseada no que tem
+- ❌ NÃO apenas faça perguntas sem entregar uma proposta concreta
 
 QUANDO PROPOR RASCUNHO:
-- Se userMessages >= 2: SEMPRE propor (não opcional)
-- Se pedido explícito: SEMPRE propor
-- Com 2 interações já tem contexto suficiente para criar algo profissional
+- SEMPRE propor rascunho em qualquer interação (obrigatório)
+- Use o contexto disponível do formulário para criar propostas inteligentes
+- Mesmo com informações limitadas, elabore uma versão profissional
 
 Seja direto, estratégico e transforme ideias amadoras em branding profissional.
 `.trim()

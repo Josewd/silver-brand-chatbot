@@ -57,7 +57,31 @@ const FormPanel = ({
     return customPlaceholders[fieldId] || `Digite ${label.toLowerCase()}`
   }
 
+  // Função para verificar se um campo deve ser exibido (campos condicionais)
+  const shouldShowField = (field) => {
+    if (!field.conditional) return true
+    
+    const { dependsOn, showWhen, value } = field.conditional
+    const dependentValue = localState[dependsOn]
+    
+    if (!dependentValue) return false
+    
+    switch (showWhen) {
+      case 'contains':
+        return Array.isArray(dependentValue) 
+          ? dependentValue.includes(value)
+          : dependentValue === value
+      case 'equals':
+        return dependentValue === value
+      default:
+        return true
+    }
+  }
+
   const renderField = (field, sectionId) => {
+    // Verificar se o campo deve ser exibido
+    if (!shouldShowField(field)) return null
+    
     const fieldValue = localState[field.id] || ''
     const fieldKey = `${sectionId}-${field.id}`
 
@@ -136,8 +160,8 @@ const FormPanel = ({
 
   // Renderização especial para seção de personalidade
   const renderPersonalitySection = (section) => {
-    const scaleFields = section.fields.filter(field => field.type === 'scale')
-    const wordsField = section.fields.find(field => field.id === 'tres_palavras')
+    const scaleFields = section.fields.filter(field => field.type === 'scale' && shouldShowField(field))
+    const wordsField = section.fields.find(field => field.id === 'tres_palavras' && shouldShowField(field))
 
     // Função para renderizar campo de escala sem label
     const renderScaleField = (field) => {
@@ -208,7 +232,7 @@ const FormPanel = ({
           </div>
         </div>
         <div className={getSectionFieldsClass(section.id)}>
-          {section.fields.map(field => renderField(field, section.id))}
+          {section.fields.filter(shouldShowField).map(field => renderField(field, section.id))}
         </div>
       </div>
     )
@@ -228,38 +252,33 @@ const FormPanel = ({
   return (
     <div className="form-panel">
       <div className="form-header">
-        <div className="urgency-note">
-          * Caso você tenha urgência<br/>
-          é possível que eu consiga<br/>
-          ajudá-lo a realizar o projeto<br/>
-          em menos de um mês. Neste<br/>
-          caso, uma taxa de urgência<br/>
-          será aplicada sobre o valor<br/>
-          total do projeto.
+        <div className="header-logo-container">
+          <img 
+            src="/Logo.svg" 
+            alt="Silver Brand Design" 
+            className="header-logo"
+          />
         </div>
         
-        <div className="brand-contact">
-          SILVER BRAND HOUSE<br/>
-          brandhousesilver@gmail.com<br/>
-          +55 11 96015 7100
+        <div className="header-divider"></div>
+        
+        <div className="header-content">
+          <div className="form-title-container">
+            <div className="form-title">BRIEFING</div>
+            <div className="form-subtitle">PROJETO DE<br/>IDENTIDADE VISUAL</div>
+          <div className="form-description">
+            Preencha este formulário com o máximo de informações sobre o seu projeto.<br/>
+            Caso tenha dúvidas iou precise de orientações antes de preencher fique à vontade para<br/>
+            entrar em contato através do e-mail: <strong>brandhousesilver@gmail.com</strong>
+          
+          <div className="client-info" style={{ border: 'none' }}>
+            <span className="client-label">Cliente:</span>
+            <span className="client-name" >{clientName}</span>
+          </div>
+          </div>
+          </div>
         </div>
         
-        <h1 className="form-title">BRIEFING.</h1>
-        <h2 className="form-subtitle">PROJETO DE<br/>IDENTIDADE VISUAL</h2>
-        
-        <div className="form-description">
-          Preencha este formulário com o máximo de informações que puder sobre seu
-          projeto. Caso tenha dúvidas ou precise de orientações antes de preencher fique
-          à vontade para entrar em contato através do e-mail abaixo:<br/>
-          brandhousesilver@gmail.com.
-        </div>
-        
-        <div className="client-info">
-          <div className="client-label">Cliente:</div>
-          <div className="client-name">{clientName}</div>
-        </div>
-        
-        <div className="section-number">2</div>
       </div>
 
       <div className="form-content">

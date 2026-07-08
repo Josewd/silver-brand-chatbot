@@ -8,7 +8,7 @@ const cors = require('cors');
 const adminRoutes = require('./routes/admin');
 const sessionRoutes = require('./routes/sessions');
 const fieldHelpRoutes = require('./routes/fieldHelp');
-const uploadRoutes = require('./routes/upload');
+// const uploadRoutes = require('./routes/upload'); // Temporariamente comentado
 
 const app = express();
 const server = createServer(app);
@@ -38,7 +38,7 @@ const PORT = process.env.PORT || 3001;
 app.use('/api/admin', adminRoutes);
 app.use('/api/sessions', sessionRoutes);
 app.use('/api/sessions', fieldHelpRoutes);
-app.use('/api/upload', uploadRoutes);
+// app.use('/api/upload', uploadRoutes); // Temporariamente comentado
 
 // Rota de teste
 app.get('/api/health', (req, res) => {

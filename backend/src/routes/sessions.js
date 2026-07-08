@@ -35,10 +35,36 @@ router.get('/:id', requireClientToken, async (req, res) => {
     const session = req.session
 
     // Retornar schema do formulário + estado atual
+    const rawFormState = session.data || {}
+    console.log(`📖 Dados brutos da sessão:`, rawFormState)
+    
+    // Processar dados para garantir que arrays sejam parseados corretamente
+    const processedFormState = {}
+    
+    for (const [fieldId, value] of Object.entries(rawFormState)) {
+      const field = findFieldInSchema(fieldId, formSchema)
+      
+      if (field && field.type === 'multiselect' && typeof value === 'string') {
+        try {
+          // Se é multiselect e veio como string, tentar fazer parse
+          processedFormState[fieldId] = JSON.parse(value)
+          console.log(`🔄 Parseado ${fieldId}:`, processedFormState[fieldId])
+        } catch (e) {
+          // Se não conseguir fazer parse, manter como array com um item
+          processedFormState[fieldId] = [value]
+          console.log(`⚠️ Fallback ${fieldId}:`, processedFormState[fieldId])
+        }
+      } else {
+        processedFormState[fieldId] = value
+      }
+    }
+    
+    console.log(`✅ Dados processados:`, processedFormState)
+    
     res.json({
       sessionId: session.id,
       schema: formSchema,
-      formState: session.data || {},
+      formState: processedFormState,
       progress: session.progress || {},
       status: session.status,
       createdAt: session.created_at
@@ -69,14 +95,25 @@ router.patch('/:id/fields/:fieldId', requireClientToken, async (req, res) => {
       return res.status(400).json({ error: validationError })
     }
 
+    // Preparar valor para salvar no banco
+    let valueToSave = value
+    if (Array.isArray(value)) {
+      // Para arrays (multiselect), converter para JSON string
+      valueToSave = JSON.stringify(value)
+      console.log(`💾 Salvando array como JSON: ${fieldId} =`, valueToSave)
+    } else {
+      console.log(`💾 Salvando valor: ${fieldId} =`, valueToSave)
+    }
+
     // Atualizar campo no banco
     const result = await dbClient.query(queries.updateFieldValue, [
       session.id,
       fieldId,
-      value
+      valueToSave
     ])
 
     const updatedData = result.rows[0].data
+    console.log(`📖 Dados após salvar:`, updatedData)
     
     // Recalcular progresso
     const newProgress = calculateProgress(updatedData, formSchema)

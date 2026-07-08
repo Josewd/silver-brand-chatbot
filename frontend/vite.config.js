@@ -12,6 +12,13 @@ export default defineConfig({
   plugins: [react()],
   server: {
     port: 5173,
+    watch: {
+      usePolling: true,
+      interval: 100
+    },
+    hmr: {
+      overlay: true
+    },
     proxy: {
       // Proxy para API REST do backend Node.js
       '/api': {

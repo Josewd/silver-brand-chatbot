@@ -217,6 +217,27 @@
   line-height: 1.5;
   margin-bottom: 12px;
   white-space: pre-wrap;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+/* Scrollbar personalizada para o draft */
+.draft-content::-webkit-scrollbar {
+  width: 6px;
+}
+
+.draft-content::-webkit-scrollbar-track {
+  background: #fed7aa;
+  border-radius: 3px;
+}
+
+.draft-content::-webkit-scrollbar-thumb {
+  background: #f59e0b;
+  border-radius: 3px;
+}
+
+.draft-content::-webkit-scrollbar-thumb:hover {
+  background: #d97706;
 }
 
 .draft-actions {
@@ -367,6 +388,11 @@
     width: 100%;
     justify-content: center;
   }
+
+  .draft-content {
+    max-height: 150px;
+    font-size: 13px;
+  }
 }
 
 @media (max-width: 480px) {
@@ -382,5 +408,11 @@
 
   .help-message .message-content {
     max-width: 90%;
+  }
+
+  .draft-content {
+    max-height: 120px;
+    font-size: 12px;
+    padding: 10px 12px;
   }
 }
