@@ -16,6 +16,7 @@ const formSchema = require('./schema/form-schema.json');
 const adminRoutes = require('./routes/admin');
 const sessionRoutes = require('./routes/sessions');
 const fieldHelpRoutes = require('./routes/fieldHelp');
+const uploadRoutes = require('./routes/upload');
 
 const app = express();
 const server = createServer(app);
@@ -37,10 +38,14 @@ const corsOptions = {
 app.use(cors(corsOptions));
 app.use(express.json());
 
+// Servir arquivos estáticos de upload
+app.use('/uploads', express.static('uploads'));
+
 // === NOVAS ROTAS REST PARA FORMULÁRIO ===
 app.use('/api/admin', adminRoutes);
 app.use('/api/sessions', sessionRoutes);
 app.use('/api/sessions', fieldHelpRoutes);
+app.use('/api/upload', uploadRoutes);
 
 // Socket.io com configuração para Render free tier
 const io = new Server(server, {

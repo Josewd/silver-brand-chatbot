@@ -8,6 +8,7 @@ const cors = require('cors');
 const adminRoutes = require('./routes/admin');
 const sessionRoutes = require('./routes/sessions');
 const fieldHelpRoutes = require('./routes/fieldHelp');
+const uploadRoutes = require('./routes/upload');
 
 const app = express();
 const server = createServer(app);
@@ -28,12 +29,16 @@ const corsOptions = {
 app.use(cors(corsOptions));
 app.use(express.json());
 
+// Servir arquivos estáticos de upload
+app.use('/uploads', express.static('uploads'));
+
 const PORT = process.env.PORT || 3001;
 
 // === NOVAS ROTAS REST PARA FORMULÁRIO ===
 app.use('/api/admin', adminRoutes);
 app.use('/api/sessions', sessionRoutes);
 app.use('/api/sessions', fieldHelpRoutes);
+app.use('/api/upload', uploadRoutes);
 
 // Rota de teste
 app.get('/api/health', (req, res) => {

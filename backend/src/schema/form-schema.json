@@ -56,11 +56,36 @@
           "type": "multiselect", 
           "options": [
             "Template PowerPoint",
-            "Arte para Cartão de visitas", 
+            "Arte para Cartão de visitas (só frente)", 
+            "Arte para Cartão de visitas (frente e verso)",
             "Capa Destaques Instagram",
             "Arte para impresso"
           ], 
           "ai_help": false 
+        },
+        { 
+          "id": "capa_instagram_quantidade", 
+          "label": "Quantas capas de destaque para Instagram?", 
+          "type": "select", 
+          "options": ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "Mais de 10"],
+          "ai_help": false,
+          "conditional": {
+            "dependsOn": "itens_adicionais",
+            "showWhen": "contains",
+            "value": "Capa Destaques Instagram"
+          }
+        },
+        { 
+          "id": "tipo_arte_impresso", 
+          "label": "Que tipo de arte para impresso você precisa?", 
+          "type": "text", 
+          "ai_help": false,
+          "placeholder": "Ex: banner, flyer, folder, cartaz, etc.",
+          "conditional": {
+            "dependsOn": "itens_adicionais",
+            "showWhen": "contains",
+            "value": "Arte para impresso"
+          }
         },
         { 
           "id": "info_extra_itens", 
@@ -227,6 +252,14 @@
           "ai_help": false 
         },
         { 
+          "id": "cores_referencias", 
+          "label": "Referências de cores (imagens):", 
+          "type": "file_upload", 
+          "accept": "image/*",
+          "multiple": true,
+          "ai_help": false 
+        },
+        { 
           "id": "cores_quer", 
           "label": "Cores que você gosta e quer explorar:", 
           "type": "text", 
@@ -239,10 +272,26 @@
           "ai_help": false 
         },
         { 
+          "id": "fontes_referencias", 
+          "label": "Referências de tipografia (imagens):", 
+          "type": "file_upload", 
+          "accept": "image/*",
+          "multiple": true,
+          "ai_help": false 
+        },
+        { 
           "id": "tipos_logo", 
           "label": "Tipos de logo que prefere:", 
           "type": "multiselect", 
           "options": ["Com símbolo", "Só a tipografia", "Minimalista", "Clássico", "Moderno"], 
+          "ai_help": false 
+        },
+        { 
+          "id": "logos_referencias", 
+          "label": "Referências de logos (imagens):", 
+          "type": "file_upload", 
+          "accept": "image/*",
+          "multiple": true,
           "ai_help": false 
         },
         { 
