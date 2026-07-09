@@ -5,22 +5,25 @@ const fs = require('fs');
 const router = express.Router();
 
 // Configurar multer para upload de arquivos
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    const uploadDir = path.join(__dirname, '../../uploads');
-    if (!fs.existsSync(uploadDir)) {
-      fs.mkdirSync(uploadDir, { recursive: true });
-    }
-    cb(null, uploadDir);
-  },
-  filename: (req, file, cb) => {
-    // Gerar nome único para o arquivo
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    const fileExtension = path.extname(file.originalname);
-    const filename = `${req.body.fieldId || 'upload'}-${uniqueSuffix}${fileExtension}`;
-    cb(null, filename);
-  }
-});
+// Na Vercel, usar memória storage pois filesystem não é persistente
+const storage = process.env.VERCEL 
+  ? multer.memoryStorage() // Para Vercel - arquivos em memória
+  : multer.diskStorage({   // Para desenvolvimento local
+      destination: (req, file, cb) => {
+        const uploadDir = path.join(__dirname, '../../uploads');
+        if (!fs.existsSync(uploadDir)) {
+          fs.mkdirSync(uploadDir, { recursive: true });
+        }
+        cb(null, uploadDir);
+      },
+      filename: (req, file, cb) => {
+        // Gerar nome único para o arquivo
+        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+        const fileExtension = path.extname(file.originalname);
+        const filename = `${req.body.fieldId || 'upload'}-${uniqueSuffix}${fileExtension}`;
+        cb(null, filename);
+      }
+    });
 
 // Filtro de arquivos - apenas imagens
 const fileFilter = (req, file, cb) => {
@@ -62,18 +65,35 @@ router.post('/', authenticateClient, upload.single('file'), (req, res) => {
       return res.status(400).json({ error: 'Nenhum arquivo enviado' });
     }
 
-    // Construir URL do arquivo
-    const baseUrl = req.protocol + '://' + req.get('host');
-    const fileUrl = `${baseUrl}/uploads/${req.file.filename}`;
+    if (process.env.VERCEL) {
+      // Na Vercel, retornar dados do arquivo em base64 para armazenamento temporário
+      const base64Data = req.file.buffer.toString('base64');
+      const dataURL = `data:${req.file.mimetype};base64,${base64Data}`;
+      
+      res.json({
+        success: true,
+        url: dataURL, // Data URL para preview
+        filename: req.file.originalname,
+        originalName: req.file.originalname,
+        size: req.file.size,
+        fieldId: req.body.fieldId,
+        isTemporary: true
+      });
+    } else {
+      // No ambiente local, salvar arquivo no disco
+      const baseUrl = req.protocol + '://' + req.get('host');
+      const fileUrl = `${baseUrl}/uploads/${req.file.filename}`;
 
-    res.json({
-      success: true,
-      url: fileUrl,
-      filename: req.file.filename,
-      originalName: req.file.originalname,
-      size: req.file.size,
-      fieldId: req.body.fieldId
-    });
+      res.json({
+        success: true,
+        url: fileUrl,
+        filename: req.file.filename,
+        originalName: req.file.originalname,
+        size: req.file.size,
+        fieldId: req.body.fieldId,
+        isTemporary: false
+      });
+    }
 
   } catch (error) {
     console.error('Erro no upload:', error);

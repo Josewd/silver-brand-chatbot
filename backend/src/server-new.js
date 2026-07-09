@@ -8,19 +8,21 @@ const cors = require('cors');
 const adminRoutes = require('./routes/admin');
 const sessionRoutes = require('./routes/sessions');
 const fieldHelpRoutes = require('./routes/fieldHelp');
-// const uploadRoutes = require('./routes/upload'); // Temporariamente comentado
+const uploadRoutes = require('./routes/upload');
 
 const app = express();
 const server = createServer(app);
 
-// Configuração CORS para desenvolvimento local
+// Configuração CORS para desenvolvimento local e produção
 const corsOptions = {
   origin: [
     process.env.FRONTEND_URL || "http://localhost:5173",
     "http://localhost:3000",
     "http://localhost:5174",
     "http://localhost:5175",
-    "http://localhost:5179"
+    "http://localhost:5179",
+    "https://silver-brand-chatbot.vercel.app",
+    "https://silver-brand-chatbot-frontend.vercel.app"
   ],
   credentials: true,
   methods: ["GET", "POST", "PATCH", "PUT", "DELETE"]
@@ -38,7 +40,7 @@ const PORT = process.env.PORT || 3001;
 app.use('/api/admin', adminRoutes);
 app.use('/api/sessions', sessionRoutes);
 app.use('/api/sessions', fieldHelpRoutes);
-// app.use('/api/upload', uploadRoutes); // Temporariamente comentado
+app.use('/api/upload', uploadRoutes);
 
 // Rota de teste
 app.get('/api/health', (req, res) => {
