@@ -74,13 +74,19 @@ const FileUploadInput = ({
   // const uploadFiles = async (files) => { ... }
 
   const handleUploadFiles = async () => {
-    if (!files || files.length === 0) return
+    // Filtrar apenas arquivos que ainda não foram enviados
+    const filesToUpload = files.filter(file => !file.uploaded && file.file)
+    
+    if (filesToUpload.length === 0) {
+      alert('Todos os arquivos já foram enviados!')
+      return
+    }
 
     setUploading(true)
     try {
       const uploadedFiles = []
       
-      for (const fileObj of files) {
+      for (const fileObj of filesToUpload) {
         const formData = new FormData()
         formData.append('file', fileObj.file)
         formData.append('fieldId', field.id)
@@ -98,9 +104,10 @@ const FileUploadInput = ({
           const result = await response.json()
           uploadedFiles.push({
             id: fileObj.id,
-            name: fileObj.name,
+            name: result.originalName || fileObj.name,
             url: result.url,
             size: fileObj.size,
+            type: fileObj.type,
             uploaded: true
           })
         } else {
@@ -108,8 +115,12 @@ const FileUploadInput = ({
         }
       }
 
-      // Atualizar arquivos com URLs do servidor
-      const newValue = field.multiple ? uploadedFiles : uploadedFiles[0]
+      // Atualizar lista de arquivos: manter os já enviados e adicionar os novos
+      const existingUploaded = files.filter(file => file.uploaded)
+      const allFiles = [...existingUploaded, ...uploadedFiles]
+      
+      // Atualizar valor do campo
+      const newValue = field.multiple ? allFiles : allFiles[0]
       onChange?.(newValue)
       onBlur?.(newValue)
       
@@ -181,7 +192,7 @@ const FileUploadInput = ({
   }
 
   const downloadFile = (file) => {
-    if (file.url && !file.url.startsWith('data:')) {
+    if (file.uploaded && file.url && !file.url.startsWith('data:')) {
       // Arquivo do servidor - fazer download
       const link = document.createElement('a')
       link.href = file.url
@@ -190,6 +201,33 @@ const FileUploadInput = ({
       document.body.appendChild(link)
       link.click()
       document.body.removeChild(link)
+    } else if (file.url && file.url.startsWith('data:')) {
+      // Arquivo base64 - criar blob e fazer download
+      try {
+        const [header, base64Data] = file.url.split(',')
+        const mimeMatch = header.match(/data:([^;]+)/)
+        const mimeType = mimeMatch ? mimeMatch[1] : 'application/octet-stream'
+        
+        const byteCharacters = atob(base64Data)
+        const byteNumbers = new Array(byteCharacters.length)
+        for (let i = 0; i < byteCharacters.length; i++) {
+          byteNumbers[i] = byteCharacters.charCodeAt(i)
+        }
+        const byteArray = new Uint8Array(byteNumbers)
+        const blob = new Blob([byteArray], { type: mimeType })
+        
+        const url = URL.createObjectURL(blob)
+        const link = document.createElement('a')
+        link.href = url
+        link.download = file.name || 'download'
+        document.body.appendChild(link)
+        link.click()
+        document.body.removeChild(link)
+        URL.revokeObjectURL(url)
+      } catch (error) {
+        console.error('Erro ao fazer download do arquivo base64:', error)
+        alert('Erro ao fazer download do arquivo')
+      }
     } else if (file.file) {
       // Arquivo local - criar blob URL
       const url = URL.createObjectURL(file.file)
@@ -292,10 +330,11 @@ const FileUploadInput = ({
                   onClick={() => openFileModal(file)}
                   title={file.uploaded ? "Clique para visualizar" : "Preview do arquivo"}
                 >
-                  {previews[file.id] ? (
-                    <img src={previews[file.id]} alt={file.name} />
-                  ) : file.url ? (
+                  {/* Mostrar preview: primeiro tenta URL do servidor, depois preview local */}
+                  {file.url && file.uploaded ? (
                     <img src={file.url} alt={file.name} />
+                  ) : previews[file.id] ? (
+                    <img src={previews[file.id]} alt={file.name} />
                   ) : file.type && file.type.startsWith('image/') ? (
                     <div className="file-icon loading">🖼️</div>
                   ) : (
@@ -352,7 +391,7 @@ const FileUploadInput = ({
             <div className="modal-content">
               {selectedFile.type?.startsWith('image/') ? (
                 <img 
-                  src={selectedFile.url || previews[selectedFile.id]} 
+                  src={selectedFile.uploaded ? selectedFile.url : (selectedFile.url || previews[selectedFile.id])} 
                   alt={selectedFile.name}
                   className="modal-image"
                 />

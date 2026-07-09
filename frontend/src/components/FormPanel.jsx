@@ -116,6 +116,18 @@ const FormPanel = ({
       case 'textarea':
         inputComponent = <TextareaInput {...commonProps} />
         break
+      case 'file':
+        inputComponent = (
+          <FileUploadInput
+            {...commonProps}
+            field={{
+              ...field,
+              accept: field.accept || 'image/*',
+              multiple: field.multiple || false
+            }}
+          />
+        )
+        break
       case 'included_list':
         inputComponent = <IncludedListInput {...commonProps} />
         break
@@ -132,20 +144,6 @@ const FormPanel = ({
         'gosta_nessas_marcas': 'O que você gosta nessas marcas?'
       }
       return examples[fieldId] || null
-    }
-
-    // Usar FileUploadInput para o campo de referências visuais
-    if (field.id === 'referencias_visuais') {
-      inputComponent = (
-        <FileUploadInput
-          {...commonProps}
-          field={{
-            ...field,
-            accept: 'image/*',
-            multiple: true
-          }}
-        />
-      )
     }
 
     const example = getFieldExample(field.id)

@@ -272,8 +272,10 @@
         },
         { 
           "id": "referencias_visuais", 
-          "label": "Deixe abaixo referências visuais (links)", 
-          "type": "textarea", 
+          "label": "Deixe abaixo referências visuais", 
+          "type": "file", 
+          "multiple": true,
+          "accept": "image/*",
           "ai_help": false 
         }
       ]

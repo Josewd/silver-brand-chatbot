@@ -44,15 +44,22 @@ router.get('/:id', requireClientToken, async (req, res) => {
     for (const [fieldId, value] of Object.entries(rawFormState)) {
       const field = findFieldInSchema(fieldId, formSchema)
       
-      if (field && field.type === 'multiselect' && typeof value === 'string') {
+      if (field && (field.type === 'multiselect' || field.type === 'file') && typeof value === 'string') {
         try {
-          // Se é multiselect e veio como string, tentar fazer parse
+          // Se é multiselect ou arquivo e veio como string, tentar fazer parse
           processedFormState[fieldId] = JSON.parse(value)
           console.log(`🔄 Parseado ${fieldId}:`, processedFormState[fieldId])
         } catch (e) {
-          // Se não conseguir fazer parse, manter como array com um item
-          processedFormState[fieldId] = [value]
-          console.log(`⚠️ Fallback ${fieldId}:`, processedFormState[fieldId])
+          // Se não conseguir fazer parse
+          if (field.type === 'file') {
+            // Para arquivo, manter como null se não conseguir parsear
+            processedFormState[fieldId] = null
+            console.log(`⚠️ Erro ao parsear arquivo ${fieldId}, mantendo como null`)
+          } else {
+            // Para multiselect, manter como array com um item
+            processedFormState[fieldId] = [value]
+            console.log(`⚠️ Fallback ${fieldId}:`, processedFormState[fieldId])
+          }
         }
       } else {
         processedFormState[fieldId] = value
@@ -98,9 +105,13 @@ router.patch('/:id/fields/:fieldId', requireClientToken, async (req, res) => {
     // Preparar valor para salvar no banco
     let valueToSave = value
     if (Array.isArray(value)) {
-      // Para arrays (multiselect), converter para JSON string
+      // Para arrays (multiselect ou arquivos múltiplos), converter para JSON string
       valueToSave = JSON.stringify(value)
-      console.log(`💾 Salvando array como JSON: ${fieldId} =`, valueToSave)
+      console.log(`💾 Salvando array como JSON: ${fieldId} =`, valueToSave.length > 1000 ? `${valueToSave.substring(0, 100)}...` : valueToSave)
+    } else if (field.type === 'file' && value && typeof value === 'object') {
+      // Para arquivo único, converter para JSON string
+      valueToSave = JSON.stringify(value)
+      console.log(`💾 Salvando arquivo como JSON: ${fieldId} =`, valueToSave.length > 1000 ? `${valueToSave.substring(0, 100)}...` : valueToSave)
     } else {
       console.log(`💾 Salvando valor: ${fieldId} =`, valueToSave)
     }
@@ -218,8 +229,15 @@ function findFieldInSchema(fieldId, schema) {
 // Função utilitária para validar valor do campo
 function validateFieldValue(field, value) {
   // Campos obrigatórios
-  if (field.required && (!value || value.toString().trim() === '')) {
-    return `Campo "${field.label}" é obrigatório`
+  if (field.required) {
+    if (field.type === 'file') {
+      // Para arquivos, considerar vazio se não há valor ou é array vazio
+      if (!value || (Array.isArray(value) && value.length === 0)) {
+        return `Campo "${field.label}" é obrigatório`
+      }
+    } else if (!value || value.toString().trim() === '') {
+      return `Campo "${field.label}" é obrigatório`
+    }
   }
 
   // Validações por tipo
@@ -253,6 +271,47 @@ function validateFieldValue(field, value) {
         }
       }
       break
+
+    case 'file':
+      // Validação específica para campos de arquivo
+      if (value && Array.isArray(value)) {
+        // Verificar se cada arquivo tem as propriedades necessárias
+        for (const file of value) {
+          if (!file || typeof file !== 'object') {
+            return 'Formato de arquivo inválido'
+          }
+          if (!file.name || typeof file.name !== 'string') {
+            return 'Nome do arquivo é obrigatório'
+          }
+          // Verificar se tem URL ou dados
+          if (!file.url && !file.data) {
+            return 'Dados do arquivo são obrigatórios'
+          }
+          // Validar tamanho do arquivo se especificado
+          if (file.size && typeof file.size === 'number' && file.size > 5 * 1024 * 1024) {
+            return `Arquivo ${file.name} é muito grande. Máximo 5MB por arquivo.`
+          }
+        }
+        // Verificar limite de arquivos se especificado
+        if (!field.multiple && value.length > 1) {
+          return 'Apenas um arquivo é permitido para este campo'
+        }
+      } else if (value && typeof value === 'object') {
+        // Arquivo único
+        if (!value.name || typeof value.name !== 'string') {
+          return 'Nome do arquivo é obrigatório'
+        }
+        if (!value.url && !value.data) {
+          return 'Dados do arquivo são obrigatórios'
+        }
+        // Validar tamanho do arquivo
+        if (value.size && typeof value.size === 'number' && value.size > 5 * 1024 * 1024) {
+          return `Arquivo ${value.name} é muito grande. Máximo 5MB por arquivo.`
+        }
+      } else if (value !== null && value !== undefined && value !== '') {
+        return 'Formato de arquivo inválido'
+      }
+      break
   }
 
   return null
@@ -272,11 +331,15 @@ function calculateProgress(formData, schema) {
       
       // Considerar campo preenchido se:
       // - Não está vazio/null/undefined
-      // - Para arrays (multiselect), tem pelo menos 1 item
+      // - Para arrays (multiselect ou arquivos múltiplos), tem pelo menos 1 item
       // - Para strings, não está vazio após trim
+      // - Para arquivos únicos, tem objeto válido
       if (value !== undefined && value !== null && value !== '') {
         if (Array.isArray(value)) {
           if (value.length > 0) filledFields++
+        } else if (field.type === 'file' && typeof value === 'object') {
+          // Arquivo único - considerar preenchido se tem nome e url/data
+          if (value.name && (value.url || value.data)) filledFields++
         } else {
           if (value.toString().trim() !== '') filledFields++
         }
