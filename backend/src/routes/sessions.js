@@ -104,14 +104,28 @@ router.patch('/:id/fields/:fieldId', requireClientToken, async (req, res) => {
 
     // Preparar valor para salvar no banco
     let valueToSave = value
-    if (Array.isArray(value)) {
-      // Para arrays (multiselect ou arquivos múltiplos), converter para JSON string
+    
+    // Limpar objetos File antes de salvar (eles não podem ser serializados)
+    if (field.type === 'file') {
+      if (Array.isArray(value)) {
+        valueToSave = value.map(file => {
+          const cleanFile = { ...file }
+          // Remover propriedade 'file' que não pode ser serializada
+          delete cleanFile.file
+          return cleanFile
+        })
+        valueToSave = JSON.stringify(valueToSave)
+        console.log(`💾 Salvando arquivos (${valueToSave.length > 1000 ? 'grande' : 'pequeno'}):`, valueToSave.length > 200 ? `${valueToSave.substring(0, 100)}...` : valueToSave)
+      } else if (value && typeof value === 'object') {
+        const cleanFile = { ...value }
+        delete cleanFile.file
+        valueToSave = JSON.stringify(cleanFile)
+        console.log(`💾 Salvando arquivo único:`, valueToSave.length > 200 ? `${valueToSave.substring(0, 100)}...` : valueToSave)
+      }
+    } else if (Array.isArray(value)) {
+      // Para arrays (multiselect), converter para JSON string
       valueToSave = JSON.stringify(value)
       console.log(`💾 Salvando array como JSON: ${fieldId} =`, valueToSave.length > 1000 ? `${valueToSave.substring(0, 100)}...` : valueToSave)
-    } else if (field.type === 'file' && value && typeof value === 'object') {
-      // Para arquivo único, converter para JSON string
-      valueToSave = JSON.stringify(value)
-      console.log(`💾 Salvando arquivo como JSON: ${fieldId} =`, valueToSave.length > 1000 ? `${valueToSave.substring(0, 100)}...` : valueToSave)
     } else {
       console.log(`💾 Salvando valor: ${fieldId} =`, valueToSave)
     }
@@ -283,9 +297,10 @@ function validateFieldValue(field, value) {
           if (!file.name || typeof file.name !== 'string') {
             return 'Nome do arquivo é obrigatório'
           }
-          // Verificar se tem URL ou dados
-          if (!file.url && !file.data) {
-            return 'Dados do arquivo são obrigatórios'
+          // Para arquivos enviados, deve ter URL. Para locais, pode ter file
+          if (!file.url && !file.uploaded) {
+            // Se não tem URL e não está marcado como enviado, deve ser arquivo local válido
+            // Mas não validamos 'file' aqui pois pode não existir após carregamento do DB
           }
           // Validar tamanho do arquivo se especificado
           if (file.size && typeof file.size === 'number' && file.size > 5 * 1024 * 1024) {
@@ -300,9 +315,6 @@ function validateFieldValue(field, value) {
         // Arquivo único
         if (!value.name || typeof value.name !== 'string') {
           return 'Nome do arquivo é obrigatório'
-        }
-        if (!value.url && !value.data) {
-          return 'Dados do arquivo são obrigatórios'
         }
         // Validar tamanho do arquivo
         if (value.size && typeof value.size === 'number' && value.size > 5 * 1024 * 1024) {

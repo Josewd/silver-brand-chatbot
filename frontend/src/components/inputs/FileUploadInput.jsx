@@ -45,18 +45,21 @@ const FileUploadInput = ({
       name: file.name,
       size: file.size,
       type: file.type,
-      file: file // Manter referência ao arquivo original
+      file: file instanceof File ? file : null // Garantir que é um File válido
     }))
 
     // Gerar previews para imagens de forma assíncrona
     fileObjects.forEach(fileObj => {
-      if (fileObj.file.type.startsWith('image/')) {
+      if (fileObj.file && fileObj.file.type.startsWith('image/')) {
         const reader = new FileReader()
         reader.onload = (e) => {
           setPreviews(prev => ({
             ...prev,
             [fileObj.id]: e.target.result
           }))
+        }
+        reader.onerror = (error) => {
+          console.error('Erro ao ler arquivo:', error)
         }
         reader.readAsDataURL(fileObj.file)
       }
@@ -109,6 +112,7 @@ const FileUploadInput = ({
             size: fileObj.size,
             type: fileObj.type,
             uploaded: true
+            // Não incluir a propriedade 'file' para arquivos enviados
           })
         } else {
           throw new Error(`Erro ao enviar ${fileObj.name}`)
@@ -228,17 +232,23 @@ const FileUploadInput = ({
         console.error('Erro ao fazer download do arquivo base64:', error)
         alert('Erro ao fazer download do arquivo')
       }
-    } else if (file.file) {
-      // Arquivo local - criar blob URL
-      const url = URL.createObjectURL(file.file)
-      const link = document.createElement('a')
-      link.href = url
-      link.download = file.name
-      document.body.appendChild(link)
-      link.click()
-      document.body.removeChild(link)
-      URL.revokeObjectURL(url)
+    } else if (file.file && file.file instanceof File) {
+      // Arquivo local - criar blob URL (validar se é realmente um File)
+      try {
+        const url = URL.createObjectURL(file.file)
+        const link = document.createElement('a')
+        link.href = url
+        link.download = file.name
+        document.body.appendChild(link)
+        link.click()
+        document.body.removeChild(link)
+        URL.revokeObjectURL(url)
+      } catch (error) {
+        console.error('Erro ao criar Object URL:', error)
+        alert('Erro ao fazer download do arquivo local')
+      }
     } else {
+      console.error('Arquivo inválido para download:', file)
       alert('Não é possível fazer download deste arquivo')
     }
   }
@@ -250,14 +260,21 @@ const FileUploadInput = ({
       return []
     }
     
-    // Se já é um array, filtra valores válidos
+    // Se já é um array, filtra valores válidos e limpa propriedades File inválidas
     if (Array.isArray(value)) {
-      return value.filter(file => file && typeof file === 'object')
+      return value.filter(file => file && typeof file === 'object').map(file => ({
+        ...file,
+        // Limpar propriedade file se não for um File válido
+        file: (file.file instanceof File) ? file.file : null
+      }))
     }
     
-    // Se é um objeto válido, coloca em array
+    // Se é um objeto válido, coloca em array e limpa propriedade File se inválida
     if (typeof value === 'object') {
-      return [value]
+      return [{
+        ...value,
+        file: (value.file instanceof File) ? value.file : null
+      }]
     }
     
     // Caso contrário, array vazio
