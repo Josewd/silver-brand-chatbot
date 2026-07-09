@@ -11,6 +11,8 @@ const FileUploadInput = ({
   const [dragActive, setDragActive] = useState(false)
   const [uploading, setUploading] = useState(false)
   const [previews, setPreviews] = useState({}) // Estado para gerenciar previews
+  const [modalOpen, setModalOpen] = useState(false)
+  const [selectedFile, setSelectedFile] = useState(null)
 
   const handleFiles = (files) => {
     if (!files || files.length === 0) return
@@ -168,6 +170,41 @@ const FileUploadInput = ({
     }
   }
 
+  const openFileModal = (file) => {
+    setSelectedFile(file)
+    setModalOpen(true)
+  }
+
+  const closeModal = () => {
+    setModalOpen(false)
+    setSelectedFile(null)
+  }
+
+  const downloadFile = (file) => {
+    if (file.url && !file.url.startsWith('data:')) {
+      // Arquivo do servidor - fazer download
+      const link = document.createElement('a')
+      link.href = file.url
+      link.download = file.name || 'download'
+      link.target = '_blank'
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+    } else if (file.file) {
+      // Arquivo local - criar blob URL
+      const url = URL.createObjectURL(file.file)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = file.name
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      URL.revokeObjectURL(url)
+    } else {
+      alert('Não é possível fazer download deste arquivo')
+    }
+  }
+
   // Garantir que files seja sempre um array válido
   const files = React.useMemo(() => {
     // Se não há valor, retorna array vazio
@@ -250,7 +287,11 @@ const FileUploadInput = ({
           <div className="files-list">
             {files.map((file) => (
               <div key={file.id} className={`file-item ${file.uploaded ? 'uploaded' : ''}`}>
-                <div className="file-preview">
+                <div 
+                  className="file-preview clickable"
+                  onClick={() => openFileModal(file)}
+                  title={file.uploaded ? "Clique para visualizar" : "Preview do arquivo"}
+                >
                   {previews[file.id] ? (
                     <img src={previews[file.id]} alt={file.name} />
                   ) : file.url ? (
@@ -271,17 +312,83 @@ const FileUploadInput = ({
                     {file.uploaded && <span className="uploaded-text"> • Enviado</span>}
                   </span>
                 </div>
-                <button
-                  type="button"
-                  className="file-remove"
-                  onClick={() => removeFile(file.id)}
-                  disabled={disabled}
-                  title="Remover arquivo"
-                >
-                  ×
-                </button>
+                
+                {/* Botão de ação: remove (X) ou done (✓) */}
+                {file.uploaded ? (
+                  <button
+                    type="button"
+                    className="file-action done"
+                    onClick={() => openFileModal(file)}
+                    title="Visualizar arquivo"
+                  >
+                    ✓
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    className="file-action remove"
+                    onClick={() => removeFile(file.id)}
+                    disabled={disabled}
+                    title="Remover arquivo"
+                  >
+                    ×
+                  </button>
+                )}
               </div>
             ))}
+          </div>
+        </div>
+      )}
+
+      {/* Modal de visualização */}
+      {modalOpen && selectedFile && (
+        <div className="file-modal-overlay" onClick={closeModal}>
+          <div className="file-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3 className="modal-title">{selectedFile.name}</h3>
+              <button className="modal-close" onClick={closeModal}>×</button>
+            </div>
+            
+            <div className="modal-content">
+              {selectedFile.type?.startsWith('image/') ? (
+                <img 
+                  src={selectedFile.url || previews[selectedFile.id]} 
+                  alt={selectedFile.name}
+                  className="modal-image"
+                />
+              ) : (
+                <div className="modal-file-icon">
+                  <div className="large-file-icon">📄</div>
+                  <p>Preview não disponível para este tipo de arquivo</p>
+                </div>
+              )}
+            </div>
+            
+            <div className="modal-footer">
+              <div className="file-details">
+                <p><strong>Tamanho:</strong> {(selectedFile.size / 1024 / 1024).toFixed(2)} MB</p>
+                <p><strong>Tipo:</strong> {selectedFile.type || 'Desconhecido'}</p>
+                {selectedFile.uploaded && (
+                  <p><strong>Status:</strong> <span className="status-uploaded">✓ Enviado</span></p>
+                )}
+              </div>
+              
+              <div className="modal-actions">
+                <button 
+                  className="btn-download"
+                  onClick={() => downloadFile(selectedFile)}
+                >
+                  <span className="download-icon">⬇️</span>
+                  Download
+                </button>
+                <button 
+                  className="btn-modal-close"
+                  onClick={closeModal}
+                >
+                  Fechar
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}
