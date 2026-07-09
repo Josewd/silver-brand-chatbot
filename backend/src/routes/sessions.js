@@ -155,6 +155,55 @@ router.get('/:id/status', requireClientToken, async (req, res) => {
   }
 })
 
+// POST /sessions/:id/finalize - Finalizar briefing (mudar status de draft para completed)
+router.post('/:id/finalize', requireClientToken, async (req, res) => {
+  try {
+    const session = req.session
+    
+    // Verificar se a sessão não está já completa
+    if (session.status === 'completed') {
+      return res.json({ 
+        success: true, 
+        message: 'Briefing já está finalizado',
+        status: 'completed'
+      })
+    }
+    
+    // Calcular progresso atual
+    const currentProgress = session.progress || {}
+    const overallProgress = calculateOverallProgress(currentProgress)
+    
+    // Verificar se tem pelo menos 60% de progresso
+    if (overallProgress < 60) {
+      return res.status(400).json({ 
+        error: 'É necessário completar pelo menos 60% do formulário para finalizar',
+        currentProgress: overallProgress
+      })
+    }
+    
+    // Atualizar status para completed
+    const result = await dbClient.query(queries.updateSessionStatus, [
+      session.id,
+      'completed'
+    ])
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Sessão não encontrada' })
+    }
+    
+    res.json({
+      success: true,
+      message: 'Briefing finalizado com sucesso!',
+      status: 'completed',
+      progress: overallProgress
+    })
+
+  } catch (error) {
+    console.error('Erro ao finalizar briefing:', error)
+    res.status(500).json({ error: 'Erro interno do servidor' })
+  }
+})
+
 // Função utilitária para encontrar campo no schema
 function findFieldInSchema(fieldId, schema) {
   for (const section of schema.sections) {
@@ -238,6 +287,13 @@ function calculateProgress(formData, schema) {
   })
 
   return progress
+}
+
+// Função utilitária para calcular progresso geral
+function calculateOverallProgress(progress) {
+  const values = Object.values(progress)
+  if (values.length === 0) return 0
+  return Math.round(values.reduce((a, b) => a + b, 0) / values.length)
 }
 
 module.exports = router

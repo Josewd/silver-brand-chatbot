@@ -13,6 +13,7 @@ const FormPage = () => {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [schema, setSchema] = useState(null)
+  const [submitting, setSubmitting] = useState(false)
 
   useEffect(() => {
     if (clientToken) {
@@ -98,8 +99,48 @@ const FormPage = () => {
     return Math.round(values.reduce((a, b) => a + b, 0) / values.length)
   }
 
+  const handleFinalizeBriefing = async () => {
+    if (!sessionData?.id || submitting) return
+
+    try {
+      setSubmitting(true)
+      setError(null)
+
+      const response = await fetch(`${BACKEND_URL}/api/sessions/${sessionData.id}/finalize`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-client-token': clientToken
+        }
+      })
+
+      if (!response.ok) {
+        throw new Error('Erro ao finalizar briefing')
+      }
+
+      const data = await response.json()
+      
+      // Atualizar estado local
+      setSessionData(prev => ({
+        ...prev,
+        status: 'completed'
+      }))
+
+      // Mostrar mensagem de sucesso
+      alert('✅ Briefing finalizado com sucesso! Entraremos em contato em breve.')
+      
+    } catch (err) {
+      console.error('Erro ao finalizar briefing:', err)
+      setError('Erro ao finalizar briefing. Tente novamente.')
+      alert('❌ Erro ao finalizar briefing. Tente novamente.')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
   const overallProgress = calculateOverallProgress(progress)
-  const isCompleted = overallProgress >= 95 // Considera completo com 95%+
+  const isCompleted = sessionData?.status === 'completed' || overallProgress >= 95
+  const canFinalize = overallProgress >= 60 && !isCompleted
 
   if (loading) {
     return (
@@ -180,6 +221,42 @@ const FormPage = () => {
             <p className="footer-contact">
               Dúvidas? Entre em contato: <strong>brandhousesilver@gmail.com</strong>
             </p>
+            
+            {/* Botão de finalizar briefing */}
+            <div className="finalize-section">
+              <div className="finalize-info">
+                <p className="finalize-progress">
+                  Progresso atual: <strong>{overallProgress}%</strong>
+                </p>
+                {overallProgress < 60 ? (
+                  <p className="finalize-requirement">
+                    Complete pelo menos 60% do formulário para finalizar o briefing
+                  </p>
+                ) : (
+                  <p className="finalize-ready">
+                    ✅ Você já pode finalizar seu briefing!
+                  </p>
+                )}
+              </div>
+              
+              <button
+                className={`btn-finalize ${canFinalize ? 'enabled' : 'disabled'}`}
+                onClick={handleFinalizeBriefing}
+                disabled={!canFinalize || submitting}
+              >
+                {submitting ? (
+                  <>
+                    <span className="spinner-small"></span>
+                    Finalizando...
+                  </>
+                ) : (
+                  <>
+                    <span className="finalize-icon">✓</span>
+                    Finalizar Briefing
+                  </>
+                )}
+              </button>
+            </div>
           </div>
         )}
       </div>

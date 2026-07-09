@@ -8,6 +8,7 @@ import MultiSelectInput from './inputs/MultiSelectInput'
 import ScaleInput from './inputs/ScaleInput'
 import TextareaInput from './inputs/TextareaInput'
 import IncludedListInput from './inputs/IncludedListInput'
+import FileUploadInput from './inputs/FileUploadInput'
 import FieldHelpButton from './FieldHelpButton'
 
 const FormPanel = ({ 
@@ -131,6 +132,20 @@ const FormPanel = ({
         'gosta_nessas_marcas': 'O que você gosta nessas marcas?'
       }
       return examples[fieldId] || null
+    }
+
+    // Usar FileUploadInput para o campo de referências visuais
+    if (field.id === 'referencias_visuais') {
+      inputComponent = (
+        <FileUploadInput
+          {...commonProps}
+          field={{
+            ...field,
+            accept: 'image/*',
+            multiple: true
+          }}
+        />
+      )
     }
 
     const example = getFieldExample(field.id)
@@ -268,7 +283,7 @@ const FormPanel = ({
             <div className="form-subtitle">PROJETO DE<br/>IDENTIDADE VISUAL</div>
           <div className="form-description">
             Preencha este formulário com o máximo de informações sobre o seu projeto.<br/>
-            Caso tenha dúvidas iou precise de orientações antes de preencher fique à vontade para<br/>
+            Caso tenha dúvidas ou precise de orientações antes de preencher fique à vontade para
             entrar em contato através do e-mail: <strong>brandhousesilver@gmail.com</strong>
           
           <div className="client-info" style={{ border: 'none' }}>

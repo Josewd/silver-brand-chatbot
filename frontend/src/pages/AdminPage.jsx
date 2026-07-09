@@ -309,7 +309,7 @@ const AdminPage = () => {
           <div className="section-header">
             <h2>Sessões Criadas ({sessions.length})</h2>
             <button onClick={loadSessions} disabled={loading} className="btn-refresh">
-              {loading ? '⏳' : '🔄'} Atualizar
+              {loading ? '...' : 'Atualizar'} 
             </button>
           </div>
 

@@ -17,6 +17,10 @@ yarn-error.log*
 *.db
 database/sessions.db
 
+# Uploads
+backend/uploads/*
+!backend/uploads/.gitkeep
+
 # Logs
 logs
 *.log

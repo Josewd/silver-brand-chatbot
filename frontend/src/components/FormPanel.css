@@ -438,6 +438,7 @@
     height: 47px;
     margin-right: 12px;
     margin-top: 8px;
+    
   }
 
   .header-logo {
@@ -446,7 +447,7 @@
   }
 
   .header-divider {
-    height: 150px;
+    height: 140px;
     margin-right: 15px;
     margin-top: 3px;
   }
@@ -730,58 +731,9 @@
 }
 
 @media (max-width: 480px) {
-  .form-header {
-    padding: 15px 10px;
-    min-height: 80px;
-  }
-
-  .header-logo-container {
-    width: 40px;
-    height: 37px;
-    margin-right: 10px;
-    margin-top: 6px;
-  }
-
-  .header-logo {
-    width: 40px;
-    height: 37px;
-  }
-
-  .header-divider {
-    height: 50px;
-    margin-right: 12px;
-    margin-top: 2px;
-  }
-
-  .client-info {
-    bottom: 12px;
-    left: 62px; /* Ajustado para logo ainda menor */
-  }
-
-  .form-title {
-    font-size: 22px;
-  }
-
-  .form-subtitle {
-    font-size: 13px;
-    margin-bottom: 8px;
-  }
-
-  .form-description {
-    font-size: 8px;
-    margin-bottom: 12px;
-    line-height: 1.2;
-  }
-
-  .client-label,
-  .client-name {
-    font-size: 8px;
-  }
-
   .urgency-note {
     display: none;
   }
-  
   .brand-contact {
     display: none;
   }
