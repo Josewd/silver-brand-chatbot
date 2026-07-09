@@ -68,7 +68,7 @@ router.get('/:id/fields/:fieldId/help', requireClientToken, async (req, res) => 
 router.post('/:id/fields/:fieldId/help', requireClientToken, async (req, res) => {
   try {
     const { fieldId } = req.params
-    const { message } = req.body
+    const { message, isFromDraft } = req.body
     const session = req.session
 
     if (!message || message.trim() === '') {
@@ -83,6 +83,22 @@ router.post('/:id/fields/:fieldId/help', requireClientToken, async (req, res) =>
 
     if (!field.ai_help) {
       return res.status(400).json({ error: 'Campo não possui ajuda inteligente habilitada' })
+    }
+
+    // Se é de um rascunho, apenas salvar como mensagem da IA no histórico e retornar
+    if (isFromDraft) {
+      await dbClient.query(queries.addHelpMessage, [
+        session.id,
+        fieldId,
+        'assistant',
+        message.trim(),
+        JSON.stringify({ fromDraft: true })
+      ])
+
+      return res.json({
+        reply: 'Rascunho adicionado ao histórico. Continue a conversa...',
+        draft: null
+      })
     }
 
     // Salvar mensagem do usuário

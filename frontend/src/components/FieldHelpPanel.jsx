@@ -250,8 +250,42 @@ const FieldHelpPanel = ({
     }
   }
 
-  const handleContinueChat = () => {
-    setDraft(null)
+  const handleContinueChat = async () => {
+    if (draft) {
+      // Adicionar o rascunho como mensagem da IA no histórico
+      const draftMessage = {
+        role: 'assistant',
+        content: draft,
+        timestamp: new Date().toISOString()
+      }
+      
+      setMessages(prev => [...prev, draftMessage])
+      
+      // Salvar no backend para persistir no histórico
+      try {
+        const clientToken = localStorage.getItem('clientToken')
+        const response = await fetch(`${BACKEND_URL}/api/sessions/${sessionId}/fields/${fieldId}/help`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-client-token': clientToken
+          },
+          body: JSON.stringify({
+            message: draft,
+            isFromDraft: true // Flag para indicar que vem de um rascunho
+          })
+        })
+        
+        if (response.ok) {
+          console.log('✅ Rascunho salvo no histórico')
+        }
+      } catch (error) {
+        console.error('Erro ao salvar rascunho no histórico:', error)
+      }
+      
+      // Limpar o rascunho após adicionar ao histórico
+      setDraft(null)
+    }
   }
 
   return (
