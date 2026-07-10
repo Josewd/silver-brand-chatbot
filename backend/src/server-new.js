@@ -9,6 +9,7 @@ const adminRoutes = require('./routes/admin');
 const sessionRoutes = require('./routes/sessions');
 const fieldHelpRoutes = require('./routes/fieldHelp');
 const uploadRoutes = require('./routes/upload');
+const googleDriveUploadRoutes = require('./routes/google-drive-upload');
 
 const app = express();
 const server = createServer(app);
@@ -41,6 +42,7 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/sessions', sessionRoutes);
 app.use('/api/sessions', fieldHelpRoutes);
 app.use('/api/upload', uploadRoutes);
+app.use('/api/google-drive', googleDriveUploadRoutes);
 
 // Rota de teste
 app.get('/api/health', (req, res) => {
