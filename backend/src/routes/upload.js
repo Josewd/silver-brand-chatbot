@@ -25,16 +25,16 @@ const storage = process.env.VERCEL
       }
     });
 
-// Filtro de arquivos - apenas imagens
+// Filtro de arquivos - imagens e documentos
 const fileFilter = (req, file, cb) => {
-  const allowedTypes = /jpeg|jpg|png|gif|webp/;
+  const allowedTypes = /jpeg|jpg|png|gif|webp|pdf|doc|docx/;
   const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
   const mimetype = allowedTypes.test(file.mimetype);
 
   if (mimetype && extname) {
     return cb(null, true);
   } else {
-    cb(new Error('Apenas arquivos de imagem são permitidos!'));
+    cb(new Error('Apenas arquivos de imagem e documentos são permitidos!'));
   }
 };
 
