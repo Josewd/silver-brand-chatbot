@@ -1,5 +1,4 @@
 import React, { useState } from 'react'
-import GoogleDriveUploadService from '../../services/GoogleDriveUploadService'
 import './FileUploadInput.css'
 
 const FileUploadInput = ({ 
@@ -14,9 +13,6 @@ const FileUploadInput = ({
   const [previews, setPreviews] = useState({}) // Estado para gerenciar previews
   const [modalOpen, setModalOpen] = useState(false)
   const [selectedFile, setSelectedFile] = useState(null)
-  
-  // Inicializar Google Drive Service
-  const googleDriveService = new GoogleDriveUploadService()
 
   const handleFiles = (files) => {
     if (!files || files.length === 0) return
@@ -104,20 +100,14 @@ const FileUploadInput = ({
         
         let uploadResult;
         
-        // Tentar Google Drive primeiro, se configurado
-        if (googleDriveService.isConfigured()) {
-          try {
-            console.log('☁️ Usando Google Drive para:', fileObj.name);
-            uploadResult = await googleDriveService.uploadFile(fileObj.file, field.id, clientName);
-            console.log('✅ Google Drive upload bem-sucedido:', uploadResult);
-          } catch (driveError) {
-            console.warn('⚠️ Google Drive falhou, usando backend:', driveError.message);
-            // Fallback para backend se Google Drive falhar
-            uploadResult = await uploadToBackend(fileObj);
-          }
-        } else {
-          // Usar backend se Google Drive não estiver configurado
-          console.log('🔄 Usando backend para:', fileObj.name);
+        // Tentar Google Drive via backend primeiro
+        try {
+          console.log('☁️ Usando Google Drive (via backend) para:', fileObj.name);
+          uploadResult = await uploadToGoogleDrive(fileObj, clientName);
+          console.log('✅ Google Drive upload bem-sucedido:', uploadResult);
+        } catch (driveError) {
+          console.warn('⚠️ Google Drive falhou, usando backend local:', driveError.message);
+          // Fallback para backend local se Google Drive falhar
           uploadResult = await uploadToBackend(fileObj);
         }
 
@@ -223,6 +213,38 @@ const FileUploadInput = ({
     // 4. Usar sessionId ou timestamp como fallback
     const sessionId = localStorage.getItem('currentSessionId') || Date.now().toString();
     return `Cliente-${sessionId.substring(0, 8)}`;
+  }
+
+  // Função para upload via Google Drive no backend (preferencial)
+  const uploadToGoogleDrive = async (fileObj, clientName) => {
+    const formData = new FormData()
+    formData.append('file', fileObj.file)
+    formData.append('fieldId', field.id)
+    formData.append('clientName', clientName || getClientNameFromContext())
+    
+    const clientToken = localStorage.getItem('clientToken')
+    const response = await fetch(`${import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001'}/api/google-drive/upload`, {
+      method: 'POST',
+      headers: {
+        'x-client-token': clientToken
+      },
+      body: formData
+    })
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ error: 'Erro desconhecido' }));
+      throw new Error(`Erro no Google Drive: ${errorData.error || response.statusText}`);
+    }
+
+    const result = await response.json()
+    return {
+      url: result.file.url,
+      directUrl: result.file.directUrl,
+      originalName: result.file.originalName,
+      storage: 'google-drive',
+      clientFolder: result.file.clientFolder,
+      clientFolderName: result.file.clientFolderName
+    };
   }
 
   // Função auxiliar para upload via backend (fallback)
