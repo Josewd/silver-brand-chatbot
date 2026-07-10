@@ -451,7 +451,7 @@ const FileUploadInput = ({
       if (file.uploaded && !file.url) {
         alert('Este arquivo foi enviado mas não possui URL válida para download. O arquivo pode ter sido removido do servidor ou ocorreu um erro no upload.')
       } else if (!file.uploaded && !file.file) {
-        alert('Este arquivo não foi enviado ainda e não possui dados locais para download.')
+        alert('Este arquivo ainda não foi enviado! Clique no botão "Fazer Upload" primeiro.')
       } else {
         alert('Não é possível fazer download deste arquivo. Verifique se o arquivo foi enviado corretamente.')
       }
@@ -724,11 +724,13 @@ const FileUploadInput = ({
               
               <div className="modal-actions">
                 <button 
-                  className="btn-download"
+                  className={`btn-download ${!selectedFile.uploaded && !selectedFile.file ? 'disabled' : ''}`}
                   onClick={() => downloadFile(selectedFile)}
+                  disabled={!selectedFile.uploaded && !selectedFile.file}
+                  title={!selectedFile.uploaded && !selectedFile.file ? 'Arquivo ainda não foi enviado' : 'Baixar arquivo'}
                 >
                   <span className="download-icon">⬇️</span>
-                  Download
+                  {selectedFile.uploaded ? 'Download' : !selectedFile.file ? 'Fazer Upload Primeiro' : 'Download'}
                 </button>
                 <button 
                   className="btn-modal-close"
