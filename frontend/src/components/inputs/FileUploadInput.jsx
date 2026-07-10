@@ -1,4 +1,5 @@
 import React, { useState } from 'react'
+import GoogleDriveUploadService from '../../services/GoogleDriveUploadService'
 import './FileUploadInput.css'
 
 const FileUploadInput = ({ 
@@ -13,6 +14,9 @@ const FileUploadInput = ({
   const [previews, setPreviews] = useState({}) // Estado para gerenciar previews
   const [modalOpen, setModalOpen] = useState(false)
   const [selectedFile, setSelectedFile] = useState(null)
+  
+  // Inicializar Google Drive Service
+  const googleDriveService = new GoogleDriveUploadService()
 
   const handleFiles = (files) => {
     if (!files || files.length === 0) return
@@ -91,72 +95,65 @@ const FileUploadInput = ({
     try {
       const uploadedFiles = []
       
+      // Obter nome do cliente do contexto (formulário)
+      const clientName = getClientNameFromContext()
+      console.log('👤 Nome do cliente identificado:', clientName);
+      
       for (const fileObj of filesToUpload) {
-        console.log('📁 Fazendo upload:', fileObj.name);
+        console.log('📁 Processando arquivo:', fileObj.name);
         
-        const formData = new FormData()
-        formData.append('file', fileObj.file)
-        formData.append('fieldId', field.id)
+        let uploadResult;
         
-        const clientToken = localStorage.getItem('clientToken')
-        const response = await fetch(`${import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001'}/api/upload`, {
-          method: 'POST',
-          headers: {
-            'x-client-token': clientToken
-          },
-          body: formData
-        })
-
-        if (response.ok) {
-          const result = await response.json()
-          console.log('✅ Upload bem-sucedido:', result);
-          
-          // Validar se a resposta tem URL
-          if (!result.url) {
-            console.error('⚠️ Resposta do servidor sem URL:', result);
-            throw new Error(`Upload de ${fileObj.name} não retornou URL válida`);
+        // Tentar Google Drive primeiro, se configurado
+        if (googleDriveService.isConfigured()) {
+          try {
+            console.log('☁️ Usando Google Drive para:', fileObj.name);
+            uploadResult = await googleDriveService.uploadFile(fileObj.file, field.id, clientName);
+            console.log('✅ Google Drive upload bem-sucedido:', uploadResult);
+          } catch (driveError) {
+            console.warn('⚠️ Google Drive falhou, usando backend:', driveError.message);
+            // Fallback para backend se Google Drive falhar
+            uploadResult = await uploadToBackend(fileObj);
           }
-          
-          uploadedFiles.push({
-            id: fileObj.id,
-            name: result.originalName || fileObj.name,
-            url: result.url, // URL do servidor ou data URL
-            size: fileObj.size,
-            type: fileObj.type,
-            uploaded: true,
-            filename: result.filename, // Nome do arquivo no servidor
-            isTemporary: result.isTemporary || false
-            // Não incluir a propriedade 'file' para arquivos enviados
-          })
         } else {
-          const errorData = await response.json().catch(() => ({ error: 'Erro desconhecido' }));
-          console.error('❌ Erro no upload:', errorData);
-          throw new Error(`Erro ao enviar ${fileObj.name}: ${errorData.error || response.statusText}`)
+          // Usar backend se Google Drive não estiver configurado
+          console.log('🔄 Usando backend para:', fileObj.name);
+          uploadResult = await uploadToBackend(fileObj);
         }
+
+        if (!uploadResult.url) {
+          throw new Error(`Upload de ${fileObj.name} não retornou URL válida`);
+        }
+        
+        uploadedFiles.push({
+          id: fileObj.id,
+          name: uploadResult.originalName || fileObj.name,
+          url: uploadResult.url,
+          directUrl: uploadResult.directUrl, // Para Google Drive
+          size: fileObj.size,
+          type: fileObj.type,
+          uploaded: true,
+          storage: uploadResult.storage || 'backend',
+          clientFolder: uploadResult.clientFolder // ID da pasta do cliente
+        });
       }
 
       // Atualizar lista de arquivos: manter os já enviados e adicionar os novos
       const existingUploaded = files.filter(file => file.uploaded)
       const allUploadedFiles = [...existingUploaded, ...uploadedFiles]
       
-      // Limpar arquivos para remover propriedades desnecessárias antes de enviar ao backend
+      // Limpar arquivos para salvar no backend (apenas URLs e metadados)
       const cleanedFiles = allUploadedFiles.map(file => {
         const cleanFile = { ...file }
-        // Remover propriedade 'file' que não deve ser serializada, mas manter outras propriedades essenciais
-        delete cleanFile.file
-        // Garantir que propriedades essenciais estão presentes
-        if (!cleanFile.url && file.url) {
-          cleanFile.url = file.url
-        }
-        if (!cleanFile.uploaded) {
-          cleanFile.uploaded = true
-        }
+        delete cleanFile.file // Remover File object
         
-        console.log('🧹 Arquivo limpo para salvar:', {
+        console.log('💾 Arquivo processado:', {
           id: cleanFile.id,
           name: cleanFile.name,
           url: cleanFile.url ? (cleanFile.url.length > 50 ? cleanFile.url.substring(0, 50) + '...' : cleanFile.url) : 'SEM URL',
-          uploaded: cleanFile.uploaded
+          uploaded: cleanFile.uploaded,
+          storage: cleanFile.storage,
+          clientFolder: cleanFile.clientFolder
         });
         
         return cleanFile
@@ -170,18 +167,18 @@ const FileUploadInput = ({
       // Chamar onChange primeiro para atualizar estado local
       onChange?.(newValue)
       
-      // Aguardar um pouco antes de chamar onBlur para evitar conflitos
+      // Salvar no backend (apenas URLs e metadados)
       setTimeout(() => {
         if (onBlur) {
-          console.log('💿 Salvando no banco de dados...');
+          console.log('💿 Salvando URLs no banco de dados...');
           onBlur(newValue).catch(error => {
             console.error('❌ Erro ao salvar no backend:', error)
-            alert('⚠️ Upload bem-sucedido, mas erro ao salvar no formulário. Tente salvar novamente.')
+            alert('⚠️ Upload bem-sucedido, mas erro ao salvar no formulário. Recarregue a página.')
           })
         }
       }, 100)
       
-      alert(`✅ ${uploadedFiles.length} arquivo(s) enviado(s) com sucesso!`)
+      alert(`✅ ${uploadedFiles.length} arquivo(s) enviado(s) com sucesso!\n📁 Organizados por cliente: ${clientName}`)
       
     } catch (error) {
       console.error('❌ Erro no upload:', error)
@@ -189,6 +186,71 @@ const FileUploadInput = ({
     } finally {
       setUploading(false)
     }
+  }
+
+  // Função para obter nome do cliente do contexto do formulário
+  const getClientNameFromContext = () => {
+    // Tentar obter nome do cliente de várias formas
+    
+    // 1. Buscar no localStorage (sessionData)
+    try {
+      const sessionData = JSON.parse(localStorage.getItem('currentSession') || '{}');
+      if (sessionData.clientName) {
+        return sessionData.clientName;
+      }
+    } catch (e) {
+      // Ignorar erro de parsing
+    }
+    
+    // 2. Buscar no estado do formulário (se disponível via contexto global)
+    if (window.currentFormState) {
+      const formState = window.currentFormState;
+      const clientName = formState.name || formState.cliente_nome || formState.client_name;
+      if (clientName) {
+        return clientName;
+      }
+    }
+    
+    // 3. Buscar no DOM (campo de nome se existir)
+    const nameFields = ['input[name="name"]', 'input[name="nome"]', 'input[name="client_name"]'];
+    for (const selector of nameFields) {
+      const field = document.querySelector(selector);
+      if (field && field.value.trim()) {
+        return field.value.trim();
+      }
+    }
+    
+    // 4. Usar sessionId ou timestamp como fallback
+    const sessionId = localStorage.getItem('currentSessionId') || Date.now().toString();
+    return `Cliente-${sessionId.substring(0, 8)}`;
+  }
+
+  // Função auxiliar para upload via backend (fallback)
+  const uploadToBackend = async (fileObj) => {
+    const formData = new FormData()
+    formData.append('file', fileObj.file)
+    formData.append('fieldId', field.id)
+    
+    const clientToken = localStorage.getItem('clientToken')
+    const response = await fetch(`${import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001'}/api/upload`, {
+      method: 'POST',
+      headers: {
+        'x-client-token': clientToken
+      },
+      body: formData
+    })
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ error: 'Erro desconhecido' }));
+      throw new Error(`Erro no backend: ${errorData.error || response.statusText}`);
+    }
+
+    const result = await response.json()
+    return {
+      url: result.url,
+      originalName: result.originalName,
+      storage: result.storage || 'backend'
+    };
   }
 
   const handleDrag = (e) => {
@@ -541,7 +603,9 @@ const FileUploadInput = ({
                   
                   {/* Badge de status */}
                   {file.uploaded ? (
-                    <div className="upload-success-badge">✓ Enviado</div>
+                    <div className={`upload-success-badge ${file.storage === 'google-drive' ? 'google-drive' : ''}`}>
+                      {file.storage === 'google-drive' ? '☁️ Drive' : '✓ Enviado'}
+                    </div>
                   ) : (
                     <div className="upload-pending-badge">⏳ Pendente</div>
                   )}
@@ -550,7 +614,7 @@ const FileUploadInput = ({
                   <span className="file-name">{file.name}</span>
                   <span className="file-size">
                     {(file.size / 1024 / 1024).toFixed(1)}MB
-                    {file.uploaded && <span className="uploaded-text"> • Enviado</span>}
+                    {file.uploaded && <span className="uploaded-text"> • {file.storage === 'google-drive' ? 'Google Drive' : 'Enviado'}</span>}
                     {!file.uploaded && <span className="pending-text"> • Clique em "Fazer Upload"</span>}
                   </span>
                   {/* Mostrar URL para debug (apenas em desenvolvimento) */}

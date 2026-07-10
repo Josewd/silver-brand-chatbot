@@ -226,17 +226,27 @@
 
 .upload-success-badge {
   position: absolute;
-  top: -2px;
-  right: -2px;
-  background: #22c55e;
+  top: 4px;
+  right: 4px;
+  background: #10b981;
   color: white;
-  border-radius: 50%;
-  width: 16px;
-  height: 16px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  border-radius: 4px;
+  padding: 2px 6px;
   font-size: 10px;
+  font-weight: bold;
+  min-width: 16px;
+  height: auto;
+}
+
+.upload-success-badge.google-drive {
+  background: #4285f4;
+  color: white;
+}
+
+.uploaded-text {
+  color: #10b981;
+  font-weight: 500;
+}
   font-weight: bold;
 }
 
