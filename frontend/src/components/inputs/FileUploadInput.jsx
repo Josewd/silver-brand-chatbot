@@ -161,10 +161,18 @@ const FileUploadInput = ({
       setTimeout(() => {
         if (onBlur) {
           console.log('💿 Salvando URLs no banco de dados...');
-          onBlur(newValue).catch(error => {
-            console.error('❌ Erro ao salvar no backend:', error)
-            alert('⚠️ Upload bem-sucedido, mas erro ao salvar no formulário. Recarregue a página.')
-          })
+          try {
+            const result = onBlur(newValue);
+            // Se onBlur retorna Promise
+            if (result && typeof result.catch === 'function') {
+              result.catch(error => {
+                console.error('❌ Erro ao salvar no backend:', error)
+                alert('⚠️ Upload bem-sucedido, mas erro ao salvar no formulário. Recarregue a página.')
+              })
+            }
+          } catch (error) {
+            console.error('❌ Erro ao chamar onBlur:', error)
+          }
         }
       }, 100)
       
