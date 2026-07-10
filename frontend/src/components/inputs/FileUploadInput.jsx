@@ -393,31 +393,6 @@ const FileUploadInput = ({
     }
   }
 
-  // Verificar integridade dos arquivos quando o componente carrega
-  React.useEffect(() => {
-    const verifyFiles = async () => {
-      if (files.length === 0) return
-      
-      const filesWithIssues = []
-      
-      for (const file of files) {
-        if (file.uploaded && file.url && !file.url.startsWith('data:')) {
-          const isValid = await checkFileIntegrity(file)
-          if (!isValid) {
-            filesWithIssues.push(file)
-          }
-        }
-      }
-      
-      if (filesWithIssues.length > 0) {
-        console.warn('Arquivos com problemas de integridade:', filesWithIssues)
-        // Opcionalmente notificar o usuário sobre arquivos com problemas
-      }
-    }
-    
-    verifyFiles()
-  }, [files])
-
   // Garantir que files seja sempre um array válido
   const files = React.useMemo(() => {
     // Se não há valor, retorna array vazio
@@ -457,6 +432,31 @@ const FileUploadInput = ({
     // Caso contrário, array vazio
     return []
   }, [value])
+
+  // Verificar integridade dos arquivos quando o componente carrega
+  React.useEffect(() => {
+    const verifyFiles = async () => {
+      if (files.length === 0) return
+      
+      const filesWithIssues = []
+      
+      for (const file of files) {
+        if (file.uploaded && file.url && !file.url.startsWith('data:')) {
+          const isValid = await checkFileIntegrity(file)
+          if (!isValid) {
+            filesWithIssues.push(file)
+          }
+        }
+      }
+      
+      if (filesWithIssues.length > 0) {
+        console.warn('Arquivos com problemas de integridade:', filesWithIssues)
+        // Opcionalmente notificar o usuário sobre arquivos com problemas
+      }
+    }
+    
+    verifyFiles()
+  }, [files])
 
   return (
     <div className="file-upload-input">

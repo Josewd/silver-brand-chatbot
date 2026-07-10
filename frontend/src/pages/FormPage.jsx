@@ -85,11 +85,21 @@ const FormPage = () => {
         // Atualizar progresso com dados do servidor
         setProgress(data.progress || {})
       } else {
-        console.error('Erro ao salvar campo:', response.statusText)
+        const errorData = await response.json().catch(() => ({ error: 'Erro desconhecido' }));
+        console.error('Erro ao salvar campo:', response.status, errorData);
+        
+        // Mostrar erro específico para o usuário se for erro de arquivo
+        if (errorData.error && errorData.error.includes('arquivo')) {
+          alert(`❌ ${errorData.error}\n\nCampo: ${fieldId}\nDetalhes: ${errorData.details || 'Verifique se o arquivo foi enviado corretamente.'}`);
+        } else {
+          console.warn('Erro ao salvar campo (não crítico):', errorData.error);
+        }
       }
 
     } catch (error) {
       console.error('Erro ao salvar campo:', error)
+      // Não mostrar alert para erros de rede - pode ser temporário
+      console.warn('Falha na comunicação com servidor. Os dados podem não ter sido salvos.');
     }
   }
 

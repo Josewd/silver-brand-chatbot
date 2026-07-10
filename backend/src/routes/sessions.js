@@ -107,20 +107,56 @@ router.patch('/:id/fields/:fieldId', requireClientToken, async (req, res) => {
     
     // Limpar objetos File antes de salvar (eles não podem ser serializados)
     if (field.type === 'file') {
-      if (Array.isArray(value)) {
-        valueToSave = value.map(file => {
-          const cleanFile = { ...file }
-          // Remover propriedade 'file' que não pode ser serializada
+      try {
+        if (Array.isArray(value)) {
+          valueToSave = value.map(file => {
+            if (!file || typeof file !== 'object') {
+              console.warn('⚠️ Arquivo inválido encontrado:', file);
+              return null;
+            }
+            
+            const cleanFile = { ...file }
+            // Remover propriedade 'file' que não pode ser serializada
+            delete cleanFile.file
+            
+            // Garantir que propriedades essenciais existem
+            if (!cleanFile.id) {
+              cleanFile.id = `file-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+            }
+            if (!cleanFile.name) {
+              console.warn('⚠️ Arquivo sem nome:', cleanFile);
+              return null;
+            }
+            
+            return cleanFile;
+          }).filter(file => file !== null); // Remover arquivos inválidos
+          
+          valueToSave = JSON.stringify(valueToSave)
+          console.log(`💾 Salvando arquivos (${valueToSave.length > 1000 ? 'grande' : 'pequeno'}):`, valueToSave.length > 200 ? `${valueToSave.substring(0, 100)}...` : valueToSave)
+        } else if (value && typeof value === 'object') {
+          const cleanFile = { ...value }
           delete cleanFile.file
-          return cleanFile
-        })
-        valueToSave = JSON.stringify(valueToSave)
-        console.log(`💾 Salvando arquivos (${valueToSave.length > 1000 ? 'grande' : 'pequeno'}):`, valueToSave.length > 200 ? `${valueToSave.substring(0, 100)}...` : valueToSave)
-      } else if (value && typeof value === 'object') {
-        const cleanFile = { ...value }
-        delete cleanFile.file
-        valueToSave = JSON.stringify(cleanFile)
-        console.log(`💾 Salvando arquivo único:`, valueToSave.length > 200 ? `${valueToSave.substring(0, 100)}...` : valueToSave)
+          
+          // Garantir propriedades essenciais
+          if (!cleanFile.id) {
+            cleanFile.id = `file-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+          }
+          if (!cleanFile.name) {
+            throw new Error('Nome do arquivo é obrigatório');
+          }
+          
+          valueToSave = JSON.stringify(cleanFile)
+          console.log(`💾 Salvando arquivo único:`, valueToSave.length > 200 ? `${valueToSave.substring(0, 100)}...` : valueToSave)
+        } else if (value === null || value === undefined || value === '') {
+          // Valor vazio - permitir
+          valueToSave = null;
+          console.log(`💾 Salvando arquivo como null (campo vazio)`);
+        } else {
+          throw new Error(`Formato de arquivo inválido: ${typeof value}`);
+        }
+      } catch (jsonError) {
+        console.error('❌ Erro ao processar arquivo para JSON:', jsonError);
+        throw new Error(`Erro ao processar arquivo: ${jsonError.message}`);
       }
     } else if (Array.isArray(value)) {
       // Para arrays (multiselect), converter para JSON string
@@ -158,8 +194,37 @@ router.patch('/:id/fields/:fieldId', requireClientToken, async (req, res) => {
     })
 
   } catch (error) {
-    console.error('Erro ao atualizar campo:', error)
-    res.status(500).json({ error: 'Erro interno do servidor' })
+    console.error('❌ Erro ao atualizar campo:', error);
+    console.error('📋 Contexto do erro:', {
+      sessionId: req.session?.id,
+      fieldId,
+      valueType: typeof value,
+      isArray: Array.isArray(value),
+      fieldType: field?.type,
+      errorMessage: error.message,
+      errorStack: error.stack
+    });
+    
+    // Retornar erro mais específico
+    if (error.message.includes('arquivo')) {
+      res.status(400).json({ 
+        error: `Erro no processamento do arquivo: ${error.message}`,
+        fieldId,
+        details: 'Verifique se o arquivo foi enviado corretamente'
+      });
+    } else if (error.message.includes('JSON')) {
+      res.status(400).json({ 
+        error: 'Erro na serialização dos dados do arquivo',
+        fieldId,
+        details: 'Os dados do arquivo não puderam ser processados'
+      });
+    } else {
+      res.status(500).json({ 
+        error: 'Erro interno do servidor',
+        fieldId,
+        message: error.message
+      });
+    }
   }
 })
 
