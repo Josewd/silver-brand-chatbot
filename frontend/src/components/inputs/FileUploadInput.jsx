@@ -85,11 +85,15 @@ const FileUploadInput = ({
       return
     }
 
+    console.log('📤 Iniciando upload de', filesToUpload.length, 'arquivo(s)...');
+    
     setUploading(true)
     try {
       const uploadedFiles = []
       
       for (const fileObj of filesToUpload) {
+        console.log('📁 Fazendo upload:', fileObj.name);
+        
         const formData = new FormData()
         formData.append('file', fileObj.file)
         formData.append('fieldId', field.id)
@@ -105,34 +109,83 @@ const FileUploadInput = ({
 
         if (response.ok) {
           const result = await response.json()
+          console.log('✅ Upload bem-sucedido:', result);
+          
+          // Validar se a resposta tem URL
+          if (!result.url) {
+            console.error('⚠️ Resposta do servidor sem URL:', result);
+            throw new Error(`Upload de ${fileObj.name} não retornou URL válida`);
+          }
+          
           uploadedFiles.push({
             id: fileObj.id,
             name: result.originalName || fileObj.name,
-            url: result.url,
+            url: result.url, // URL do servidor ou data URL
             size: fileObj.size,
             type: fileObj.type,
-            uploaded: true
+            uploaded: true,
+            filename: result.filename, // Nome do arquivo no servidor
+            isTemporary: result.isTemporary || false
             // Não incluir a propriedade 'file' para arquivos enviados
           })
         } else {
-          throw new Error(`Erro ao enviar ${fileObj.name}`)
+          const errorData = await response.json().catch(() => ({ error: 'Erro desconhecido' }));
+          console.error('❌ Erro no upload:', errorData);
+          throw new Error(`Erro ao enviar ${fileObj.name}: ${errorData.error || response.statusText}`)
         }
       }
 
       // Atualizar lista de arquivos: manter os já enviados e adicionar os novos
       const existingUploaded = files.filter(file => file.uploaded)
-      const allFiles = [...existingUploaded, ...uploadedFiles]
+      const allUploadedFiles = [...existingUploaded, ...uploadedFiles]
+      
+      // Limpar arquivos para remover propriedades desnecessárias antes de enviar ao backend
+      const cleanedFiles = allUploadedFiles.map(file => {
+        const cleanFile = { ...file }
+        // Remover propriedade 'file' que não deve ser serializada, mas manter outras propriedades essenciais
+        delete cleanFile.file
+        // Garantir que propriedades essenciais estão presentes
+        if (!cleanFile.url && file.url) {
+          cleanFile.url = file.url
+        }
+        if (!cleanFile.uploaded) {
+          cleanFile.uploaded = true
+        }
+        
+        console.log('🧹 Arquivo limpo para salvar:', {
+          id: cleanFile.id,
+          name: cleanFile.name,
+          url: cleanFile.url ? (cleanFile.url.length > 50 ? cleanFile.url.substring(0, 50) + '...' : cleanFile.url) : 'SEM URL',
+          uploaded: cleanFile.uploaded
+        });
+        
+        return cleanFile
+      })
+      
+      console.log('💾 Salvando', cleanedFiles.length, 'arquivo(s) no formulário...');
       
       // Atualizar valor do campo
-      const newValue = field.multiple ? allFiles : allFiles[0]
+      const newValue = field.multiple ? cleanedFiles : (cleanedFiles[0] || null)
+      
+      // Chamar onChange primeiro para atualizar estado local
       onChange?.(newValue)
-      onBlur?.(newValue)
+      
+      // Aguardar um pouco antes de chamar onBlur para evitar conflitos
+      setTimeout(() => {
+        if (onBlur) {
+          console.log('💿 Salvando no banco de dados...');
+          onBlur(newValue).catch(error => {
+            console.error('❌ Erro ao salvar no backend:', error)
+            alert('⚠️ Upload bem-sucedido, mas erro ao salvar no formulário. Tente salvar novamente.')
+          })
+        }
+      }, 100)
       
       alert(`✅ ${uploadedFiles.length} arquivo(s) enviado(s) com sucesso!`)
       
     } catch (error) {
-      console.error('Erro no upload:', error)
-      alert('❌ Erro ao enviar arquivos. Tente novamente.')
+      console.error('❌ Erro no upload:', error)
+      alert(`❌ Erro ao enviar arquivos: ${error.message}`)
     } finally {
       setUploading(false)
     }
@@ -195,45 +248,90 @@ const FileUploadInput = ({
     setSelectedFile(null)
   }
 
-  const downloadFile = (file) => {
-    if (file.uploaded && file.url && !file.url.startsWith('data:')) {
-      // Arquivo do servidor - fazer download
-      const link = document.createElement('a')
-      link.href = file.url
-      link.download = file.name || 'download'
-      link.target = '_blank'
-      document.body.appendChild(link)
-      link.click()
-      document.body.removeChild(link)
-    } else if (file.url && file.url.startsWith('data:')) {
-      // Arquivo base64 - criar blob e fazer download
-      try {
-        const [header, base64Data] = file.url.split(',')
-        const mimeMatch = header.match(/data:([^;]+)/)
-        const mimeType = mimeMatch ? mimeMatch[1] : 'application/octet-stream'
-        
-        const byteCharacters = atob(base64Data)
-        const byteNumbers = new Array(byteCharacters.length)
-        for (let i = 0; i < byteCharacters.length; i++) {
-          byteNumbers[i] = byteCharacters.charCodeAt(i)
+  const downloadFile = async (file) => {
+    // Verificar se é um arquivo enviado com URL
+    if (file.uploaded && file.url) {
+      if (file.url.startsWith('data:')) {
+        // Arquivo base64 - converter e fazer download
+        try {
+          const [header, base64Data] = file.url.split(',')
+          const mimeMatch = header.match(/data:([^;]+)/)
+          const mimeType = mimeMatch ? mimeMatch[1] : 'application/octet-stream'
+          
+          const byteCharacters = atob(base64Data)
+          const byteNumbers = new Array(byteCharacters.length)
+          for (let i = 0; i < byteCharacters.length; i++) {
+            byteNumbers[i] = byteCharacters.charCodeAt(i)
+          }
+          const byteArray = new Uint8Array(byteNumbers)
+          const blob = new Blob([byteArray], { type: mimeType })
+          
+          const url = URL.createObjectURL(blob)
+          const link = document.createElement('a')
+          link.href = url
+          link.download = file.name || 'download'
+          document.body.appendChild(link)
+          link.click()
+          document.body.removeChild(link)
+          URL.revokeObjectURL(url)
+        } catch (error) {
+          console.error('Erro ao fazer download do arquivo base64:', error)
+          alert('Erro ao fazer download do arquivo')
         }
-        const byteArray = new Uint8Array(byteNumbers)
-        const blob = new Blob([byteArray], { type: mimeType })
-        
-        const url = URL.createObjectURL(blob)
-        const link = document.createElement('a')
-        link.href = url
-        link.download = file.name || 'download'
-        document.body.appendChild(link)
-        link.click()
-        document.body.removeChild(link)
-        URL.revokeObjectURL(url)
-      } catch (error) {
-        console.error('Erro ao fazer download do arquivo base64:', error)
-        alert('Erro ao fazer download do arquivo')
+      } else if (file.url.startsWith('http')) {
+        // URL do servidor - tentar download via API primeiro
+        try {
+          const clientToken = localStorage.getItem('clientToken')
+          
+          // Extrair o nome do arquivo da URL
+          const fileName = file.url.split('/').pop() || file.name
+          
+          // Tentar usar a nova rota de download
+          const downloadUrl = `${import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001'}/api/upload/download/${fileName}`
+          
+          const response = await fetch(downloadUrl, {
+            method: 'GET',
+            headers: {
+              'x-client-token': clientToken
+            }
+          })
+          
+          if (response.ok) {
+            // Download via API funcionou
+            const blob = await response.blob()
+            const url = URL.createObjectURL(blob)
+            const link = document.createElement('a')
+            link.href = url
+            link.download = file.name || fileName
+            document.body.appendChild(link)
+            link.click()
+            document.body.removeChild(link)
+            URL.revokeObjectURL(url)
+          } else {
+            // API falhou - tentar download direto
+            console.warn('Download via API falhou, tentando download direto:', response.status)
+            const link = document.createElement('a')
+            link.href = file.url
+            link.download = file.name || 'download'
+            link.target = '_blank'
+            document.body.appendChild(link)
+            link.click()
+            document.body.removeChild(link)
+          }
+        } catch (error) {
+          console.error('Erro no download via API:', error)
+          // Fallback para download direto
+          const link = document.createElement('a')
+          link.href = file.url
+          link.download = file.name || 'download'
+          link.target = '_blank'
+          document.body.appendChild(link)
+          link.click()
+          document.body.removeChild(link)
+        }
       }
     } else if (file.file && file.file instanceof File) {
-      // Arquivo local - criar blob URL (validar se é realmente um File)
+      // Arquivo local ainda não enviado - criar blob URL
       try {
         const url = URL.createObjectURL(file.file)
         const link = document.createElement('a')
@@ -248,10 +346,77 @@ const FileUploadInput = ({
         alert('Erro ao fazer download do arquivo local')
       }
     } else {
+      // Arquivo sem URL válida ou File object
       console.error('Arquivo inválido para download:', file)
-      alert('Não é possível fazer download deste arquivo')
+      console.log('Detalhes do arquivo:', {
+        hasFile: !!file.file,
+        hasUrl: !!file.url,
+        uploaded: file.uploaded,
+        name: file.name,
+        type: file.type
+      })
+      
+      if (file.uploaded && !file.url) {
+        alert('Este arquivo foi enviado mas não possui URL válida para download. O arquivo pode ter sido removido do servidor ou ocorreu um erro no upload.')
+      } else if (!file.uploaded && !file.file) {
+        alert('Este arquivo não foi enviado ainda e não possui dados locais para download.')
+      } else {
+        alert('Não é possível fazer download deste arquivo. Verifique se o arquivo foi enviado corretamente.')
+      }
     }
   }
+
+  // Função para verificar se um arquivo ainda existe no servidor
+  const checkFileIntegrity = async (file) => {
+    if (!file.uploaded || !file.url || file.url.startsWith('data:')) {
+      return true // Arquivo local ou base64 - sempre válido
+    }
+    
+    try {
+      const clientToken = localStorage.getItem('clientToken')
+      const fileName = file.url.split('/').pop()
+      
+      const response = await fetch(
+        `${import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001'}/api/upload/check/${fileName}`,
+        {
+          method: 'HEAD',
+          headers: {
+            'x-client-token': clientToken
+          }
+        }
+      )
+      
+      return response.ok
+    } catch (error) {
+      console.warn('Erro ao verificar integridade do arquivo:', error)
+      return false
+    }
+  }
+
+  // Verificar integridade dos arquivos quando o componente carrega
+  React.useEffect(() => {
+    const verifyFiles = async () => {
+      if (files.length === 0) return
+      
+      const filesWithIssues = []
+      
+      for (const file of files) {
+        if (file.uploaded && file.url && !file.url.startsWith('data:')) {
+          const isValid = await checkFileIntegrity(file)
+          if (!isValid) {
+            filesWithIssues.push(file)
+          }
+        }
+      }
+      
+      if (filesWithIssues.length > 0) {
+        console.warn('Arquivos com problemas de integridade:', filesWithIssues)
+        // Opcionalmente notificar o usuário sobre arquivos com problemas
+      }
+    }
+    
+    verifyFiles()
+  }, [files])
 
   // Garantir que files seja sempre um array válido
   const files = React.useMemo(() => {
@@ -260,17 +425,29 @@ const FileUploadInput = ({
       return []
     }
     
-    // Se já é um array, filtra valores válidos e limpa propriedades File inválidas
+    // Se já é um array, filtra valores válidos e garante IDs únicos
     if (Array.isArray(value)) {
-      return value.filter(file => file && typeof file === 'object').map(file => ({
-        ...file,
-        // Limpar propriedade file se não for um File válido
-        file: (file.file instanceof File) ? file.file : null
-      }))
+      return value.filter(file => file && typeof file === 'object').map(file => {
+        // Garantir que cada arquivo tem um ID único
+        if (!file.id) {
+          file.id = `file-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+        }
+        
+        return {
+          ...file,
+          // Limpar propriedade file se não for um File válido
+          file: (file.file instanceof File) ? file.file : null
+        }
+      })
     }
     
-    // Se é um objeto válido, coloca em array e limpa propriedade File se inválida
+    // Se é um objeto válido, coloca em array e garante ID único
     if (typeof value === 'object') {
+      // Garantir que tem um ID único
+      if (!value.id) {
+        value.id = `file-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+      }
+      
       return [{
         ...value,
         file: (value.file instanceof File) ? value.file : null
@@ -341,15 +518,19 @@ const FileUploadInput = ({
           </div>
           <div className="files-list">
             {files.map((file) => (
-              <div key={file.id} className={`file-item ${file.uploaded ? 'uploaded' : ''}`}>
+              <div key={file.id} className={`file-item ${file.uploaded ? 'uploaded' : 'pending'}`}>
                 <div 
                   className="file-preview clickable"
                   onClick={() => openFileModal(file)}
-                  title={file.uploaded ? "Clique para visualizar" : "Preview do arquivo"}
+                  title={file.uploaded ? "Clique para visualizar" : "Preview do arquivo (não enviado)"}
                 >
-                  {/* Mostrar preview: primeiro tenta URL do servidor, depois preview local */}
-                  {file.url && file.uploaded ? (
-                    <img src={file.url} alt={file.name} />
+                  {/* Mostrar preview: priorizar URL do servidor para arquivos enviados */}
+                  {file.uploaded && file.url ? (
+                    file.url.startsWith('data:') ? (
+                      <img src={file.url} alt={file.name} />
+                    ) : (
+                      <img src={file.url} alt={file.name} />
+                    )
                   ) : previews[file.id] ? (
                     <img src={previews[file.id]} alt={file.name} />
                   ) : file.type && file.type.startsWith('image/') ? (
@@ -357,8 +538,12 @@ const FileUploadInput = ({
                   ) : (
                     <div className="file-icon">📄</div>
                   )}
-                  {file.uploaded && (
-                    <div className="upload-success-badge">✓</div>
+                  
+                  {/* Badge de status */}
+                  {file.uploaded ? (
+                    <div className="upload-success-badge">✓ Enviado</div>
+                  ) : (
+                    <div className="upload-pending-badge">⏳ Pendente</div>
                   )}
                 </div>
                 <div className="file-info">
@@ -366,7 +551,14 @@ const FileUploadInput = ({
                   <span className="file-size">
                     {(file.size / 1024 / 1024).toFixed(1)}MB
                     {file.uploaded && <span className="uploaded-text"> • Enviado</span>}
+                    {!file.uploaded && <span className="pending-text"> • Clique em "Fazer Upload"</span>}
                   </span>
+                  {/* Mostrar URL para debug (apenas em desenvolvimento) */}
+                  {file.url && import.meta.env.DEV && (
+                    <span className="file-debug">
+                      URL: {file.url.length > 60 ? file.url.substring(0, 60) + '...' : file.url}
+                    </span>
+                  )}
                 </div>
                 
                 {/* Botão de ação: remove (X) ou done (✓) */}
@@ -408,11 +600,18 @@ const FileUploadInput = ({
             <div className="modal-content">
               {selectedFile.type?.startsWith('image/') ? (
                 <img 
-                  src={selectedFile.uploaded ? selectedFile.url : (selectedFile.url || previews[selectedFile.id])} 
+                  src={selectedFile.uploaded && selectedFile.url ? selectedFile.url : previews[selectedFile.id]} 
                   alt={selectedFile.name}
                   className="modal-image"
+                  onError={(e) => {
+                    console.error('Erro ao carregar imagem:', e.target.src)
+                    e.target.style.display = 'none'
+                    e.target.nextElementSibling.style.display = 'block'
+                  }}
                 />
-              ) : (
+              ) : null}
+              {(!selectedFile.type?.startsWith('image/') || 
+                (!selectedFile.url && !previews[selectedFile.id])) && (
                 <div className="modal-file-icon">
                   <div className="large-file-icon">📄</div>
                   <p>Preview não disponível para este tipo de arquivo</p>

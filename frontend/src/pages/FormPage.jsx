@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { useParams } from 'react-router-dom'
 import FormPanel from '../components/FormPanel'
+import UploadTest from '../components/debug/UploadTest'
 import './FormPage.css'
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001'
@@ -191,6 +192,9 @@ const FormPage = () => {
 
       {/* Conteúdo principal */}
       <div className="form-page-content">
+        {/* Debug Component - Remove in production */}
+        {import.meta.env.DEV && <UploadTest />}
+        
         {isCompleted && (
           <div className="completion-banner">
             <div className="completion-content">
