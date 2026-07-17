@@ -249,8 +249,8 @@ router.post('/upload', requireAuth, upload.single('file'), async (req, res) => {
     const uploadedFile = await uploadFileToFolder(drive, file, clientFolder.id, fieldId);
     
     // 3. Gerar URL pública
-    const publicUrl = `https://drive.google.com/file/d/${uploadedFile.id}/view`;
-    const directUrl = `https://drive.google.com/uc?id=${uploadedFile.id}&export=download`;
+    const publicUrl = `https://drive.google.com/file/d/${uploadedFile.id}/view`; // link "abrir no Drive" (não usar em <img>)
+    const directUrl = `https://drive.google.com/thumbnail?id=${uploadedFile.id}&sz=w1000`; // embutível em <img src>
     
     console.log('✅ Upload concluído:', {
       fileId: uploadedFile.id,

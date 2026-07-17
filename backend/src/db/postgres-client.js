@@ -1,320 +1,29 @@
 const { Pool } = require('pg')
-const dns = require('dns')
 
-// Configuração do pool de conexões PostgreSQL
+// Conexão simples via Neon (Postgres serverless).
+// Usa DATABASE_URL (connection string "pooled", com pgbouncer) - é a
+// recomendada para uso em backend/serverless, evita esgotar conexões.
 class DatabaseClient {
   constructor() {
-    console.log('🔧 Configurando conexão PostgreSQL...')
-    console.log('📊 Environment:', process.env.NODE_ENV)
-    
-    // Verificar se temos uma URL específica do Render (fallback)
-    if (process.env.RENDER_DATABASE_URL) {
-      console.log('🎯 RENDER_DATABASE_URL detectada, usando configuração específica')
-      this.initializeRenderConnection()
-      return
-    }
-    
-    // FORÇA CONFIGURAÇÃO DIRETA PARA SUPABASE EM PRODUÇÃO
-    if (process.env.NODE_ENV === 'production') {
-      this.initializeProductionConnection()
-      return
-    }
-    
-    // Usar método de desenvolvimento
-    this.initializeDevelopmentConnection()
-  }
+    const connectionString = process.env.DATABASE_URL
 
-  // Método específico para conexões via RENDER_DATABASE_URL
-  async initializeRenderConnection() {
-    console.log('🎯 Usando RENDER_DATABASE_URL específica')
-    
-    const poolConfig = {
-      connectionString: process.env.RENDER_DATABASE_URL,
+    if (!connectionString) {
+      throw new Error('DATABASE_URL não configurada. Defina a connection string do Neon no .env')
+    }
+
+    console.log('🔧 Configurando conexão PostgreSQL (Neon)...')
+
+    this.pool = new Pool({
+      connectionString,
       ssl: { rejectUnauthorized: false },
-      max: 5,
+      max: 10,
       idleTimeoutMillis: 30000,
-      connectionTimeoutMillis: 20000,
-      statement_timeout: 30000,
-      query_timeout: 30000,
+      connectionTimeoutMillis: 10000,
       application_name: 'silver-brand-chatbot'
-    }
-    
-    console.log('✅ Configuração RENDER_DATABASE_URL ativa')
-    
-    this.pool = new Pool(poolConfig)
-    
-    // Event listeners
-    this.pool.on('connect', () => {
-      console.log('📊 Conectado via RENDER_DATABASE_URL')
     })
 
     this.pool.on('error', (err) => {
-      console.error('❌ Erro na conexão RENDER_DATABASE_URL:', err)
-    })
-  }
-
-  // Método específico para inicialização em produção com Session pooler
-  async initializeProductionConnection() {
-    console.log('🚀 PRODUÇÃO DETECTADA - Usando Session pooler IPv4 (gratuito)')
-    
-    // Configuração Session pooler Supabase (IPv4 + IPv6 gratuito)
-    const poolerConfig = {
-      user: 'postgres.dkuhctiznnwalyptlkhu',
-      password: 'ezivL8MIDMpHA6aQ',
-      host: 'aws-0-eu-west-1.pooler.supabase.com', // Session pooler com IPv4
-      port: 5432,
-      database: 'postgres',
-      ssl: { rejectUnauthorized: false },
-      max: 10, // Otimizado para pooler
-      idleTimeoutMillis: 30000,
-      connectionTimeoutMillis: 15000, // Pooler é mais rápido
-      statement_timeout: 30000,
-      query_timeout: 30000,
-      application_name: 'silver-brand-chatbot'
-    }
-    
-    console.log('✅ Session pooler configurado:')
-    console.log('   Host:', poolerConfig.host)
-    console.log('   Port: 5432')
-    console.log('   User:', poolerConfig.user)
-    console.log('   IPv4: ✅ Disponível (gratuito)')
-    console.log('   Pooler: Supabase Shared Pooler')
-    
-    try {
-      // Tentativa principal: Session pooler
-      console.log('🔄 Conectando via Session pooler...')
-      await this.tryConnection(poolerConfig, 'Session pooler IPv4')
-      
-    } catch (error1) {
-      console.log('❌ Falha no Session pooler, tentando configuração alternativa...')
-      
-      try {
-        // Fallback 1: Connection string do Session pooler
-        console.log('🔄 Tentativa 2: Connection string pooler...')
-        const poolerString = `postgresql://postgres.dkuhctiznnwalyptlkhu:ezivL8MIDMpHA6aQ@aws-0-eu-west-1.pooler.supabase.com:5432/postgres`
-        
-        await this.tryConnection({
-          connectionString: poolerString,
-          ssl: { rejectUnauthorized: false },
-          max: 8,
-          idleTimeoutMillis: 30000,
-          connectionTimeoutMillis: 20000
-        }, 'Connection string pooler')
-        
-      } catch (error2) {
-        console.log('❌ Falha no pooler string, tentando direct connection fallback...')
-        
-        try {
-          // Fallback 2: Direct connection (IPv6 - pode falhar no Render)
-          console.log('🔄 Tentativa 3: Direct connection (IPv6 fallback)...')
-          await this.tryConnection({
-            user: 'postgres',
-            password: 'ezivL8MIDMpHA6aQ',
-            host: 'db.dkuhctiznnwalyptlkhu.supabase.co',
-            port: 5432,
-            database: 'postgres',
-            ssl: { rejectUnauthorized: false },
-            max: 5,
-            connectionTimeoutMillis: 25000,
-            idleTimeoutMillis: 45000
-          }, 'Direct connection IPv6')
-          
-        } catch (error3) {
-          console.error('💥 TODAS AS TENTATIVAS FALHARAM')
-          console.error('Erro 1 (Session pooler):', error1.message)
-          console.error('Erro 2 (Pooler string):', error2.message) 
-          console.error('Erro 3 (Direct connection):', error3.message)
-          
-          console.error('🔍 Diagnóstico:')
-          console.error('   - Session pooler IPv4 falhou (inesperado)')
-          console.error('   - Direct connection IPv6 falhou (esperado no Render)')
-          console.error('   - Verifique conectividade ou credentials')
-          
-          throw new Error('Supabase connectivity failed - verify credentials and network')
-        }
-      }
-    }
-  }
-
-  // Método auxiliar para tentar conexão
-  async tryConnection(config, description) {
-    console.log(`🔄 Tentando conexão ${description}...`)
-    console.log('   Host:', config.host)
-    console.log('   Port:', config.port)
-    
-    this.pool = new Pool(config)
-    
-    // Teste de conexão
-    const testClient = await this.pool.connect()
-    await testClient.query('SELECT 1')
-    testClient.release()
-    
-    console.log(`✅ Sucesso com ${description}!`)
-    
-    // Configurar event listeners
-    this.pool.on('connect', () => {
-      console.log(`📊 Conectado ao banco PostgreSQL (${description})`)
-    })
-
-    this.pool.on('error', (err) => {
-      console.error('❌ Erro na conexão com banco:', err)
-    })
-  }
-
-  // Inicialização para ambiente de desenvolvimento
-  initializeDevelopmentConnection() {
-    
-    // CÓDIGO ORIGINAL PARA DESENVOLVIMENTO
-    let connectionString = process.env.SUPABASE_URL || process.env.DATABASE_URL
-    
-    console.log('🔧 Configurando conexão PostgreSQL...')
-    console.log('🔗 Connection string configurada:', connectionString ? 'SIM' : 'NÃO')
-    console.log('📊 Environment:', process.env.NODE_ENV)
-    console.log('🌐 Connection string (mascarada):', connectionString ? connectionString.replace(/:\/\/.*@/, '://***@') : 'NONE')
-    console.log('🔍 SUPABASE_URL env:', process.env.SUPABASE_URL ? 'PRESENTE' : 'AUSENTE')
-    console.log('🔍 DATABASE_URL env:', process.env.DATABASE_URL ? 'PRESENTE' : 'AUSENTE')
-    console.log('📏 Tamanho da string:', connectionString ? connectionString.length : 0)
-    
-    // Verificar se temos variáveis individuais como alternativa
-    const hasIndividualVars = process.env.DB_HOST && process.env.DB_PASSWORD;
-    console.log('🔍 Variáveis individuais disponíveis:', hasIndividualVars ? 'SIM' : 'NÃO')
-    
-    if (!connectionString && !hasIndividualVars) {
-      console.error('❌ ERRO: Nenhuma configuração de banco encontrada!')
-      console.error('💡 Configure SUPABASE_URL, DATABASE_URL ou variáveis individuais (DB_HOST, DB_PASSWORD, etc.)')
-      throw new Error('Database connection configuration not found')
-    }
-
-    // Verificar se a string parece truncada
-    if (connectionString.length < 50 || !connectionString.includes('@')) {
-      console.error('❌ ERRO: String de conexão parece truncada ou inválida')
-      console.error('📏 Tamanho:', connectionString.length)
-      console.error('📄 Conteúdo:', connectionString)
-      
-      // Tentar reconstruir URL se parecer supabase truncado
-      if (connectionString.includes('base') && !connectionString.includes('.supabase.co')) {
-        console.log('🔄 Tentando reconstruir URL do Supabase...')
-        connectionString = `postgresql://postgres:ezivL8MIDMpHA6aQ@db.dkuhctiznnwalyptlkhu.supabase.co:5432/postgres`
-        console.log('🔧 URL reconstruída:', connectionString.replace(/:\/\/.*@/, '://***@'))
-      }
-    }
-
-    // Configurações específicas para Supabase
-    if (connectionString.includes('.supabase.co')) {
-      console.log('🟣 Detectado Supabase, ajustando configurações...')
-      // Detectado Supabase - usando porta 5432 gratuita
-      if (connectionString.includes(':5432/')) {
-        console.log('✅ Usando porta 5432 gratuita do Supabase')
-      }
-    }
-    
-    // Se o endereço contém IPv6 problemático, tentar fallback
-    if (connectionString.includes('2a05:d018:837')) {
-      console.warn('⚠️ Detectado endereço IPv6 problemático, tentando configuração alternativa...')
-      // Tentar usar localhost como fallback em desenvolvimento
-      if (process.env.NODE_ENV !== 'production') {
-        connectionString = 'postgresql://postgres:postgres123@localhost:5432/silver_brand'
-        console.log('🔄 Usando fallback localhost')
-      }
-    }
-    
-    // Tentar usar parâmetros individuais se detectar problema com connection string
-    let poolConfig;
-    
-    try {
-      // Se temos variáveis individuais, usar elas diretamente
-      if (hasIndividualVars) {
-        console.log('🔧 Usando variáveis de ambiente individuais...')
-        poolConfig = {
-          user: process.env.DB_USER || 'postgres',
-          password: process.env.DB_PASSWORD,
-          host: process.env.DB_HOST,
-          port: parseInt(process.env.DB_PORT) || 5432,
-          database: process.env.DB_NAME || 'postgres',
-          ssl: { rejectUnauthorized: false },
-          max: 20,
-          idleTimeoutMillis: 30000,
-          connectionTimeoutMillis: 5000,
-          statement_timeout: 30000,
-          query_timeout: 30000,
-          application_name: 'silver-brand-chatbot'
-        };
-        
-        console.log('🔍 Configuração de variáveis individuais:');
-        console.log('   Host:', poolConfig.host);
-        console.log('   Port:', poolConfig.port);
-        console.log('   User:', poolConfig.user);
-        console.log('   Database:', poolConfig.database);
-        
-      } else if (connectionString.includes('.supabase.co') || process.env.NODE_ENV === 'production') {
-        console.log('🔧 Usando configuração individual para Supabase/Produção...')
-        
-        // Parse manual da URL para evitar problemas com connection string
-        const url = new URL(connectionString);
-        poolConfig = {
-          user: url.username || 'postgres',
-          password: url.password,
-          host: url.hostname,
-          port: parseInt(url.port) || 5432,
-          database: url.pathname.slice(1) || 'postgres', // Remove a barra inicial
-          ssl: { rejectUnauthorized: false },
-          max: 20,
-          idleTimeoutMillis: 30000,
-          connectionTimeoutMillis: 5000,
-          statement_timeout: 30000,
-          query_timeout: 30000,
-          application_name: 'silver-brand-chatbot'
-        };
-        
-        console.log('🔍 Configuração parseada:');
-        console.log('   Host:', poolConfig.host);
-        console.log('   Port:', poolConfig.port);
-        console.log('   User:', poolConfig.user);
-        console.log('   Database:', poolConfig.database);
-        console.log('   Password:', poolConfig.password ? '[PRESENTE]' : '[AUSENTE]');
-        
-      } else {
-        console.log('🔧 Usando connection string tradicional...')
-        poolConfig = {
-          connectionString,
-          ssl: false,
-          max: 20,
-          idleTimeoutMillis: 30000,
-          connectionTimeoutMillis: 5000
-        };
-      }
-    } catch (error) {
-      console.error('❌ Erro ao fazer parse da URL:', error.message);
-      console.log('🔄 Usando fallback hardcoded para Supabase...');
-      
-      // Fallback hardcoded para o seu projeto específico
-      poolConfig = {
-        user: 'postgres',
-        password: 'ezivL8MIDMpHA6aQ',
-        host: 'db.dkuhctiznnwalyptlkhu.supabase.co',
-        port: 5432, // Usar porta gratuita
-        database: 'postgres',
-        ssl: { rejectUnauthorized: false },
-        max: 20,
-        idleTimeoutMillis: 30000,
-        connectionTimeoutMillis: 5000,
-        statement_timeout: 30000,
-        query_timeout: 30000,
-        application_name: 'silver-brand-chatbot'
-      };
-      
-      console.log('✅ Fallback configurado com host:', poolConfig.host);
-    }
-    
-    this.pool = new Pool(poolConfig)
-
-    // Log de conexão
-    this.pool.on('connect', () => {
-      console.log('📊 Conectado ao banco PostgreSQL')
-    })
-
-    this.pool.on('error', (err) => {
-      console.error('❌ Erro na conexão com banco:', err)
+      console.error('❌ Erro no pool de conexões PostgreSQL:', err)
     })
   }
 
@@ -362,28 +71,28 @@ const dbClient = new DatabaseClient()
 const queries = {
   // Sessões
   createSession: `
-    INSERT INTO sessions (created_by) 
-    VALUES ($1) 
+    INSERT INTO sessions (created_by)
+    VALUES ($1)
     RETURNING id, client_token, status, created_at
   `,
 
   getSessionByToken: `
-    SELECT s.*, fs.data, fs.progress 
+    SELECT s.*, fs.data, fs.progress
     FROM sessions s
     LEFT JOIN form_states fs ON s.id = fs.session_id
     WHERE s.client_token = $1
   `,
 
   getSessionById: `
-    SELECT s.*, fs.data, fs.progress 
+    SELECT s.*, fs.data, fs.progress
     FROM sessions s
     LEFT JOIN form_states fs ON s.id = fs.session_id
     WHERE s.id = $1
   `,
 
   updateSessionStatus: `
-    UPDATE sessions 
-    SET status = $2, updated_at = NOW() 
+    UPDATE sessions
+    SET status = $2, updated_at = NOW()
     WHERE id = $1
   `,
 
@@ -391,8 +100,8 @@ const queries = {
   upsertFormState: `
     INSERT INTO form_states (session_id, data, progress)
     VALUES ($1, $2, $3)
-    ON CONFLICT (session_id) 
-    DO UPDATE SET 
+    ON CONFLICT (session_id)
+    DO UPDATE SET
       data = $2,
       progress = $3,
       updated_at = NOW()
@@ -403,7 +112,7 @@ const queries = {
     INSERT INTO form_states (session_id, data, progress)
     VALUES ($1, jsonb_build_object($2::text, $3::text), '{}')
     ON CONFLICT (session_id)
-    DO UPDATE SET 
+    DO UPDATE SET
       data = form_states.data || jsonb_build_object($2::text, $3::text),
       updated_at = NOW()
     RETURNING data, progress
@@ -418,7 +127,7 @@ const queries = {
 
   getHelpMessages: `
     SELECT role, content, tool_call_data, created_at
-    FROM field_help_messages 
+    FROM field_help_messages
     WHERE session_id = $1 AND field_id = $2
     ORDER BY created_at ASC
   `,

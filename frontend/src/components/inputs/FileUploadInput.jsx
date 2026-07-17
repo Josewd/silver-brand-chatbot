@@ -618,12 +618,13 @@ const FileUploadInput = ({
                   onClick={() => openFileModal(file)}
                   title={file.uploaded ? "Clique para visualizar" : "Preview do arquivo (não enviado)"}
                 >
-                  {/* Mostrar preview: priorizar URL do servidor para arquivos enviados */}
+                  {/* Mostrar preview: priorizar URL do servidor para arquivos enviados.
+                      file.url (Drive "view") não é embutível em <img>; usar directUrl (thumbnail). */}
                   {file.uploaded && file.url ? (
                     file.url.startsWith('data:') ? (
                       <img src={file.url} alt={file.name} />
                     ) : (
-                      <img src={file.url} alt={file.name} />
+                      <img src={file.directUrl || file.url} alt={file.name} />
                     )
                   ) : previews[file.id] ? (
                     <img src={previews[file.id]} alt={file.name} />
@@ -696,7 +697,7 @@ const FileUploadInput = ({
             <div className="modal-content">
               {selectedFile.type?.startsWith('image/') ? (
                 <img 
-                  src={selectedFile.uploaded && selectedFile.url ? selectedFile.url : previews[selectedFile.id]} 
+                  src={selectedFile.uploaded && selectedFile.url ? (selectedFile.directUrl || selectedFile.url) : previews[selectedFile.id]}
                   alt={selectedFile.name}
                   className="modal-image"
                   onError={(e) => {
