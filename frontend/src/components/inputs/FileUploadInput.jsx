@@ -1,12 +1,13 @@
 import React, { useState } from 'react'
 import './FileUploadInput.css'
 
-const FileUploadInput = ({ 
-  field, 
-  value = [], 
-  onChange, 
-  onBlur, 
-  disabled = false 
+const FileUploadInput = ({
+  field,
+  value = [],
+  onChange,
+  onBlur,
+  disabled = false,
+  clientName: clientNameProp = null
 }) => {
   const [dragActive, setDragActive] = useState(false)
   const [uploading, setUploading] = useState(false)
@@ -91,9 +92,10 @@ const FileUploadInput = ({
     try {
       const uploadedFiles = []
       
-      // Obter nome do cliente do contexto (formulário)
-      const clientName = getClientNameFromContext()
-      console.log('👤 Nome do cliente identificado:', clientName);
+      // Preferir o nome de cliente vindo do próprio formState (via FormPanel);
+      // só usar a heurística (localStorage/DOM) como fallback se o prop não vier.
+      const clientName = clientNameProp || getClientNameFromContext()
+      console.log('👤 Nome do cliente identificado:', clientName, clientNameProp ? '(via formState)' : '(via fallback heurístico)');
       
       for (const fileObj of filesToUpload) {
         console.log('📁 Processando arquivo:', fileObj.name);

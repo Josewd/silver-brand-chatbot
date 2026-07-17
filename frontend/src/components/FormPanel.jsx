@@ -125,6 +125,7 @@ const FormPanel = ({
               accept: field.accept || 'image/*',
               multiple: field.multiple || false
             }}
+            clientName={localState.empresa_slogan || localState.nome || null}
           />
         )
         break

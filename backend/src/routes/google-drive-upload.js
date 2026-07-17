@@ -1,6 +1,7 @@
 const express = require('express');
 const multer = require('multer');
 const { google } = require('googleapis');
+const { Readable } = require('stream');
 const router = express.Router();
 
 // Configurar multer para arquivos em memória
@@ -32,23 +33,69 @@ const requireAuth = (req, res, next) => {
   next();
 };
 
-// Configurar Google Drive Service Account
+// Configurar Google Drive via OAuth 2.0 (conta pessoal, não Service Account)
+// Requer GOOGLE_OAUTH_CLIENT_ID / GOOGLE_OAUTH_CLIENT_SECRET / GOOGLE_OAUTH_REFRESH_TOKEN
+// obtidos uma única vez via scripts/google-drive-oauth-setup.js
 const getGoogleAuth = () => {
-  try {
-    const credentials = JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT_KEY || '{}');
-    
-    if (!credentials.client_email || !credentials.private_key) {
-      throw new Error('Credenciais do Service Account incompletas');
-    }
+  const clientId = process.env.GOOGLE_OAUTH_CLIENT_ID;
+  const clientSecret = process.env.GOOGLE_OAUTH_CLIENT_SECRET;
+  const redirectUri = process.env.GOOGLE_OAUTH_REDIRECT_URI;
+  const refreshToken = process.env.GOOGLE_OAUTH_REFRESH_TOKEN;
 
-    return new google.auth.GoogleAuth({
-      credentials: credentials,
-      scopes: ['https://www.googleapis.com/auth/drive.file']
-    });
-  } catch (error) {
-    console.error('❌ Erro ao configurar Google Auth:', error.message);
+  if (!clientId || !clientSecret || !refreshToken) {
+    console.error('❌ Credenciais OAuth incompletas (GOOGLE_OAUTH_CLIENT_ID/SECRET/REFRESH_TOKEN)');
     throw new Error('Google Drive não configurado corretamente');
   }
+
+  const oauth2Client = new google.auth.OAuth2(clientId, clientSecret, redirectUri);
+  oauth2Client.setCredentials({ refresh_token: refreshToken });
+
+  return oauth2Client;
+};
+
+// Cache em memória do ID da pasta raiz "SilverAssets" (evita buscar em toda requisição)
+let rootFolderIdCache = null;
+
+// Encontrar ou criar a pasta raiz (ex: "SilverAssets") na raiz do Drive da conta autenticada
+const resolveRootFolder = async (drive) => {
+  if (rootFolderIdCache) {
+    return rootFolderIdCache;
+  }
+
+  const rootFolderName = process.env.GOOGLE_DRIVE_ROOT_FOLDER_NAME || 'SilverAssets';
+
+  // Se um ID fixo foi configurado manualmente, respeitar (compatibilidade)
+  if (process.env.GOOGLE_DRIVE_FOLDER_ID) {
+    rootFolderIdCache = process.env.GOOGLE_DRIVE_FOLDER_ID;
+    return rootFolderIdCache;
+  }
+
+  console.log(`🔍 Procurando pasta raiz: "${rootFolderName}"`);
+
+  const response = await drive.files.list({
+    q: `name='${rootFolderName}' and 'root' in parents and mimeType='application/vnd.google-apps.folder' and trashed=false`,
+    fields: 'files(id, name)',
+    pageSize: 1
+  });
+
+  if (response.data.files && response.data.files.length > 0) {
+    console.log(`✅ Pasta raiz encontrada: ${response.data.files[0].id}`);
+    rootFolderIdCache = response.data.files[0].id;
+    return rootFolderIdCache;
+  }
+
+  console.log(`📁 Pasta raiz "${rootFolderName}" não existe, criando...`);
+  const folder = await drive.files.create({
+    resource: {
+      name: rootFolderName,
+      mimeType: 'application/vnd.google-apps.folder'
+    },
+    fields: 'id, name'
+  });
+
+  console.log(`✅ Pasta raiz criada: ${folder.data.id}`);
+  rootFolderIdCache = folder.data.id;
+  return rootFolderIdCache;
 };
 
 // Função para sanitizar nome da pasta (cliente)
@@ -73,7 +120,7 @@ const findClientFolder = async (drive, clientName, mainFolderId) => {
   console.log(`🔍 Procurando pasta: "${folderName}" em ${mainFolderId}`);
   
   const response = await drive.files.list({
-    q: `name='${folderName}' and parents in '${mainFolderId}' and mimeType='application/vnd.google-apps.folder' and trashed=false`,
+    q: `name='${folderName}' and '${mainFolderId}' in parents and mimeType='application/vnd.google-apps.folder' and trashed=false`,
     fields: 'files(id, name)',
     pageSize: 1
   });
@@ -137,7 +184,7 @@ const uploadFileToFolder = async (drive, file, folderId, fieldId) => {
   
   const media = {
     mimeType: file.mimetype,
-    body: file.buffer
+    body: Readable.from(file.buffer) // googleapis exige um stream, não um Buffer bruto
   };
   
   const uploadedFile = await drive.files.create({
@@ -187,12 +234,10 @@ router.post('/upload', requireAuth, upload.single('file'), async (req, res) => {
     // Configurar Google Drive
     const auth = getGoogleAuth();
     const drive = google.drive({ version: 'v3', auth });
-    
-    const mainFolderId = process.env.GOOGLE_DRIVE_FOLDER_ID;
-    if (!mainFolderId) {
-      throw new Error('GOOGLE_DRIVE_FOLDER_ID não configurado');
-    }
-    
+
+    // 0. Encontrar ou criar a pasta raiz "SilverAssets"
+    const mainFolderId = await resolveRootFolder(drive);
+
     // 1. Encontrar ou criar pasta do cliente
     let clientFolder = await findClientFolder(drive, clientName, mainFolderId);
     
@@ -254,13 +299,10 @@ router.get('/test', requireAuth, async (req, res) => {
   try {
     const auth = getGoogleAuth();
     const drive = google.drive({ version: 'v3', auth });
-    
-    // Testar acesso à pasta principal
-    const mainFolderId = process.env.GOOGLE_DRIVE_FOLDER_ID;
-    if (!mainFolderId) {
-      throw new Error('GOOGLE_DRIVE_FOLDER_ID não configurado');
-    }
-    
+
+    // Testar acesso à pasta raiz (encontra ou cria "SilverAssets")
+    const mainFolderId = await resolveRootFolder(drive);
+
     const folder = await drive.files.get({
       fileId: mainFolderId,
       fields: 'id, name, mimeType'

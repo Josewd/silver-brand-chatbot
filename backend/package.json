@@ -7,6 +7,7 @@
     "start": "node src/server-new.js",
     "dev": "nodemon src/server-new.js",
     "debug-env": "node debug-env.js",
+    "google-drive:setup": "node scripts/google-drive-oauth-setup.js",
     "old-start": "node src/server.js",
     "test": "jest"
   },
